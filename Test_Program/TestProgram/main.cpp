@@ -4,6 +4,7 @@
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 
+#include <windows.h>
 #include <iostream>
 #include <stdexcept>
 #include <cstdlib>
@@ -16,6 +17,8 @@
 #include <algorithm> // Necessary for std::clamp
 #include <fstream>
 
+/* A macro to select if we want to create a window using WSI. If false it will be created with GLFW. */
+#define ISWINWINDOW false
 
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
@@ -30,6 +33,8 @@ const std::vector<const char*> validationLayers = { "VK_LAYER_KHRONOS_validation
 const std::vector<const char*> deviceExtensions = {
     VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
+
+
 
 #ifdef NDEBUG
     const bool enableValidationLayers = false;
@@ -111,13 +116,17 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT
 
 
 
-
-
 class HelloTriangle {
 private:
 
     /* The GLFW Window instance */
     GLFWwindow* window = nullptr;
+
+    /* The WIN Window instance */
+    HWND hwnd = nullptr;
+
+    /* Thw WIN Window handle instance */
+    HINSTANCE hInstance = nullptr;
 
     /* Vulkan instance */
     VkInstance instance = VK_NULL_HANDLE;
@@ -215,7 +224,7 @@ private:
 
 
     /**
-    * @brief It initialize the GLFW window used for the Vulkan Display
+    * @brief Initialize the GLFW window used for the Vulkan Display
     */
     void InitWindow() 
     {
@@ -228,6 +237,16 @@ private:
 
         glfwSetWindowUserPointer(window, this);
         glfwSetFramebufferSizeCallback(window, FramebufferResizeCallback);      // Callback for window resize
+    }
+
+
+    /**
+    * @brief Assign the HWND instance and the HINSTANCE to the member variable.
+    */
+    void InitWindowWIN(HINSTANCE new_hInstance, HWND new_hwnd)
+    {
+        hInstance = new_hInstance;
+        hwnd = new_hwnd;
     }
 
 
@@ -320,7 +339,21 @@ private:
         }
         else {
             int width, height;
-            glfwGetFramebufferSize(window, &width, &height);
+
+            if (ISWINWINDOW) {
+                RECT rect;
+                if (GetWindowRect(hwnd, &rect))
+                {
+                    width = rect.right - rect.left;
+                    height = rect.bottom - rect.top;
+                }
+                else {
+                    throw std::runtime_error("failed to get window rect!");
+                }
+            }
+            else {
+                glfwGetFramebufferSize(window, &width, &height);
+            }
 
             VkExtent2D actualExtent = {
                 static_cast<uint32_t>(width),
@@ -442,16 +475,26 @@ private:
         createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
         createInfo.pApplicationInfo = &appInfo;
 
-        /* Interface that work with GLFW */
-        uint32_t glfwExtensionCount = 0;
-        const char** glfwExtensions;
+        /* Gather the extensions used for rendering */
+        std::vector<const char*> extensions;
+        uint32_t extensionCount = 0;
+        vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+        std::vector<VkExtensionProperties> extensionProps(extensionCount);
+        vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensionProps.data());
 
-        glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+        if (ISWINWINDOW) {
+            extensions.resize(extensionCount);
 
-        //createInfo.enabledExtensionCount = glfwExtensionCount;
-        //createInfo.ppEnabledExtensionNames = glfwExtensions;
-        auto extensions = GetRequiredExtensions();
-        createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
+            for (int i = 0; i < extensionCount; i++) {
+                extensions[i] = extensionProps[i].extensionName;
+            }
+        }
+        else {
+            extensions = GetRequiredExtensions();
+            extensionCount = static_cast<uint32_t>(extensions.size());
+        }
+
+        createInfo.enabledExtensionCount = extensionCount;
         createInfo.ppEnabledExtensionNames = extensions.data();
 
         /* Add the validation layers into the info */
@@ -668,10 +711,16 @@ private:
     {
         VkWin32SurfaceCreateInfoKHR createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-        createInfo.hwnd = glfwGetWin32Window(window);
-        createInfo.hinstance = GetModuleHandle(nullptr);
 
-        
+        if (ISWINWINDOW) {
+            createInfo.hwnd = hwnd;
+            createInfo.hinstance = hInstance;
+        }
+        else {
+            createInfo.hwnd = glfwGetWin32Window(window);
+            createInfo.hinstance = GetModuleHandle(nullptr);
+        }
+
         /* Create the surface with WSI extension from the Windows native API */
         if (vkCreateWin32SurfaceKHR(instance, &createInfo, nullptr, &surface) != VK_SUCCESS) {
             throw std::runtime_error("failed to create window surface!");
@@ -1195,10 +1244,30 @@ private:
     {
         /* Pause the window if the frame buffer size is 0 (window minimization)*/
         int width = 0, height = 0;
-        glfwGetFramebufferSize(window, &width, &height);
-        while (width == 0 || height == 0) {
+
+        if (ISWINWINDOW) {
+            RECT rect;
+            if (GetWindowRect(hwnd, &rect))
+            {
+                width = rect.right - rect.left;
+                height = rect.bottom - rect.top;
+            }
+            else {
+                throw std::runtime_error("failed to get window rect!");
+            }
+        }
+        else {
             glfwGetFramebufferSize(window, &width, &height);
-            glfwWaitEvents();
+        }
+
+        while (width == 0 || height == 0) {
+            if (ISWINWINDOW) {
+                // TODO: 
+            }
+            else {
+                glfwGetFramebufferSize(window, &width, &height);
+                glfwWaitEvents();
+            }
         }
 
         /* Wait for the using device to be done */
@@ -1211,6 +1280,81 @@ private:
         CreateSwapChain();
         CreateImageViews();
         CreateFrameBuffers();
+    }
+
+
+    /**
+    * @brief Initialize the Vulkan application and setup.
+    */
+    void InitVulkan() 
+    {
+        CreateInstance();
+        SetupDebugMessenger();
+        CreateSurface();
+        PickPhysicalDevice();
+        CreateLogicalDevice();
+        CreateSwapChain();
+        CreateImageViews();
+        CreateRenderPass();
+        CreateGraphicsPipeline();
+        CreateFrameBuffers();
+        CreateCommandPool();
+        CreateCommandBuffers();
+        CreateSyncObjects();
+    }
+
+
+    /**
+    * @brief Create a main loop to let the window keep opening.
+    */
+    void MainLoop()
+    {
+        while (!glfwWindowShouldClose(window)) {
+            glfwPollEvents();       // Check for inputs
+            DrawFrame();
+        }
+
+        /* Wait for the logical device to finish operations before exiting mainLoop and destroying the window */
+        vkDeviceWaitIdle(device);
+    }
+
+
+    /**
+    * @brief Create a main loop to let the window keep opening (Looping using the MSG mechanism).
+    */
+    void MainLoopWIN()
+    {
+        MSG msg = { };
+        while (GetMessage(&msg, NULL, 0, 0) > 0)
+        {   
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+    }
+
+
+public:
+
+    /**
+    * @brief Run the Vulkan application.
+    */
+    void Run()
+    {
+        InitWindow();
+        InitVulkan();
+        MainLoop();
+        CleanUp();
+    }
+
+
+    /**
+    * @brief Run the Vulkan application using the Windows created window.
+    */
+    void RunWIN(HINSTANCE new_Instance, HWND new_hwnd)
+    {
+        InitWindowWIN(new_Instance, new_hwnd);
+        InitVulkan();
+        MainLoopWIN();
     }
 
 
@@ -1299,46 +1443,15 @@ private:
 
 
     /**
-    * @brief Initialize the Vulkan application and setup.
-    */
-    void InitVulkan() 
-    {
-        CreateInstance();
-        SetupDebugMessenger();
-        CreateSurface();
-        PickPhysicalDevice();
-        CreateLogicalDevice();
-        CreateSwapChain();
-        CreateImageViews();
-        CreateRenderPass();
-        CreateGraphicsPipeline();
-        CreateFrameBuffers();
-        CreateCommandPool();
-        CreateCommandBuffers();
-        CreateSyncObjects();
-    }
-
-
-    /**
-    * @brief Create a main loop to let the window keep opening.
-    */
-    void MainLoop()
-    {
-        while (!glfwWindowShouldClose(window)) {
-            glfwPollEvents();       // Check for inputs
-            DrawFrame();
-        }
-
-        /* Wait for the logical device to finish operations before exiting mainLoop and destroying the window */
-        vkDeviceWaitIdle(device);
-    }
-
-
-    /**
     * @brief CleanUp used for destroy the instance and related destruction.
     */
     void CleanUp()
     {
+        if (ISWINWINDOW) {
+            /* Wait for the logical device to finish operations before exiting mainLoop and destroying the window */
+            vkDeviceWaitIdle(device);
+        }
+
 
         if (enableValidationLayers) {
             DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
@@ -1361,41 +1474,135 @@ private:
         vkDestroySurfaceKHR(instance, surface, nullptr);    // Destroy the surface instance
         vkDestroyInstance(instance, nullptr);   // Destroy the vulkan instance
 
-        glfwDestroyWindow(window);      // Close the window
-        glfwTerminate();            // GLFW destruction
-    }
-
-
-public:
-
-    /**
-    * @brief Run the Vulkan application.
-    */
-    void Run()
-    {
-        InitWindow();
-        InitVulkan();
-        MainLoop();
-        CleanUp();
+        if (ISWINWINDOW) {
+            DestroyWindow(hwnd);
+            PostQuitMessage(0);
+        }
+        else {
+            glfwDestroyWindow(window);      // Close the window
+            glfwTerminate();            // GLFW destruction
+        }
     }
 };
 
 
-int main() {
-    
-    HelloTriangle app;
+/* An instance of the program */
+HelloTriangle* TriInstance = nullptr;
+
+
+/**
+* @brief A callback function captures the event from the window.
+*/
+LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    switch (uMsg)
+    {
+        /* If the window is closed */
+        case WM_CLOSE:
+        {   
+            if (TriInstance != nullptr) {
+                TriInstance->CleanUp();
+            }
+            return 0;
+        }
+        /* If it's painting on the window */
+        case WM_PAINT:
+        {
+            if (TriInstance != nullptr) {
+                TriInstance->DrawFrame();
+            }
+            return 0;
+        }
+        default:
+        {
+            return DefWindowProc(hwnd, uMsg, wParam, lParam);
+        }
+    }
+}
+
+
+#if ISWINWINDOW
+
+
+/**
+* @brief A program entry for Windows
+*/
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
+    LPSTR lpCmdLine, int nCmdShow) {
+
+    TriInstance = new HelloTriangle();
 
     try
     {
-        app.Run();
+        const wchar_t CLASS_NAME[] = L"Sample Window Class";
+
+        WNDCLASS wc = { };
+
+        wc.lpfnWndProc = WindowProc;
+        wc.hInstance = hInstance;
+        wc.lpszClassName = CLASS_NAME;
+
+        RegisterClass(&wc);
+
+        HWND hwnd = CreateWindowEx(
+            0,                              // Optional window styles.
+            CLASS_NAME,                     // Window class
+            L"Learn to Program Windows",    // Window text
+            WS_OVERLAPPEDWINDOW,            // Window style
+
+            // Size and position
+            CW_USEDEFAULT, CW_USEDEFAULT, WIDTH, HEIGHT,
+
+            NULL,       // Parent window
+            NULL,       // Menu
+            hInstance,  // Instance handle
+            NULL        // Additional application data
+        );
+
+        if (hwnd == nullptr)
+        {
+            throw std::runtime_error("failed to create the WIN window!");
+        }
+
+
+        ShowWindow(hwnd, nCmdShow);
+        TriInstance->RunWIN(hInstance,hwnd);
     }
     catch (const std::exception& e)
     {
         std::cerr << e.what() << std::endl;
+        delete TriInstance;
         return EXIT_FAILURE;
     }
-
+    
+    delete TriInstance;
     return EXIT_SUCCESS;
 }
+
+#else
+
+
+/**
+* @brief A cross-platform program entry if we want to create the window with GLFW
+*/
+int main() {
+
+    TriInstance = new HelloTriangle();
+
+    try
+    {
+        TriInstance->Run();
+    }
+    catch (const std::exception& e)
+    {
+        delete TriInstance;
+        return EXIT_FAILURE;
+    }
+    delete TriInstance;
+    return EXIT_SUCCESS;
+}
+
+#endif
+
 
 
