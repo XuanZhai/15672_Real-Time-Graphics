@@ -4,6 +4,8 @@
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 
+#include <glm/glm.hpp>
+
 #include <windows.h>
 #include <iostream>
 #include <stdexcept>
@@ -16,6 +18,7 @@
 #include <limits> // Necessary for std::numeric_limits
 #include <algorithm> // Necessary for std::clamp
 #include <fstream>
+#include <array>
 
 /* A macro to select if we want to create a window using WSI. If false it will be created with GLFW. */
 #define ISWINWINDOW false
@@ -34,13 +37,63 @@ const std::vector<const char*> deviceExtensions = {
     VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
 
-
-
 #ifdef NDEBUG
     const bool enableValidationLayers = false;
 #else
     const bool enableValidationLayers = true;
 #endif // DEBUG
+
+/* Structure of a Vertex which is a position and a color */
+struct Vertex {
+    glm::vec2 pos;
+    glm::vec3 color;
+
+    /* Describes at which rate to load data from memory throughout the vertices */
+    static VkVertexInputBindingDescription getBindingDescription() 
+    {
+        VkVertexInputBindingDescription bindingDescription{};
+
+        bindingDescription.binding = 0;         // Specifies the index of the binding in the array of bindings.
+        bindingDescription.stride = sizeof(Vertex);     // Specifies the number of bytes from one entry to the next.
+        bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;  // Move to the next data entry after each vertex.
+
+        return bindingDescription;
+    }
+
+    /* Describes how to handle vertex input */
+    static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions() 
+    {
+        std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
+
+        /* Attribute for the vertex data */
+        attributeDescriptions[0].binding = 0;
+        attributeDescriptions[0].location = 0;
+        attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;  // Describes the type of data for the attribute
+        attributeDescriptions[0].offset = offsetof(Vertex, pos);
+
+        /* Attribute for the color data */
+        attributeDescriptions[1].binding = 0;
+        attributeDescriptions[1].location = 1;
+        attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+        attributeDescriptions[1].offset = offsetof(Vertex, color);
+
+        return attributeDescriptions;
+    }
+};
+
+/* A list of vertex which are vertices to draw */
+const std::vector<Vertex> vertices = {
+    {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+    {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+    {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+    {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
+};
+
+/* indices to arrange the order of vertices to draw */
+const std::vector<uint16_t> indices = {
+    0, 1, 2, 2, 3, 0
+};
+
 
 
 /**
@@ -192,6 +245,18 @@ private:
 
     /* Used to handle the explicit window resize event */
     bool framebufferResized = false;
+
+    /* The vertex buffer used to store the vertex data */
+    VkBuffer vertexBuffer = VK_NULL_HANDLE;
+
+    /* Handle to the memory of the vertex buffer */
+    VkDeviceMemory vertexBufferMemory = VK_NULL_HANDLE;
+
+    /* The index buffer used to store the indices */
+    VkBuffer indexBuffer = VK_NULL_HANDLE;
+
+    /* Handle to the memory of the index buffer */
+    VkDeviceMemory indexBufferMemory = VK_NULL_HANDLE;
 
     /* A struct of queue that will be submitted to Vulkan */
     struct QueueFamilyIndices {
@@ -485,7 +550,7 @@ private:
         if (ISWINWINDOW) {
             extensions.resize(extensionCount);
 
-            for (int i = 0; i < extensionCount; i++) {
+            for (uint32_t i = 0; i < extensionCount; i++) {
                 extensions[i] = extensionProps[i].extensionName;
             }
         }
@@ -882,10 +947,15 @@ private:
         /* Describes the format of the vertex data that will be passed to the vertex shader */
         VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
         vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-        vertexInputInfo.vertexBindingDescriptionCount = 0;
-        vertexInputInfo.pVertexBindingDescriptions = nullptr; // Optional
-        vertexInputInfo.vertexAttributeDescriptionCount = 0;
-        vertexInputInfo.pVertexAttributeDescriptions = nullptr; // Optional
+
+        /* Make the pipline accept Vertex data as the vertex input */
+        auto bindingDescription = Vertex::getBindingDescription();
+        auto attributeDescriptions = Vertex::getAttributeDescriptions();
+
+        vertexInputInfo.vertexBindingDescriptionCount = 1;
+        vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+        vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+        vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
         /* Describes the primitive we are drawing */
         /* VK_PRIMITIVE_TOPOLOGY_POINT_LIST: points from vertices */
@@ -1086,6 +1156,167 @@ private:
 
 
     /**
+    * @brief Combine the requirements of the buffer and our own application requirements to find the right type of memory to use.
+    */
+    uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) 
+    {
+
+        VkPhysicalDeviceMemoryProperties memProperties;
+        vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
+
+        /* Find the memory that is suitable for the buffer to use */
+        for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+            /* typeFilter specify the bit field of memory types */
+            /* The properties define special features of the memory, like being able to map it so we can write to it from the CPU. */
+            if (typeFilter & (1 << i) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+                return i;
+            }
+        }
+
+        throw std::runtime_error("failed to find suitable memory type!");
+    }
+
+
+    /**
+    * @brief Create a buffer, can be used to create the vertex buffer and the index buffer.
+    * @param[in] size: The buffer size.
+    * @param[in] usage: The buffer usage.
+    * @param[in] properties: The buffer memory's flag.
+    * @param[out] buffer: The buffer created.
+    * @param[out] bufferMemory: The memory handle for the buffer
+    */
+    void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory)
+    {
+        VkBufferCreateInfo bufferInfo{};
+        bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        bufferInfo.size = size;        // Size of the buffer
+        bufferInfo.usage = usage;
+        bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+        if (vkCreateBuffer(device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create vertex buffer!");
+        }
+
+        /* Allocate memory for the vertex buffer, first get its requirement */
+        VkMemoryRequirements memRequirements;
+        vkGetBufferMemoryRequirements(device, buffer, &memRequirements);
+
+        /* Determine the right memory type and allocate the memory */
+        VkMemoryAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        allocInfo.allocationSize = memRequirements.size;
+        allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
+
+        if (vkAllocateMemory(device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS) {
+            throw std::runtime_error("failed to allocate vertex buffer memory!");
+        }
+
+        /* Bind the memory with the vertex buffer */
+        vkBindBufferMemory(device, buffer, bufferMemory, 0);
+    }
+
+
+    /**
+    * @brief Copy a vulkan buffer from sourse to destination.
+    * @param[in] srcBuffer: The source buffer.
+    * @param[in] dstBuffer: The destination buffer.
+    * @param[in] size: The copied buffer size.
+    */
+    void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) 
+    {
+        /* Allocate a small command buffer used to apply this transfer command */
+        VkCommandBufferAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        allocInfo.commandPool = commandPool;
+        allocInfo.commandBufferCount = 1;
+
+        VkCommandBuffer commandBuffer;
+        vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
+
+        /* Record the command buffer */
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+        vkBeginCommandBuffer(commandBuffer, &beginInfo);
+            VkBufferCopy copyRegion{};
+            copyRegion.srcOffset = 0; // Optional
+            copyRegion.dstOffset = 0; // Optional
+            copyRegion.size = size;
+            vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+        vkEndCommandBuffer(commandBuffer);
+
+        /* Stop recording right after it's copied */
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &commandBuffer;
+
+        vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+        vkQueueWaitIdle(graphicsQueue);
+
+        /* Free the command buffer */
+        vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
+    }
+
+
+    /**
+    * @brief Create the vertex buffer to store the vertex data.
+    */
+    void CreateVertexBuffer()
+    {
+        VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+        
+        /* Create a staging buffer as temporary buffer and use a device local one as actual vertex buffer. */
+        VkBuffer stagingBuffer;
+        VkDeviceMemory stagingBufferMemory;
+        CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+
+        /* Copy the vertex data to the buffer using memcpy */
+        void* data;
+        vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
+        memcpy(data, vertices.data(), (size_t)bufferSize);
+        vkUnmapMemory(device, stagingBufferMemory);
+
+        /* The vertex buffer is now device local */
+        CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
+
+        /* Copy the buffer from the staging buffer to the device local vertex buffer */
+        CopyBuffer(stagingBuffer, vertexBuffer, bufferSize);
+
+        vkDestroyBuffer(device, stagingBuffer, nullptr);
+        vkFreeMemory(device, stagingBufferMemory, nullptr);
+    }
+
+
+    /**
+    * @brief Create the index buffer to store the index relations.
+    */
+    void CreateIndexBuffer()
+    {
+        VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+
+        VkBuffer stagingBuffer;
+        VkDeviceMemory stagingBufferMemory;
+        CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+
+        void* data;
+        vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
+        memcpy(data, indices.data(), (size_t)bufferSize);
+        vkUnmapMemory(device, stagingBufferMemory);
+
+        /* One difference is set its usage to INDEX_BUFFER */
+        CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
+
+        CopyBuffer(stagingBuffer, indexBuffer, bufferSize);
+
+        vkDestroyBuffer(device, stagingBuffer, nullptr);
+        vkFreeMemory(device, stagingBufferMemory, nullptr);
+    }
+
+
+    /**
     * @brief Create the command pool which will be used to allocate the memory for the command buffer.
     */
     void CreateCommandPool()
@@ -1159,6 +1390,14 @@ private:
         /* Bind the command buffer with the pipline*/
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
+        /* Bind the vertex buffer during rendering operations */
+        VkBuffer vertexBuffers[] = { vertexBuffer };
+        VkDeviceSize offsets[] = { 0 };
+        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+
+        /* Bind the index buffer */
+        vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+
         /* Since We set the viewport and scissor state for this pipeline to be dynamic. */
         /* Here we need to set it now */
         VkViewport viewport{};
@@ -1180,7 +1419,8 @@ private:
         /* Third param: instanceCount (Used for instanced rendering) */
         /* Fourth param: firstVertex (An offset into the vertex buffer) */
         /* Fifth param: firstInstance (An offset for instanced rendering) */
-        vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+        // Draw Command without index buffer: vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
+        vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 
         /* End the render pass */
         vkCmdEndRenderPass(commandBuffer);
@@ -1299,6 +1539,8 @@ private:
         CreateGraphicsPipeline();
         CreateFrameBuffers();
         CreateCommandPool();
+        CreateVertexBuffer();
+        CreateIndexBuffer();
         CreateCommandBuffers();
         CreateSyncObjects();
     }
@@ -1465,6 +1707,11 @@ public:
             vkDestroyFence(device, inFlightFences[i], nullptr);
         }
 
+        vkDestroyBuffer(device, indexBuffer, nullptr);
+        vkFreeMemory(device, indexBufferMemory, nullptr);
+        vkDestroyBuffer(device, vertexBuffer, nullptr);
+        vkFreeMemory(device, vertexBufferMemory, nullptr);
+
         vkDestroyPipeline(device, graphicsPipeline, nullptr);
         vkDestroyRenderPass(device, renderPass, nullptr);
         vkDestroyPipelineLayout(device, pipelineLayout, nullptr);   // Destroy the pipline layout
@@ -1595,6 +1842,7 @@ int main() {
     }
     catch (const std::exception& e)
     {
+        std::cout << "Failed to Run the Program: " << e.what() << std::endl;
         delete TriInstance;
         return EXIT_FAILURE;
     }
