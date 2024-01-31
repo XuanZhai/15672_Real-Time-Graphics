@@ -1,0 +1,25 @@
+# ninja log v5
+0	1065	7283765635565549	CMakeFiles/XuanJamesZhai_A1.dir/main.cpp.obj	df35e5863f779253
+1066	1957	7283765643617620	XuanJamesZhai_A1.exe	101334474bf9f6ff
+7	1036	7283803693970017	CMakeFiles/XuanJamesZhai_A1.dir/main.cpp.obj	df35e5863f779253
+1	1044	7283803694029992	CMakeFiles/XuanJamesZhai_A1.dir/XZJParser.cpp.obj	b41c03d4e403de7
+1045	2453	7283803704574672	XuanJamesZhai_A1.exe	6b79cb4116e2b40c
+1	740	7283804645360679	CMakeFiles/XuanJamesZhai_A1.dir/XZJParser.cpp.obj	b41c03d4e403de7
+740	1231	7283804648880643	XuanJamesZhai_A1.exe	6b79cb4116e2b40c
+6	1266	7283833889481593	CMakeFiles/XuanJamesZhai_A1.dir/main.cpp.obj	df35e5863f779253
+0	1418	7283833891001557	CMakeFiles/XuanJamesZhai_A1.dir/XZJParser.cpp.obj	b41c03d4e403de7
+1419	2153	7283833896338015	XuanJamesZhai_A1.exe	6b79cb4116e2b40c
+7	953	7283849255129408	CMakeFiles/XuanJamesZhai_A1.dir/main.cpp.obj	df35e5863f779253
+1	1036	7283849255959293	CMakeFiles/XuanJamesZhai_A1.dir/XZJParser.cpp.obj	b41c03d4e403de7
+1037	1869	7283849262996029	XuanJamesZhai_A1.exe	6b79cb4116e2b40c
+0	889	7283850774883567	CMakeFiles/XuanJamesZhai_A1.dir/XZJParser.cpp.obj	b41c03d4e403de7
+889	1669	7283850781683870	XuanJamesZhai_A1.exe	6b79cb4116e2b40c
+1	891	7283851124910708	CMakeFiles/XuanJamesZhai_A1.dir/XZJParser.cpp.obj	b41c03d4e403de7
+891	1247	7283851127320696	XuanJamesZhai_A1.exe	6b79cb4116e2b40c
+1	864	7283853516668271	CMakeFiles/XuanJamesZhai_A1.dir/XZJParser.cpp.obj	b41c03d4e403de7
+864	1427	7283853521096197	XuanJamesZhai_A1.exe	6b79cb4116e2b40c
+1	910	7283855322938971	CMakeFiles/XuanJamesZhai_A1.dir/XZJParser.cpp.obj	b41c03d4e403de7
+910	1449	7283855327238844	XuanJamesZhai_A1.exe	6b79cb4116e2b40c
+7	776	7283856722710466	CMakeFiles/XuanJamesZhai_A1.dir/main.cpp.obj	df35e5863f779253
+1	807	7283856723020471	CMakeFiles/XuanJamesZhai_A1.dir/XZJParser.cpp.obj	b41c03d4e403de7
+808	1188	7283856725760586	XuanJamesZhai_A1.exe	6b79cb4116e2b40c
