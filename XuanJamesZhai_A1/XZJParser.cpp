@@ -28,85 +28,94 @@ void XZJParser::Parse(const std::string &filename) {
     root = ParseInput(0,s72Data.length()-1);
     ReconstructRoot();
 
+    s72Data = "";
 }
 
+
+/**
+ * @brief Parse the s72Data between l and r.
+ * @param l The left bound of the string that parsed in s72Data.
+ * @param r The right bound of the string that parsed in s72Data.
+ * @return The parsed result stored in a ParserNode.
+ */
 std::shared_ptr<ParserNode> XZJParser::ParseInput(size_t l,size_t r) {
 
+    /* Create a new Node object. */
     std::shared_ptr<ParserNode> obj(new ParserNode());
 
-    if(s72Data[l] == '['){
-        ParserNode::PNVector newData;
-        size_t sl = l+1;
-        size_t sr = l+1;
-
-        std::stack<size_t> sqBracket;
-
-        while(sr != r-1){
-            if(s72Data[sr] == '[' || s72Data[sr] == '{'){
-                sqBracket.push(sr);
-            }
-            else if(s72Data[sr] == ']' || s72Data[sr] == '}'){
-                if(sqBracket.empty()){
-                    throw std::runtime_error("Parse Error: Square Bracket Mismatch.");
-                }
-                else{
-                    sqBracket.pop();
-                }
-            }
-            else if(s72Data[sr] == ',' && sqBracket.empty()){
-                newData.emplace_back(ParseInput(sl,sr-1));
-                sl = sr+1;
-            }
-            sr++;
-        }
-        newData.emplace_back(ParseInput(sl,sr));
-
-        obj->data = newData;
+    /* If the data is a string. */
+    if(s72Data[l] == '"'){
+        obj->data = s72Data.substr(l+1,r-l-1);  // Need to remove the quotation marks.
     }
-    else if(s72Data[l] == '{'){
-        ParserNode::PNMap newdata;
-
-        size_t sl = l+1;
-        size_t sr = l+1;
-
-        std::stack<size_t> brackets;
-
-        while(sr != r-1){
-
-            if(s72Data[sr] == '[' || s72Data[sr] == '{') {
-                brackets.push(sr);
-            }
-            else if(s72Data[sr] == ']' || s72Data[sr] == '}'){
-                if(brackets.empty()){
-                    throw std::runtime_error("Parse Error: Square Bracket Mismatch.");
-                }
-                else{
-                    brackets.pop();
-                }
-            }
-            else if(s72Data[sr] == ',' && brackets.empty()){
-
-                size_t colon = FindColon(sl,sr);
-                newdata[s72Data.substr(sl+1,colon-sl-2)] = ParseInput(colon+1,sr-1);
-                sl = sr+1;
-            }
-            sr++;
-        }
-
-        size_t colon = FindColon(sl,sr);
-        newdata[s72Data.substr(sl+1,colon-sl-2)] = ParseInput(colon+1,sr);
-
-        obj->data = newdata;
-    }
-    else if(s72Data[l] != '"'){
+    /* If the data is a double/number. */
+    else if((s72Data[l] >= '0' && s72Data[l] <= '9') || s72Data[l] == '-'){
+        /* Convert the string to double using string stream. */
         std::stringstream dss(s72Data.substr(l,r-l+1));
         double d = 0;
         dss >> d;
 
         obj->data = d;
     }
+    /* If the data is an array. */
+    else if(s72Data[l] == '['){
+        /* Construct data as PNVector */
+        obj->data = ParserNode::PNVector();
+        size_t sl = l+1;
+        size_t sr = l+1;
+
+        /* We don't care about comma within the bracket, so only work on the outer level. */
+        size_t level = 0;
+
+        while(sr != r-1){
+            if(s72Data[sr] == '[' || s72Data[sr] == '{'){
+                level++;
+            }
+            else if(s72Data[sr] == ']' || s72Data[sr] == '}'){
+                level--;
+            }
+            /* Process only when level is 0 which is the outer level. */
+            else if(s72Data[sr] == ',' && level == 0){
+                /* Recursively add nodes into the array. */
+                std::get<ParserNode::PNVector>(obj->data).emplace_back(ParseInput(sl,sr-1));
+                sl = sr+1;
+            }
+            sr++;
+        }
+        /* Add the last node */
+        std::get<ParserNode::PNVector>(obj->data).emplace_back(ParseInput(sl,sr));
+    }
+    /* If the data is an object */
+    else if(s72Data[l] == '{'){
+        /* Construct data as PNMap. */
+        obj->data = ParserNode::PNMap();
+
+        size_t sl = l+1;
+        size_t sr = l+1;
+
+        size_t level = 0;
+
+        while(sr != r-1){
+
+            if(s72Data[sr] == '[' || s72Data[sr] == '{') {
+                level++;
+            }
+            else if(s72Data[sr] == ']' || s72Data[sr] == '}'){
+                level--;
+            }
+            else if(s72Data[sr] == ',' && level == 0){
+                /* Find the colon that splits the key and the valu.e */
+                size_t colon = FindColon(sl,sr);
+                std::get<ParserNode::PNMap>(obj->data)[s72Data.substr(sl+1,colon-sl-2)] = ParseInput(colon+1,sr-1);
+                sl = sr+1;
+            }
+            sr++;
+        }
+        /* Add the last node */
+        size_t colon = FindColon(sl,sr);
+        std::get<ParserNode::PNMap>(obj->data)[s72Data.substr(sl+1,colon-sl-2)] = ParseInput(colon+1,sr);
+    }
     else{
-        obj->data = s72Data.substr(l+1,r-l-1);
+        throw std::runtime_error("Parse Error: Invalid character read from the string.");
     }
 
     return obj;
@@ -141,12 +150,17 @@ void XZJParser::RemoveSpace(const std::string& input) {
     s72Data.shrink_to_fit();
 }
 
-size_t XZJParser::FindColon(size_t l, size_t r) {
-    if(l >= r) {
-        throw std::runtime_error("Parse Error: Error Finding Colon.");
-    }
 
+/**
+ * @brief For a line within a JSON object, find the position of the colon that separates the key and the value.
+ * @param l The left bound of the line within s72Data.
+ * @param r The right bound of the line within s72Data.
+ * @return The position of the colon.
+ */
+size_t XZJParser::FindColon(size_t l, size_t r) {
+    /* Use isString because we don't care about the colon within a string. */
     bool isString = false;
+
     for(size_t i = l; i < r; i++){
         if(s72Data[i] == '"'){
             isString = !isString;
@@ -160,57 +174,68 @@ size_t XZJParser::FindColon(size_t l, size_t r) {
 }
 
 
-
-
+/**
+ * @brief Reconstruct the data structure to let the scene object to be the root.
+ * Also reconstruct all the children and mesh relations.
+ */
 void XZJParser::ReconstructRoot() {
-    std::shared_ptr<ParserNode> newRoot;
 
-    for(const std::shared_ptr<ParserNode>& node : std::get<ParserNode::PNVector>(root->data) ){
+    /* Loop through the all the nodes to find the scene node. */
+    for(std::shared_ptr<ParserNode>& node : std::get<ParserNode::PNVector>(root->data) ){
 
+        /* Skip the first node which is the "s72-v1" */
         if(std::get_if<std::string>(&node->data) != nullptr){
             continue;
         }
 
-        ParserNode::PNMap newMap = std::get<ParserNode::PNMap>(node->data);
-
-        if(newMap.count("roots")){
-            newRoot = node;
-            break;
+        /* If the object has a key which is the roots, we found the scene node */
+        if(std::get<ParserNode::PNMap>(node->data).count("roots")){
+            /* Recursively reconstruct its children and reset the root node */
+            ReconstructNode(node);
+            root = node;
+            return;
         }
     }
-
-    ReconstructNode(newRoot);
-    root = newRoot;
-    std::cout << "Hello" << std::endl;
 }
 
+
+/**
+ * @brief Reconstruct the child relation for a given node.
+ * @param newNode The node we need to reconstruct.
+ */
 void XZJParser::ReconstructNode(std::shared_ptr<ParserNode> & newNode) {
 
+    /* If it is not an object, no need to reconstruct it. */
     if(std::get_if<ParserNode::PNMap>(&newNode->data) == nullptr){
         return;
     }
 
     ParserNode::PNMap newMap = std::get<ParserNode::PNMap>(newNode->data);
 
+    /* If it has a mesh key. */
     if(newMap.count("mesh")){
         size_t idx = (size_t)std::get<double>(newMap["mesh"]->data);
         newMap["mesh"] = std::get<ParserNode::PNVector>(root->data)[idx];
     }
+    /* If it has a roots key. */
     if(newMap.count("roots")){
         ParserNode::PNVector newVec = std::get<ParserNode::PNVector>(newMap["roots"]->data);
 
+        /* Loop through nodes in the vector and replace it with the real reference. */
         for(std::shared_ptr<ParserNode>& node : newVec ){
-            size_t idx = (size_t)std::get<double>(node ->data);
+            auto idx = (size_t)std::get<double>(node ->data);
             node = std::get<ParserNode::PNVector>(root->data)[idx];
             ReconstructNode(node);
         }
         newMap["roots"]->data = newVec;
     }
+    /* If it has a children key. */
     if(newMap.count("children")){
         ParserNode::PNVector newVec = std::get<ParserNode::PNVector>(newMap["children"]->data);
 
+        /* Loop through nodes in the vector and replace it with the real reference. */
         for(std::shared_ptr<ParserNode>& node : newVec ){
-            size_t idx = (size_t)std::get<double>(node ->data);
+            auto idx = (size_t)std::get<double>(node ->data);
             node = std::get<ParserNode::PNVector>(root->data)[idx];
             ReconstructNode(node);
         }

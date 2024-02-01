@@ -13,6 +13,8 @@
 #include <variant>
 #include <vector>
 #include <map>
+#include <memory>
+#include <cstring>
 
 
 /**
