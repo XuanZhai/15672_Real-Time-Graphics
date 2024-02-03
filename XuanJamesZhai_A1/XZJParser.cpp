@@ -4,12 +4,24 @@
 
 #include "XZJParser.h"
 
+
+
+std::shared_ptr<ParserNode> ParserNode::GetObjectValue(const std::string& key){
+    ParserNode::PNMap* pnMap = std::get_if<ParserNode::PNMap>(&data);
+    if(pnMap == nullptr) return nullptr;
+
+    return (*pnMap)[key];
+}
+
+
+
+
 /**
  * @brief Parse a s72 file with a given file path and file name.
  * Store the result in the root node in XZJParser.
  * @param filename The name of the s72 file, also could add path to it.
  */
-void XZJParser::Parse(const std::string &filename) {
+std::shared_ptr<ParserNode> XZJParser::Parse(const std::string &filename) {
 
     std::ifstream input = std::ifstream(filename, std::ios::binary);
 
@@ -25,10 +37,10 @@ void XZJParser::Parse(const std::string &filename) {
     RemoveSpace(buffer.str());
 
     /* Recursively parse s72Data into ParseNodes */
-    root = ParseInput(0,s72Data.length()-1);
-    ReconstructRoot();
-
+    std::shared_ptr<ParserNode> root = ParseInput(0,s72Data.length()-1);
     s72Data = "";
+
+    return root;
 }
 
 
@@ -47,11 +59,11 @@ std::shared_ptr<ParserNode> XZJParser::ParseInput(size_t l,size_t r) {
     if(s72Data[l] == '"'){
         obj->data = s72Data.substr(l+1,r-l-1);  // Need to remove the quotation marks.
     }
-    /* If the data is a double/number. */
+    /* If the data is a float/number. */
     else if((s72Data[l] >= '0' && s72Data[l] <= '9') || s72Data[l] == '-'){
-        /* Convert the string to double using string stream. */
+        /* Convert the string to float using string stream. */
         std::stringstream dss(s72Data.substr(l,r-l+1));
-        double d = 0;
+        float d = 0;
         dss >> d;
 
         obj->data = d;
@@ -103,7 +115,7 @@ std::shared_ptr<ParserNode> XZJParser::ParseInput(size_t l,size_t r) {
                 level--;
             }
             else if(s72Data[sr] == ',' && level == 0){
-                /* Find the colon that splits the key and the valu.e */
+                /* Find the colon that splits the key and the value */
                 size_t colon = FindColon(sl,sr);
                 std::get<ParserNode::PNMap>(obj->data)[s72Data.substr(sl+1,colon-sl-2)] = ParseInput(colon+1,sr-1);
                 sl = sr+1;
@@ -130,7 +142,7 @@ std::shared_ptr<ParserNode> XZJParser::ParseInput(size_t l,size_t r) {
  */
 void XZJParser::RemoveSpace(const std::string& input) {
 
-    /* Check if we are currenting within a string */
+    /* Check if we are currently within a string */
     bool isString = false;
     /* Allocate enough space so that we don't need to do allocation again */
     s72Data.reserve(input.length());
@@ -173,76 +185,5 @@ size_t XZJParser::FindColon(size_t l, size_t r) {
     throw std::runtime_error("Parse Error: Error Finding Colon.");
 }
 
-
-/**
- * @brief Reconstruct the data structure to let the scene object to be the root.
- * Also reconstruct all the children and mesh relations.
- */
-void XZJParser::ReconstructRoot() {
-
-    /* Loop through the all the nodes to find the scene node. */
-    for(std::shared_ptr<ParserNode>& node : std::get<ParserNode::PNVector>(root->data) ){
-
-        /* Skip the first node which is the "s72-v1" */
-        if(std::get_if<std::string>(&node->data) != nullptr){
-            continue;
-        }
-
-        /* If the object has a key which is the roots, we found the scene node */
-        if(std::get<ParserNode::PNMap>(node->data).count("roots")){
-            /* Recursively reconstruct its children and reset the root node */
-            ReconstructNode(node);
-            root = node;
-            return;
-        }
-    }
-}
-
-
-/**
- * @brief Reconstruct the child relation for a given node.
- * @param newNode The node we need to reconstruct.
- */
-void XZJParser::ReconstructNode(std::shared_ptr<ParserNode> & newNode) {
-
-    /* If it is not an object, no need to reconstruct it. */
-    if(std::get_if<ParserNode::PNMap>(&newNode->data) == nullptr){
-        return;
-    }
-
-    ParserNode::PNMap newMap = std::get<ParserNode::PNMap>(newNode->data);
-
-    /* If it has a mesh key. */
-    if(newMap.count("mesh")){
-        size_t idx = (size_t)std::get<double>(newMap["mesh"]->data);
-        newMap["mesh"] = std::get<ParserNode::PNVector>(root->data)[idx];
-    }
-    /* If it has a roots key. */
-    if(newMap.count("roots")){
-        ParserNode::PNVector newVec = std::get<ParserNode::PNVector>(newMap["roots"]->data);
-
-        /* Loop through nodes in the vector and replace it with the real reference. */
-        for(std::shared_ptr<ParserNode>& node : newVec ){
-            auto idx = (size_t)std::get<double>(node ->data);
-            node = std::get<ParserNode::PNVector>(root->data)[idx];
-            ReconstructNode(node);
-        }
-        newMap["roots"]->data = newVec;
-    }
-    /* If it has a children key. */
-    if(newMap.count("children")){
-        ParserNode::PNVector newVec = std::get<ParserNode::PNVector>(newMap["children"]->data);
-
-        /* Loop through nodes in the vector and replace it with the real reference. */
-        for(std::shared_ptr<ParserNode>& node : newVec ){
-            auto idx = (size_t)std::get<double>(node ->data);
-            node = std::get<ParserNode::PNVector>(root->data)[idx];
-            ReconstructNode(node);
-        }
-        newMap["children"]->data = newVec;
-    }
-
-    newNode->data = newMap;
-}
 
 

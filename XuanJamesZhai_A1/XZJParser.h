@@ -15,13 +15,14 @@
 #include <map>
 #include <memory>
 #include <cstring>
-
+#include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 /**
  * @brief Node That will store the parsed data and later form a tree structure
  * The Node has four options:
  *      string: String in JSON
- *      double: Number in JSON
+ *      float: Number in JSON
  *      PNVector: Array in JSON
  *      PNMap: Object in JSON
  */
@@ -32,8 +33,12 @@ public:
     /* A type-define for a map of string and node. */
     typedef std::map<std::string,std::shared_ptr<ParserNode>> PNMap;
 
+    typedef std::variant<std::string, float, glm::vec3, glm::quat, PNVector, PNMap> PNData;
+
     /* Each node has a data, it can represent the four options. */
-    std::variant<std::string, double, PNVector, PNMap> data;
+    PNData data;
+
+    std::shared_ptr<ParserNode> GetObjectValue(const std::string& key);
 };
 
 
@@ -47,12 +52,9 @@ private:
     /* The whole s72 file as a string */
     std::string s72Data;
 
-    /* The scene object as the root of the data structure */
-    std::shared_ptr<ParserNode> root;
-
 public:
     /* Parse The s72 file with a given name */
-    void Parse(const std::string&);
+    std::shared_ptr<ParserNode> Parse(const std::string&);
 
     /* Parse the substring of s72Data between left and right */
     std::shared_ptr<ParserNode> ParseInput(size_t,size_t);
@@ -62,12 +64,6 @@ public:
 
     /* Find the position of the ':' colon in s72Data between left and right. */
     size_t FindColon(size_t,size_t);
-
-    /* Reconstruct all the nodes to form a tree structure and let the scene object to be the root */
-    void ReconstructRoot();
-
-    /* Reconstruct a node and reset all its children */
-    void ReconstructNode(std::shared_ptr<ParserNode>&);
 };
 
 

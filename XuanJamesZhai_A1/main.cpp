@@ -1,6 +1,8 @@
+
 #include <iostream>
 #include <string>
-#include "XZJParser.h"
+#include "VulkanHelper.h"
+#include "S72Helper.h"
 
 /* The s72 scene file name passed from the command line. */
 static std::string sceneName;
@@ -40,9 +42,26 @@ int main(int argc, char** argv) {
 
     ReadCMDArguments(argc,argv);
 
-    XZJParser parser;
-    parser.Parse("sg-Articulation.s72");
+    S72Helper newHelper;
 
+    newHelper.ReadS72("sg-Articulation.s72");
+
+    /*
+    auto* TriInstance = new VulkanHelper();
+
+    try
+    {
+        TriInstance->Run();
+    }
+    catch (const std::exception& e)
+    {
+        std::cout << "Failed to Run the Program: " << e.what() << std::endl;
+        delete TriInstance;
+        return EXIT_FAILURE;
+    }
+    delete TriInstance;
+    return EXIT_SUCCESS;
+     */
 
     return 0;
 }
