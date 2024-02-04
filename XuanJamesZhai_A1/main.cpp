@@ -1,6 +1,7 @@
 
 #include <iostream>
 #include <string>
+#include <memory>
 #include "VulkanHelper.h"
 #include "S72Helper.h"
 
@@ -42,26 +43,26 @@ int main(int argc, char** argv) {
 
     ReadCMDArguments(argc,argv);
 
-    S72Helper newHelper;
+    //S72Helper newS72Helper;
 
-    newHelper.ReadS72("sg-Articulation.s72");
+    std::shared_ptr<S72Helper> newS72Helper(new S72Helper());
 
-    /*
-    auto* TriInstance = new VulkanHelper();
+    newS72Helper->ReadS72("sg-Articulation.s72");
+
+    auto* newVKHelper = new VulkanHelper();
 
     try
     {
-        TriInstance->Run();
+        newVKHelper->Run(newS72Helper);
+
+
     }
     catch (const std::exception& e)
     {
         std::cout << "Failed to Run the Program: " << e.what() << std::endl;
-        delete TriInstance;
+        delete newVKHelper;
         return EXIT_FAILURE;
     }
-    delete TriInstance;
+    delete newVKHelper;
     return EXIT_SUCCESS;
-     */
-
-    return 0;
 }

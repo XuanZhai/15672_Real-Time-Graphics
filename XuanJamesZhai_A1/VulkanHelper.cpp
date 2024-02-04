@@ -8,6 +8,8 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
 
+#include <utility>
+
 
 /**
 * @brief It creates a VkDebugUtilsMessengerEXT object that's used for the validation extension
@@ -352,6 +354,7 @@ void VulkanHelper::CreateInstance()
     std::vector<VkExtensionProperties> extensionProps(extensionCount);
     vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensionProps.data());
 
+
     if (ISWINWINDOW) {
         extensions.resize(extensionCount);
 
@@ -363,6 +366,9 @@ void VulkanHelper::CreateInstance()
         extensions = GetRequiredExtensions();
         extensionCount = static_cast<uint32_t>(extensions.size());
     }
+
+    extensions.emplace_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+    extensionCount++;
 
     createInfo.enabledExtensionCount = extensionCount;
     createInfo.ppEnabledExtensionNames = extensions.data();
@@ -539,15 +545,24 @@ void VulkanHelper::CreateLogicalDevice()
         queueCreateInfos.push_back(queueCreateInfo);
     }
 
-    VkPhysicalDeviceFeatures deviceFeatures{};
-    deviceFeatures.samplerAnisotropy = VK_TRUE;     // Enable the anisotropy feature
+    VkPhysicalDeviceFeatures2 deviceFeatures{};
+    deviceFeatures.features.samplerAnisotropy = VK_TRUE;     // Enable the anisotropy feature
+    VkPhysicalDeviceExtendedDynamicStateFeaturesEXT extendedDynamicStateFeatures = {};
+    extendedDynamicStateFeatures.extendedDynamicState = VK_TRUE; // Enable the extended dynamic state feature
+    extendedDynamicStateFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT;
+
+    VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT extendedVertexInputFeatures = {};
+    extendedVertexInputFeatures.vertexInputDynamicState = VK_TRUE;
+    extendedVertexInputFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_INPUT_DYNAMIC_STATE_FEATURES_EXT;
+    extendedVertexInputFeatures.pNext = &extendedDynamicStateFeatures;
 
     VkDeviceCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    createInfo.pNext = &extendedVertexInputFeatures;
     createInfo.pQueueCreateInfos = queueCreateInfos.data();
     createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
 
-    createInfo.pEnabledFeatures = &deviceFeatures;
+    createInfo.pEnabledFeatures = &deviceFeatures.features;
 
     /* Enable extensions for swap chain */
     createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
@@ -800,13 +815,13 @@ void VulkanHelper::CreateGraphicsPipeline()
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
     /* Make the pipeline accept Vertex data as the vertex input */
-    auto bindingDescription = Vertex::getBindingDescription();
-    auto attributeDescriptions = Vertex::getAttributeDescriptions();
+    //auto bindingDescription = Vertex::getBindingDescription();
+    //auto attributeDescriptions = Vertex::getAttributeDescriptions();
 
-    vertexInputInfo.vertexBindingDescriptionCount = 1;
-    vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
-    vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
-    vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+    //vertexInputInfo.vertexBindingDescriptionCount = 1;
+    //vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+    //vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+    //vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
     /* Describes the primitive we are drawing */
     /* VK_PRIMITIVE_TOPOLOGY_POINT_LIST: points from vertices */
@@ -890,7 +905,7 @@ void VulkanHelper::CreateGraphicsPipeline()
     }
 
     /* Specify the dynamic states in the pipeline */
-    std::vector<VkDynamicState> dynamicStates = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+    std::vector<VkDynamicState> dynamicStates = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR, VK_DYNAMIC_STATE_VERTEX_INPUT_EXT,VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY};
 
     VkPipelineDynamicStateCreateInfo dynamicState{};
     dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
@@ -902,7 +917,8 @@ void VulkanHelper::CreateGraphicsPipeline()
     pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
     pipelineInfo.stageCount = 2;
     pipelineInfo.pStages = shaderStages;
-    pipelineInfo.pVertexInputState = &vertexInputInfo;
+    //pipelineInfo.pVertexInputState = &vertexInputInfo;
+    pipelineInfo.pVertexInputState = VK_NULL_HANDLE;
     pipelineInfo.pInputAssemblyState = &inputAssembly;
     pipelineInfo.pViewportState = &viewportState;
     pipelineInfo.pRasterizationState = &rasterizer;
@@ -918,7 +934,7 @@ void VulkanHelper::CreateGraphicsPipeline()
     pipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // Optional
     pipelineInfo.basePipelineIndex = -1; // Optional
 
-    if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS) {
+    if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, VK_NULL_HANDLE, &graphicsPipeline) != VK_SUCCESS) {
         throw std::runtime_error("failed to create graphics pipeline!");
     }
 
@@ -1170,12 +1186,27 @@ void VulkanHelper::CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSi
 }
 
 
+void VulkanHelper::CreateVertexBuffers(){
+    if(s72Instance == nullptr){
+        throw std::runtime_error("Vertex Buffer Error: s72Instance is null.");
+    }
+
+    vertexBufferMemories.resize(s72Instance->meshes.size());
+    vertexBuffers.resize(s72Instance->meshes.size());
+
+    for(size_t i = 0; i < vertexBuffers.size(); i++){
+        CreateVertexBuffer(*s72Instance->meshes[i],i);
+    }
+}
+
+
 /**
 * @brief Create the vertex buffer to store the vertex data.
 */
-void VulkanHelper::CreateVertexBuffer()
+void VulkanHelper::CreateVertexBuffer(const Mesh& newMesh, size_t index)
 {
-    VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+    //VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+    VkDeviceSize bufferSize = newMesh.src.size();
 
     /* Create a staging buffer as temporary buffer and use a device local one as actual vertex buffer. */
     VkBuffer stagingBuffer;
@@ -1185,17 +1216,58 @@ void VulkanHelper::CreateVertexBuffer()
     /* Copy the vertex data to the buffer using memcpy */
     void* data;
     vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
-    memcpy(data, vertices.data(), (size_t)bufferSize);
+    memcpy(data, newMesh.src.data(), (size_t)bufferSize);
     vkUnmapMemory(device, stagingBufferMemory);
 
     /* The vertex buffer is now device local */
-    CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
+    CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffers[index], vertexBufferMemories[index]);
 
     /* Copy the buffer from the staging buffer to the device local vertex buffer */
-    CopyBuffer(stagingBuffer, vertexBuffer, bufferSize);
+    CopyBuffer(stagingBuffer, vertexBuffers[index], bufferSize);
 
     vkDestroyBuffer(device, stagingBuffer, nullptr);
     vkFreeMemory(device, stagingBufferMemory, nullptr);
+}
+
+
+VkVertexInputBindingDescription2EXT VulkanHelper::CreateBindingDescription(const Mesh& newMesh){
+    VkVertexInputBindingDescription2EXT bindingDescription{};
+
+    bindingDescription.sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_BINDING_DESCRIPTION_2_EXT;
+    bindingDescription.binding = 0;         // Specifies the index of the binding in the array of bindings.
+    bindingDescription.stride = newMesh.stride;     // Specifies the number of bytes from one entry to the next.
+    bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;  // Move to the next data entry after each vertex.
+    bindingDescription.divisor = 1;
+
+    return bindingDescription;
+}
+
+
+std::array<VkVertexInputAttributeDescription2EXT, 3> VulkanHelper::CreateAttributeDescription(const Mesh& newMesh){
+
+    std::array<VkVertexInputAttributeDescription2EXT, 3> attributeDescriptions{};
+
+    /* Attribute for the vertex data */
+    attributeDescriptions[0].binding = 0;
+    attributeDescriptions[0].location = 0;
+    attributeDescriptions[0].format = newMesh.pFormat;  // Describes the type of data for the attribute
+    attributeDescriptions[0].offset = newMesh.pOffset;
+    attributeDescriptions[0].sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT;
+
+    /* Attribute for the normal data */
+    attributeDescriptions[1].binding = 0;
+    attributeDescriptions[1].location = 1;
+    attributeDescriptions[1].format = newMesh.nFormat;
+    attributeDescriptions[1].offset = newMesh.nOffset;
+    attributeDescriptions[1].sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT;
+
+    attributeDescriptions[2].binding = 0;
+    attributeDescriptions[2].location = 2;
+    attributeDescriptions[2].format = newMesh.cFormat;
+    attributeDescriptions[2].offset = newMesh.cOffset;
+    attributeDescriptions[2].sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT;
+
+    return attributeDescriptions;
 }
 
 
@@ -1204,24 +1276,24 @@ void VulkanHelper::CreateVertexBuffer()
 */
 void VulkanHelper::CreateIndexBuffer()
 {
-    VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+    //VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
 
-    VkBuffer stagingBuffer;
-    VkDeviceMemory stagingBufferMemory;
-    CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+    //VkBuffer stagingBuffer;
+    //VkDeviceMemory stagingBufferMemory;
+    //CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
 
-    void* data;
-    vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
-    memcpy(data, indices.data(), (size_t)bufferSize);
-    vkUnmapMemory(device, stagingBufferMemory);
+    //void* data;
+    //vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
+    //memcpy(data, indices.data(), (size_t)bufferSize);
+    //vkUnmapMemory(device, stagingBufferMemory);
 
     /* One difference is set its usage to INDEX_BUFFER */
-    CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
+    //CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
 
-    CopyBuffer(stagingBuffer, indexBuffer, bufferSize);
+    //CopyBuffer(stagingBuffer, indexBuffer, bufferSize);
 
-    vkDestroyBuffer(device, stagingBuffer, nullptr);
-    vkFreeMemory(device, stagingBufferMemory, nullptr);
+    //vkDestroyBuffer(device, stagingBuffer, nullptr);
+    //vkFreeMemory(device, stagingBufferMemory, nullptr);
 }
 
 
@@ -1247,7 +1319,7 @@ void VulkanHelper::CreateUniformBuffers()
 /**
 * @brief Update the uniform buffer on the current image with given ubo data.
 */
-void VulkanHelper::UpdateUniformBuffer(uint32_t currentImage)
+void VulkanHelper::UpdateUniformBuffer(uint32_t currentImage,size_t index)
 {
     static auto startTime = std::chrono::high_resolution_clock::now();
 
@@ -1259,10 +1331,10 @@ void VulkanHelper::UpdateUniformBuffer(uint32_t currentImage)
     UniformBufferObject ubo{};
 
     /* Rotation 90 degrees per second */
-    ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(15.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians((float)index * 15.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 
     /* Look at the geometry from above at a 45-degree angle */
-    ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    ubo.view = glm::lookAt(glm::vec3(5.0f, 5.0f, 5.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 
     /* Use a perspective projection with a 45 degree vertical field-of-view. */
     if (swapChainExtent.width == 0 || (float)swapChainExtent.height == 0) {
@@ -1437,14 +1509,6 @@ void VulkanHelper::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t i
     /* Bind the command buffer with the pipeline*/
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
-    /* Bind the vertex buffer during rendering operations */
-    VkBuffer vertexBuffers[] = { vertexBuffer };
-    VkDeviceSize offsets[] = { 0 };
-    vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-
-    /* Bind the index buffer */
-    vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-
     /* Since We set the viewport and scissor state for this pipeline to be dynamic. */
     /* Here we need to set it now */
     VkViewport viewport{};
@@ -1461,16 +1525,39 @@ void VulkanHelper::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t i
     scissor.extent = swapChainExtent;
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-    /* Bind the descriptor sets */
-    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
+    VkVertexInputBindingDescription2EXT newBindingDescription{};
+    std::array<VkVertexInputAttributeDescription2EXT, 3> newAttributeDescription{};
+    auto vkCmdSetVertexInputExt = (PFN_vkCmdSetVertexInputEXT)vkGetDeviceProcAddr(device, "vkCmdSetVertexInputEXT");
+    auto vkCmdSetPrimitiveTopologyEXT = (PFN_vkCmdSetPrimitiveTopologyEXT)( vkGetDeviceProcAddr( device, "vkCmdSetPrimitiveTopologyEXT" ) );
 
-    /* Issue the drawing command */
-    /* Second param: vertexCount */
-    /* Third param: instanceCount (Used for instanced rendering) */
-    /* Fourth param: firstVertex (An offset into the vertex buffer) */
-    /* Fifth param: firstInstance (An offset for instanced rendering) */
-    // Draw Command without index buffer: vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
-    vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+    for(size_t i = 0; i < s72Instance->meshes.size(); i++){
+        /* Bind the vertex buffer during rendering operations */
+        VkBuffer newVertexBuffers[] = { vertexBuffers[i] };
+        VkDeviceSize offsets[] = { 0 };
+        vkCmdBindVertexBuffers(commandBuffer, 0, 1, newVertexBuffers, offsets);
+
+        newBindingDescription = CreateBindingDescription(*s72Instance->meshes[i]);
+        newAttributeDescription = CreateAttributeDescription(*s72Instance->meshes[i]);
+
+        vkCmdSetVertexInputExt(commandBuffer,static_cast<uint32_t>(1),&newBindingDescription,static_cast<uint32_t>(newAttributeDescription.size()),newAttributeDescription.data());
+
+        vkCmdSetPrimitiveTopologyEXT(commandBuffer,VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+        //vkCmdSetPrimitiveTopology(commandBuffer,VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+        /* Bind the index buffer */
+       // vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+
+        /* Bind the descriptor sets */
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
+
+        UpdateUniformBuffer(currentFrame,i);
+        /* Issue the drawing command */
+        /* Second param: vertexCount */
+        /* Third param: instanceCount (Used for instanced rendering) */
+        /* Fourth param: firstVertex (An offset into the vertex buffer) */
+        /* Fifth param: firstInstance (An offset for instanced rendering) */
+        // Draw Command without index buffer: vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
+        vkCmdDraw(commandBuffer, s72Instance->meshes[i]->count, 1, 0, 0);
+    }
 
     /* End the render pass */
     vkCmdEndRenderPass(commandBuffer);
@@ -1867,21 +1954,21 @@ void VulkanHelper::LoadModel()
                     attrib.vertices[3 * index.vertex_index + 2]
             };
 
-            vertex.texCoord = {
-                    attrib.texcoords[2 * index.texcoord_index + 0],
+            //vertex.texCoord = {
+            //        attrib.texcoords[2 * index.texcoord_index + 0],
                     /* We need to flip the v so that it can become a top to bottom orientation */
-                    1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
-            };
+            //        1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
+            //};
 
             vertex.color = { 1.0f, 1.0f, 1.0f };
 
             /* Check if there's a duplicate vertex */
             if (uniqueVertices.count(vertex) == 0) {
-                uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
-                vertices.push_back(vertex);
+                //uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
+                //vertices.push_back(vertex);
             }
 
-            indices.push_back(uniqueVertices[vertex]);
+            //indices.push_back(uniqueVertices[vertex]);
         }
     }
 }
@@ -2076,9 +2163,9 @@ void VulkanHelper::InitVulkan()
     CreateTextureImage();
     CreateTextureImageView();
     CreateTextureSampler();
-    LoadModel();
-    CreateVertexBuffer();
-    CreateIndexBuffer();
+    //LoadModel();
+    CreateVertexBuffers();
+    //CreateIndexBuffer();
     CreateUniformBuffers();
     CreateDescriptorPool();
     CreateDescriptorSets();
@@ -2128,6 +2215,16 @@ void VulkanHelper::Run()
 }
 
 
+void VulkanHelper::Run(const std::shared_ptr<S72Helper>& news72Instance){
+    s72Instance = news72Instance;
+    InitWindow();
+    InitVulkan();
+    MainLoop();
+    CleanUp();
+}
+
+
+
 /**
 * @brief Run the Vulkan application using the Windows created window.
 */
@@ -2170,7 +2267,7 @@ void VulkanHelper::DrawFrame()
     RecordCommandBuffer(commandBuffers[currentFrame], imageIndex);
 
     /* Update the Uniform Buffer */
-    UpdateUniformBuffer(currentFrame);
+    //UpdateUniformBuffer(currentFrame);
 
     /* Create the info to submit the command buffer */
     VkSubmitInfo submitInfo{};
@@ -2253,10 +2350,15 @@ void VulkanHelper::CleanUp()
         vkDestroyBuffer(device, uniformBuffers[i], nullptr);
         vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
     }
-    vkDestroyBuffer(device, indexBuffer, nullptr);
-    vkFreeMemory(device, indexBufferMemory, nullptr);
-    vkDestroyBuffer(device, vertexBuffer, nullptr);
-    vkFreeMemory(device, vertexBufferMemory, nullptr);
+    //vkDestroyBuffer(device, indexBuffer, nullptr);
+    //vkFreeMemory(device, indexBufferMemory, nullptr);
+    //vkDestroyBuffer(device, vertexBuffer, nullptr);
+    //vkFreeMemory(device, vertexBufferMemory, nullptr);
+
+    for(size_t i = 0; i < vertexBuffers.size(); i++){
+        vkDestroyBuffer(device, vertexBuffers[i], nullptr);
+        vkFreeMemory(device, vertexBufferMemories[i], nullptr);
+    }
 
     vkDestroySampler(device, textureSampler, nullptr);
     vkDestroyImageView(device, textureImageView, nullptr);

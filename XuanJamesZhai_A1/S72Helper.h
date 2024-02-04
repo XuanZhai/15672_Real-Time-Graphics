@@ -69,6 +69,8 @@ private:
     /* The scene object as the root of the data structure */
     std::shared_ptr<ParserNode> root;
 
+public:
+
     /* The cameras in the scene */
     std::vector<std::shared_ptr<Camera>> cameras;
 
@@ -76,7 +78,6 @@ private:
     std::vector<std::shared_ptr<Mesh>> meshes;
 
 
-public:
     void ReadS72(const std::string &filename);
 
     /* Reconstruct all the nodes to form a tree structure and let the scene object to be the root */

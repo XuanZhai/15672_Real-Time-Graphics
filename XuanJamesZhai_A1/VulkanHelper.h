@@ -36,6 +36,8 @@
 #include <chrono>
 #include <unordered_map>
 
+#include "S72Helper.h"
+
 
 
 /* A macro to select if we want to create a window using WSI. If false it will be created with GLFW. */
@@ -56,6 +58,9 @@ const std::vector<const char*> validationLayers = { "VK_LAYER_KHRONOS_validation
 
 /* A list of required device extensions for swap chain */
 const std::vector<const char*> deviceExtensions = {
+        VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME,
+        VK_EXT_EXTENDED_DYNAMIC_STATE_2_EXTENSION_NAME,
+        VK_EXT_VERTEX_INPUT_DYNAMIC_STATE_EXTENSION_NAME,
         VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
 
@@ -69,48 +74,48 @@ const bool enableValidationLayers = true;
 struct Vertex {
     glm::vec3 pos;
     glm::vec3 color;
-    glm::vec2 texCoord;
+    glm::vec3 normal;
 
     /* Describes at which rate to load data from memory throughout the vertices */
-    static VkVertexInputBindingDescription getBindingDescription()
-    {
-        VkVertexInputBindingDescription bindingDescription{};
+    //static VkVertexInputBindingDescription getBindingDescription()
+    //{
+    //    VkVertexInputBindingDescription bindingDescription{};
 
-        bindingDescription.binding = 0;         // Specifies the index of the binding in the array of bindings.
-        bindingDescription.stride = sizeof(Vertex);     // Specifies the number of bytes from one entry to the next.
-        bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;  // Move to the next data entry after each vertex.
+   //     bindingDescription.binding = 0;         // Specifies the index of the binding in the array of bindings.
+    //    bindingDescription.stride = 28;     // Specifies the number of bytes from one entry to the next.
+   //     bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;  // Move to the next data entry after each vertex.
 
-        return bindingDescription;
-    }
+    //    return bindingDescription;
+   // }
 
     /* Describes how to handle vertex input */
-    static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions()
-    {
-        std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
+    //static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions()
+    //{
+    //    std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
 
         /* Attribute for the vertex data */
-        attributeDescriptions[0].binding = 0;
-        attributeDescriptions[0].location = 0;
-        attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;  // Describes the type of data for the attribute
-        attributeDescriptions[0].offset = offsetof(Vertex, pos);
+   //    attributeDescriptions[0].binding = 0;
+    //    attributeDescriptions[0].location = 0;
+    //    attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;  // Describes the type of data for the attribute
+   //     attributeDescriptions[0].offset = offsetof(Vertex, pos);
 
         /* Attribute for the color data */
-        attributeDescriptions[1].binding = 0;
-        attributeDescriptions[1].location = 1;
-        attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-        attributeDescriptions[1].offset = offsetof(Vertex, color);
+    //    attributeDescriptions[1].binding = 0;
+    //    attributeDescriptions[1].location = 1;
+   //     attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+   //     attributeDescriptions[1].offset = 12;
 
-        attributeDescriptions[2].binding = 0;
-        attributeDescriptions[2].location = 2;
-        attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
-        attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
+    //    attributeDescriptions[2].binding = 0;
+    //    attributeDescriptions[2].location = 2;
+    //    attributeDescriptions[2].format = VK_FORMAT_R8G8B8A8_UNORM;
+    //    attributeDescriptions[2].offset = 24;
 
-        return attributeDescriptions;
-    }
+    //    return attributeDescriptions;
+    //}
 
     /* Override the == operator for comparison */
     bool operator==(const Vertex& other) const {
-        return pos == other.pos && color == other.color && texCoord == other.texCoord;
+        return pos == other.pos && color == other.color && normal == other.normal;
     }
 };
 
@@ -129,12 +134,13 @@ namespace std {
         size_t operator()(Vertex const& vertex) const {
             return ((hash<glm::vec3>()(vertex.pos) ^
                      (hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^
-                   (hash<glm::vec2>()(vertex.texCoord) << 1);
+                   (hash<glm::vec2>()(vertex.normal) << 1);
         }
     };
 }
 
 /* ===================================================================================== */
+
 
 class VulkanHelper {
 private:
@@ -214,16 +220,18 @@ private:
     bool framebufferResized = false;
 
     /* The vertex buffer used to store the vertex data */
-    VkBuffer vertexBuffer = VK_NULL_HANDLE;
+    //VkBuffer vertexBuffer = VK_NULL_HANDLE;
+    std::vector<VkBuffer> vertexBuffers;
 
     /* Handle to the memory of the vertex buffer */
-    VkDeviceMemory vertexBufferMemory = VK_NULL_HANDLE;
+    //VkDeviceMemory vertexBufferMemory = VK_NULL_HANDLE;
+    std::vector<VkDeviceMemory> vertexBufferMemories;
 
     /* The index buffer used to store the indices */
-    VkBuffer indexBuffer = VK_NULL_HANDLE;
+    //VkBuffer indexBuffer = VK_NULL_HANDLE;
 
     /* Handle to the memory of the index buffer */
-    VkDeviceMemory indexBufferMemory = VK_NULL_HANDLE;
+    //VkDeviceMemory indexBufferMemory = VK_NULL_HANDLE;
 
     /* Specifies the types of resources that are going to be accessed by the pipeline like the MVP matrix */
     VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
@@ -268,10 +276,12 @@ private:
     VkImageView depthImageView = VK_NULL_HANDLE;
 
     /* A list of vertex which are vertices to draw */
-    std::vector<Vertex> vertices;
+    //std::vector<Vertex> vertices;
 
     /* indices to arrange the order of vertices to draw */
-    std::vector<uint32_t> indices;
+    //std::vector<uint32_t> indices;
+
+    std::shared_ptr<S72Helper> s72Instance = nullptr;
 
 
     /* A struct of queue that will be submitted to Vulkan */
@@ -385,7 +395,14 @@ private:
     void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
 
-    void CreateVertexBuffer();
+    void CreateVertexBuffer(const Mesh& newMesh, size_t index);
+
+
+    void CreateVertexBuffers();
+
+    static VkVertexInputBindingDescription2EXT CreateBindingDescription(const Mesh& newMesh);
+
+    static std::array<VkVertexInputAttributeDescription2EXT, 3> CreateAttributeDescription(const Mesh& newMesh);
 
 
     void CreateIndexBuffer();
@@ -394,7 +411,7 @@ private:
     void CreateUniformBuffers();
 
 
-    void UpdateUniformBuffer(uint32_t currentImage);
+    void UpdateUniformBuffer(uint32_t currentImage,size_t index);
 
 
     void CreateDescriptorPool();
@@ -473,6 +490,10 @@ public:
 
 
     void RunWIN(HINSTANCE new_Instance, HWND new_hwnd);
+
+    void Run(const std::shared_ptr<S72Helper>& news72Instance);
+
+    void UpdateFrame();
 
 
     void DrawFrame();

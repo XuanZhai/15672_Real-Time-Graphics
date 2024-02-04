@@ -217,7 +217,7 @@ void S72Helper::ReadS72(const std::string &filename) {
 
     ReconstructRoot();
 
-    UpdateNodes(root,glm::vec3(0,0,0), glm::quat(1.0,0.0,0.0,0.0), glm::vec3(1,1,1));
+    //UpdateNodes(root,glm::vec3(0,0,0), glm::quat(1.0,0.0,0.0,0.0), glm::vec3(1,1,1));
 
 }
 
