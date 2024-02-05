@@ -11,6 +11,16 @@
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
+#include "glm/glm.hpp"
+#include "glm/gtc/matrix_transform.hpp"
+
+#define GLM_ENABLE_EXPERIMENTAL
+#include "glm/gtx/hash.hpp"
+
+
 #include <windows.h>
 #include <iostream>
 #include <stdexcept>
@@ -35,12 +45,12 @@
 /* A macro to select if we want to create a window using WSI. If false it will be created with GLFW. */
 #define ISWINWINDOW false
 
-const uint32_t WIDTH = 800;
-const uint32_t HEIGHT = 600;
+const uint32_t WIDTH = 1920;
+const uint32_t HEIGHT = 1080;
 
 
 const std::string MODEL_PATH = "models/viking_room.obj";
-const std::string TEXTURE_PATH = "textures/viking_room.png";
+const std::string TEXTURE_PATH = "Textures/viking_room.png";
 
 /* How many frames should be processed concurrently */
 const int MAX_FRAMES_IN_FLIGHT = 2;

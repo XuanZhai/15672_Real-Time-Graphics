@@ -226,16 +226,6 @@ XZM::quat XZM::quat::operator * (const XZM::quat &nq) {
 /* ============================================================================================================== */
 
 
-XZM::mat4 XZM::Translate(const mat4& nm, const vec3& nv){
-    mat4 newmat = nm;
-    newmat.data[0][3] = nv.data[0];
-    newmat.data[1][3] = nv.data[1];
-    newmat.data[2][3] = nv.data[2];
-
-    return newmat;
-}
-
-
 XZM::mat4 XZM::Inverse(const XZM::mat4 &nm) {
 
     mat4 tmp;
@@ -329,6 +319,27 @@ XZM::mat4 XZM::Perspective(float vfov, float aspect, float near, float far){
     projMatrix.data[0][0] = 2 * near / (right - left);
     projMatrix.data[0][1] = 0;
     projMatrix.data[0][2] = 0;
+    projMatrix.data[0][3] = -near*(right+left)/(right-left);
+
+    projMatrix.data[1][0] = 0;
+    projMatrix.data[1][1] = 2 * near / (top - bottom);
+    projMatrix.data[1][2] = 0;
+    projMatrix.data[1][3] = -near*(top+bottom)/(top-bottom);
+
+    projMatrix.data[2][0] = 0;
+    projMatrix.data[2][1] = 0;
+    projMatrix.data[2][2] = -(far + near) / (far - near);
+    projMatrix.data[2][3] = 2*far*near/(near-far);
+
+    projMatrix.data[3][0] = 0;
+    projMatrix.data[3][1] = 0;
+    projMatrix.data[3][2] = -1;
+    projMatrix.data[3][3] = 0;
+
+    /*
+    projMatrix.data[0][0] = 2 * near / (right - left);
+    projMatrix.data[0][1] = 0;
+    projMatrix.data[0][2] = 0;
     projMatrix.data[0][3] = 0;
 
     projMatrix.data[1][0] = 0;
@@ -345,6 +356,7 @@ XZM::mat4 XZM::Perspective(float vfov, float aspect, float near, float far){
     projMatrix.data[3][1] = 0;
     projMatrix.data[3][2] = -2 * far * near / (far - near);
     projMatrix.data[3][3] = 0;
+     */
 
     return projMatrix;
 }
@@ -388,23 +400,23 @@ XZM::mat4 XZM::LookAt(const vec3& eyePos, const vec3& target, const vec3& up){
 
     // Set the view matrix components
     viewMatrix.data[0][0] = right.data[0];
-    viewMatrix.data[1][0] = right.data[1];
-    viewMatrix.data[2][0] = right.data[2];
-    viewMatrix.data[3][0] = -DotProduct(right, eyePos);
+    viewMatrix.data[0][1] = right.data[1];
+    viewMatrix.data[0][2] = right.data[2];
+    viewMatrix.data[0][3] = -DotProduct(right, eyePos);
 
-    viewMatrix.data[0][1] = newUp.data[0];
+    viewMatrix.data[1][0] = newUp.data[0];
     viewMatrix.data[1][1] = newUp.data[1];
-    viewMatrix.data[2][1] = newUp.data[2];
-    viewMatrix.data[3][1] = -DotProduct(newUp, eyePos);
+    viewMatrix.data[1][2] = newUp.data[2];
+    viewMatrix.data[1][3] = -DotProduct(newUp, eyePos);
 
-    viewMatrix.data[0][2] = -forward.data[0];
-    viewMatrix.data[1][2] = -forward.data[1];
+    viewMatrix.data[2][0] = -forward.data[0];
+    viewMatrix.data[2][1] = -forward.data[1];
     viewMatrix.data[2][2] = -forward.data[2];
-    viewMatrix.data[3][2] = DotProduct(forward, eyePos);
+    viewMatrix.data[2][3] = DotProduct(forward, eyePos);
 
-    viewMatrix.data[0][3] = 0.0f;
-    viewMatrix.data[1][3] = 0.0f;
-    viewMatrix.data[2][3] = 0.0f;
+    viewMatrix.data[3][0] = 0.0f;
+    viewMatrix.data[3][1] = 0.0f;
+    viewMatrix.data[3][2] = 0.0f;
     viewMatrix.data[3][3] = 1.0f;
 
     return viewMatrix;
@@ -422,6 +434,17 @@ XZM::mat4 XZM::Scaling(const mat4& nm, const vec3& factor){
 }
 
 
+XZM::mat4 XZM::Scaling(const vec3& factor){
+    mat4 result;
+
+    result.data[0][0] *= factor.data[0];
+    result.data[1][1] *= factor.data[1];
+    result.data[2][2] *= factor.data[2];
+
+    return result;
+}
+
+
 XZM::mat4 XZM::Translation(const mat4& nm, const vec3& factor){
     mat4 result = nm;
 
@@ -430,4 +453,24 @@ XZM::mat4 XZM::Translation(const mat4& nm, const vec3& factor){
     result.data[2][3] += factor.data[2];
 
     return result;
+}
+
+
+XZM::mat4 XZM::Translation(const vec3& nv){
+    mat4 newmat;
+    newmat.data[0][3] = nv.data[0];
+    newmat.data[1][3] = nv.data[1];
+    newmat.data[2][3] = nv.data[2];
+
+    return newmat;
+}
+
+
+XZM::vec3 XZM::GetTranslationFromMat(const mat4& nm){
+    return vec3(nm.data[0][3],nm.data[1][3],nm.data[2][3]);
+}
+
+
+std::string XZM::ToString(const vec3& nv){
+    return std::string("{" + std::to_string(nv.data[0]) + "," + std::to_string(nv.data[1]) + "," + std::to_string(nv.data[2]) + "}");
 }

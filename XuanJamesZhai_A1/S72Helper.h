@@ -62,6 +62,7 @@ public:
     void SetFormat(size_t channel, const std::string& new_Format);
     void SetTopology(const std::string& new_topology);
     XZM::mat4 GetModelMatrix();
+    static XZM::mat4 GetModelMatrix(const std::shared_ptr<ParserNode>& currNode);
 };
 
 
@@ -75,10 +76,14 @@ private:
 public:
 
     /* The cameras in the scene */
-    std::vector<std::shared_ptr<Camera>> cameras;
+    std::vector<std::pair<std::shared_ptr<Camera>,XZM::mat4>> cameras;
 
     //std::vector<std::shared_ptr<ParserNode>> nodes;
-    std::vector<std::shared_ptr<Mesh>> meshes;
+    std::vector<std::pair<std::shared_ptr<Mesh>,XZM::mat4>> meshes;
+
+    std::vector<std::shared_ptr<ParserNode>> tracingPath;
+
+    //std::vector<std::pair<std::shared_ptr<Mesh>,XZM::mat4>> meshInstances;
 
 
     void ReadS72(const std::string &filename);
@@ -87,9 +92,11 @@ public:
     void ReconstructRoot();
 
     /* Reconstruct a node and reset all its children */
-    void ReconstructNode(const std::shared_ptr<ParserNode>&, XZM::vec3 translation, XZM::quat rotation, XZM::vec3 scale);
+    void ReconstructNode(std::shared_ptr<ParserNode>);
 
     void UpdateNodes(std::shared_ptr<ParserNode>&, XZM::vec3 translation, XZM::quat rotation, XZM::vec3 scale);
+
+    XZM::mat4 GetModelMatrix();
 
     static XZM::vec3 FindTranslation(const ParserNode&);
 

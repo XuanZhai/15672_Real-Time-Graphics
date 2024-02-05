@@ -33,7 +33,7 @@ public:
     /* A type-define for a map of string and node. */
     typedef std::map<std::string,std::shared_ptr<ParserNode>> PNMap;
 
-    typedef std::variant<std::string, float, XZM::vec3, XZM::quat, PNVector, PNMap> PNData;
+    typedef std::variant<std::string, float, XZM::mat4, PNVector, PNMap> PNData;
 
     /* Each node has a data, it can represent the four options. */
     PNData data;

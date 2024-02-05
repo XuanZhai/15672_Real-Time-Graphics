@@ -1195,7 +1195,7 @@ void VulkanHelper::CreateVertexBuffers(){
     vertexBuffers.resize(s72Instance->meshes.size());
 
     for(size_t i = 0; i < vertexBuffers.size(); i++){
-        CreateVertexBuffer(*s72Instance->meshes[i],i);
+        CreateVertexBuffer(*s72Instance->meshes[i].first,i);
     }
 }
 
@@ -1334,7 +1334,7 @@ void VulkanHelper::UpdateUniformBuffer(uint32_t currentImage,size_t index)
     //ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians( 20.0f), glm::vec3(0.0f, 0.0f, 1.0f));
     //std::cout << "BeforeBeforeApply " << glm::to_string(s72Instance->meshes[index]->modelMatrix) << std::endl;
     //std::cout << "BeforeApply " << glm::to_string(s72Instance->meshes[index]->modelMatrix) << std::endl;
-    ubo.model = s72Instance->meshes[index]->GetModelMatrix();
+    ubo.model = s72Instance->meshes[index].second;
     //std::cout << "AfterApply " << glm::to_string(ubo.model) << std::endl;
 
     /* Look at the geometry from above at a 45-degree angle */
@@ -1346,15 +1346,16 @@ void VulkanHelper::UpdateUniformBuffer(uint32_t currentImage,size_t index)
         ubo.proj = XZM::Perspective(0.785398f, 1.0f, 0.1f, 10.0f);
     }
     else {
-        //ubo.proj = XZM::Perspective(0.785398f, (float)swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
-        ubo.proj = currCamera->projMatrix;
+        XZM::mat4 test1 =  XZM::Perspective(0.785398f, (float)swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 100.0f);
+        ubo.proj = test1;
+        //ubo.proj = currCamera->projMatrix;
     }
 
     /* Since GLM was used for OpenGL which has different Y-Dir than Vulkan, we need to flip it */
     ubo.proj.data[1][1] *= -1;
 
     /* Copy the data to the current uniform buffer */
-    memcpy((void*)((char*)uniformBuffersMapped[currentImage] + (VkDeviceSize)index*sizeof(UniformBufferObject)), &ubo, sizeof(ubo));
+    memcpy((void*)((char*)uniformBuffersMapped[currentImage] + (uint32_t)index*sizeof(UniformBufferObject)), &ubo, sizeof(ubo));
 }
 
 
@@ -1542,8 +1543,8 @@ void VulkanHelper::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t i
         VkDeviceSize offsets[] = { 0 };
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, newVertexBuffers, offsets);
 
-        newBindingDescription = CreateBindingDescription(*s72Instance->meshes[i]);
-        newAttributeDescription = CreateAttributeDescription(*s72Instance->meshes[i]);
+        newBindingDescription = CreateBindingDescription(*s72Instance->meshes[i].first);
+        newAttributeDescription = CreateAttributeDescription(*s72Instance->meshes[i].first);
 
         vkCmdSetVertexInputExt(commandBuffer,static_cast<uint32_t>(1),&newBindingDescription,static_cast<uint32_t>(newAttributeDescription.size()),newAttributeDescription.data());
 
@@ -1563,7 +1564,7 @@ void VulkanHelper::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t i
         /* Fourth param: firstVertex (An offset into the vertex buffer) */
         /* Fifth param: firstInstance (An offset for instanced rendering) */
         // Draw Command without index buffer: vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
-        vkCmdDraw(commandBuffer, s72Instance->meshes[i]->count, 1, 0, 0);
+        vkCmdDraw(commandBuffer, s72Instance->meshes[i].first->count, 1, 0, 0);
     }
 
     /* End the render pass */
@@ -1743,7 +1744,7 @@ void VulkanHelper::CreateTextureImage()
     VkDeviceSize imageSize = texWidth * texHeight * 4;      // 4 means 4 bytes for pixel.
 
     /* Determine the LOD */
-    mipLevels = static_cast<uint32_t>(std::floor(std::log2(max(texWidth, texHeight)))) + 1;
+    mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;
 
     if (!pixels) {
         throw std::runtime_error("failed to load texture image!");
@@ -2224,7 +2225,7 @@ void VulkanHelper::Run()
 
 void VulkanHelper::Run(const std::shared_ptr<S72Helper>& news72Instance){
     s72Instance = news72Instance;
-    currCamera = s72Instance->cameras[1];
+    currCamera = s72Instance->cameras[2].first;
     InitWindow();
     InitVulkan();
     MainLoop();

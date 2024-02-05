@@ -7,6 +7,7 @@
 
 #include <array>
 #include <cmath>
+#include <string>
 
 namespace XZM {
 
@@ -52,8 +53,6 @@ namespace XZM {
         quat operator* (const quat& nq);
     };
 
-    mat4 Translate(const mat4& nm, const vec3& nv);
-
     mat4 Inverse(const mat4& nm);
 
     mat4 QuatToMat4(const quat&);
@@ -70,9 +69,17 @@ namespace XZM {
 
     mat4 Scaling(const mat4& nm, const vec3& factor);
 
+    mat4 Scaling(const vec3& factor);
+
     mat4 Translation(const mat4& nm, const vec3& factor);
 
+    mat4 Translation(const vec3& nv);
+
     quat Normalize(const quat& nq);
+
+    vec3 GetTranslationFromMat(const mat4& nm);
+
+    std::string ToString(const vec3&);
 }
 
 
