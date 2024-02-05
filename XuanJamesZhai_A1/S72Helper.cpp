@@ -32,8 +32,8 @@ std::unordered_map<std::string,VkFormat> formatMap = {
 
 Camera::Camera(std::shared_ptr<ParserNode>& node){
     data = node;
-    projMatrix = glm::mat4(0);
-    viewMatrix = glm::mat4(0);
+    projMatrix = XZM::mat4(1);
+    viewMatrix = XZM::mat4(1);
 }
 
 
@@ -53,17 +53,19 @@ void Camera::ComputeViewMatrix(){
     }
 
     ParserNode::PNMap pnMap = std::get<ParserNode::PNMap>(data->data);
-    glm::vec3* cameraPos = std::get_if<glm::vec3>(&(pnMap["wTranslation"]->data));
-    glm::quat* cameraDir = std::get_if<glm::quat>(&(pnMap["wRotation"]->data));
+    XZM::vec3* cameraPos = std::get_if<XZM::vec3>(&(pnMap["wTranslation"]->data));
+    XZM::quat* cameraDir = std::get_if<XZM::quat>(&(pnMap["wRotation"]->data));
 
     if(cameraPos == nullptr || cameraDir == nullptr){
         throw std::runtime_error("Compute Camera Error: wTranslation/wRotation is empty");
     }
 
-    glm::mat4 translate = glm::translate(glm::mat4(1.0f), *cameraPos);
-    glm::mat4 rotate = glm::mat4_cast(*cameraDir);
+    viewMatrix = XZM::LookAt(*cameraPos,XZM::vec3(0,0,0), XZM::vec3(0,0,1));
 
-    viewMatrix = glm::inverse(translate * rotate);
+    //XZM::mat4 translate = XZM::Translate(XZM::mat4(1.0f), *cameraPos);
+    //XZM::mat4 rotate = XZM::QuatToMat4(*cameraDir);
+
+    //viewMatrix = XZM::Inverse(translate * rotate);
 }
 
 
@@ -80,35 +82,7 @@ void Camera::ComputeProjectionMatrix(){
     float near = std::get<float>(perspective["near"]->data);
     float far = std::get<float>(perspective["far"]->data);
 
-    //float scale = tanf(vfov * 0.5f) * near;
-    //float right = aspect * scale;
-    //float left = -right;
-    //float top = scale;
-    //float bottom = -top;
-
-    projMatrix = glm::perspective(vfov,aspect,near,far);
-
-    /*
-    projMatrix[0][0] = 2 * near / (right - left);
-    projMatrix[0][1] = 0;
-    projMatrix[0][2] = 0;
-    projMatrix[0][3] = 0;
-
-    projMatrix[1][0] = 0;
-    projMatrix[1][1] = 2 * near / (top - bottom);
-    projMatrix[1][2] = 0;
-    projMatrix[1][3] = 0;
-
-    projMatrix[2][0] = (right + left) / (right - left);
-    projMatrix[2][1] = (top + bottom) / (top - bottom);
-    projMatrix[2][2] = -(far + near) / (far - near);
-    projMatrix[2][3] = -1;
-
-    projMatrix[3][0] = 0;
-    projMatrix[3][1] = 0;
-    projMatrix[3][2] = -2 * far * near / (far - near);
-    projMatrix[3][3] = 0;
-     */
+    projMatrix = XZM::Perspective(vfov,aspect,near,far);
 }
 
 
@@ -207,6 +181,21 @@ void Mesh::SetTopology(const std::string& new_topology){
 }
 
 
+XZM::mat4 Mesh::GetModelMatrix(){
+    XZM::mat4 modelMatrix;
+
+    XZM::vec3 scale = std::get<XZM::vec3>(data->GetObjectValue("wScale")->data);
+    modelMatrix = XZM::Scaling(modelMatrix,scale);
+
+    XZM::quat rotation = std::get<XZM::quat>(data->GetObjectValue("wRotation")->data);
+
+    modelMatrix = XZM::QuatToMat4(rotation) * modelMatrix;
+
+    XZM::vec3 translation = std::get<XZM::vec3>(data->GetObjectValue("wTranslation")->data);
+    modelMatrix = XZM::Translation(modelMatrix,translation);
+
+    return modelMatrix;
+}
 
 
 
@@ -217,7 +206,7 @@ void S72Helper::ReadS72(const std::string &filename) {
 
     ReconstructRoot();
 
-    //UpdateNodes(root,glm::vec3(0,0,0), glm::quat(1.0,0.0,0.0,0.0), glm::vec3(1,1,1));
+    UpdateNodes(root,XZM::vec3(0,0,0), XZM::quat(0.0,0.0,0.0,1.0), XZM::vec3(1,1,1));
 
 }
 
@@ -257,7 +246,7 @@ void S72Helper::ReconstructRoot() {
     }
 
     /* Recursively reconstruct its children and reset the root node */
-    ReconstructNode(newRoot, glm::vec3(0,0,0), glm::quat(1.0,0.0,0.0,0.0), glm::vec3(1,1,1));
+    ReconstructNode(newRoot, XZM::vec3(0,0,0), XZM::quat(0.0,0.0,0.0,1.0), XZM::vec3(1,1,1));
     root = newRoot;
 
     for(const auto& camera : cameras){
@@ -277,7 +266,7 @@ void S72Helper::ReconstructRoot() {
  * @brief Reconstruct the child relation for a given node.
  * @param newNode The node we need to reconstruct.
  */
-void S72Helper::ReconstructNode(std::shared_ptr<ParserNode> & newNode, glm::vec3 translation, glm::quat rotation, glm::vec3 scale) {
+void S72Helper::ReconstructNode(const std::shared_ptr<ParserNode>& newNode, XZM::vec3 translation, XZM::quat rotation, XZM::vec3 scale) {
 
     /* If it is not an object, no need to reconstruct it. */
     if(std::get_if<ParserNode::PNMap>(&newNode->data) == nullptr){
@@ -288,9 +277,9 @@ void S72Helper::ReconstructNode(std::shared_ptr<ParserNode> & newNode, glm::vec3
     std::string type = std::get<std::string>(newMap["type"]->data);
 
     if(type == "NODE"){
-        translation += FindTranslation(*newNode);
-        rotation = FindRotation(*newNode) * rotation;
-        scale *= FindScale(*newNode);
+        translation = translation + FindTranslation(*newNode);
+        rotation = XZM::Normalize(FindRotation(*newNode) * rotation);
+        scale = scale * FindScale(*newNode);
     }
     else if(type == "MESH" || type == "CAMERA"){
         std::shared_ptr<ParserNode> transNode(new ParserNode());
@@ -351,7 +340,7 @@ void S72Helper::ReconstructNode(std::shared_ptr<ParserNode> & newNode, glm::vec3
 }
 
 
-void S72Helper::UpdateNodes(std::shared_ptr<ParserNode> &newNode, glm::vec3 translation, glm::quat rotation, glm::vec3 scale) {
+void S72Helper::UpdateNodes(std::shared_ptr<ParserNode> &newNode, XZM::vec3 translation, XZM::quat rotation, XZM::vec3 scale) {
     /* If it is not an object, no need to iterate it. */
     if(std::get_if<ParserNode::PNMap>(&newNode->data) == nullptr){
         return;
@@ -361,9 +350,9 @@ void S72Helper::UpdateNodes(std::shared_ptr<ParserNode> &newNode, glm::vec3 tran
     std::string type = std::get<std::string>(newMap["type"]->data);
 
     if(type == "NODE"){
-        translation += FindTranslation(*newNode);
-        rotation = FindRotation(*newNode) * rotation;
-        scale *= FindScale(*newNode);
+        translation = translation * FindTranslation(*newNode);
+        rotation = XZM::Normalize(FindRotation(*newNode) * rotation);
+        scale = scale * FindScale(*newNode);
     }
     else if(type == "MESH" || type == "CAMERA"){
         std::shared_ptr<ParserNode> transNode(new ParserNode());
@@ -411,9 +400,9 @@ void S72Helper::UpdateNodes(std::shared_ptr<ParserNode> &newNode, glm::vec3 tran
 }
 
 
-glm::vec3 S72Helper::FindTranslation(const ParserNode& newNode) {
+XZM::vec3 S72Helper::FindTranslation(const ParserNode& newNode) {
 
-    glm::vec3 trans(0,0,0);
+    XZM::vec3 trans(0,0,0);
 
     if(std::get_if<ParserNode::PNMap>(&newNode.data) == nullptr){
         return trans;
@@ -432,9 +421,9 @@ glm::vec3 S72Helper::FindTranslation(const ParserNode& newNode) {
 }
 
 
-glm::quat S72Helper::FindRotation(const ParserNode &newNode) {
+XZM::quat S72Helper::FindRotation(const ParserNode &newNode) {
 
-    glm::quat rotation(1,0,0,0);
+    XZM::quat rotation(0,0,0,1);
 
     if(std::get_if<ParserNode::PNMap>(&newNode.data) == nullptr){
         return rotation;
@@ -445,18 +434,18 @@ glm::quat S72Helper::FindRotation(const ParserNode &newNode) {
 
     ParserNode::PNVector pnVec = std::get<ParserNode::PNVector>(pnMap["rotation"]->data);
 
-    rotation.x = std::get<float>(pnVec[0]->data);
-    rotation.y = std::get<float>(pnVec[1]->data);
-    rotation.z = std::get<float>(pnVec[2]->data);
-    rotation.w = std::get<float>(pnVec[3]->data);
+    rotation.data[0] = std::get<float>(pnVec[0]->data);
+    rotation.data[1] = std::get<float>(pnVec[1]->data);
+    rotation.data[2] = std::get<float>(pnVec[2]->data);
+    rotation.data[3] = std::get<float>(pnVec[3]->data);
 
     return rotation;
 }
 
 
-glm::vec3 S72Helper::FindScale(const ParserNode & newNode) {
+XZM::vec3 S72Helper::FindScale(const ParserNode & newNode) {
 
-    glm::vec3 scale(1,1,1);
+    XZM::vec3 scale(1,1,1);
 
     if(std::get_if<ParserNode::PNMap>(&newNode.data) == nullptr){
         return scale;

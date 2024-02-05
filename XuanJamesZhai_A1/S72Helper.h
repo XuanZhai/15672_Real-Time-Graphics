@@ -9,19 +9,19 @@
 #include <string>
 #include <vector>
 #include "XZJParser.h"
-#include <glm/glm.hpp>
-#include <glm/gtc/quaternion.hpp>
+
 #include <vulkan/vulkan.h>
 #include <unordered_map>
 
+#include "XZMath.h"
 
 class Camera{
 
 public:
     std::shared_ptr<ParserNode> data = nullptr;
 
-    glm::mat4 viewMatrix{};
-    glm::mat4 projMatrix{};
+    XZM::mat4 viewMatrix;
+    XZM::mat4 projMatrix;
 
     std::string name = "hello";
 
@@ -53,12 +53,15 @@ public:
     uint32_t nOffset;
     uint32_t cOffset;
 
+    //XZM::mat4 modelMatrix;
+
     explicit Mesh(std::shared_ptr<ParserNode>& node);
 
     void ProcessMesh();
     void SetSrc(const std::string& srcPath);
     void SetFormat(size_t channel, const std::string& new_Format);
     void SetTopology(const std::string& new_topology);
+    XZM::mat4 GetModelMatrix();
 };
 
 
@@ -84,15 +87,15 @@ public:
     void ReconstructRoot();
 
     /* Reconstruct a node and reset all its children */
-    void ReconstructNode(std::shared_ptr<ParserNode>&, glm::vec3 translation, glm::quat rotation, glm::vec3 scale);
+    void ReconstructNode(const std::shared_ptr<ParserNode>&, XZM::vec3 translation, XZM::quat rotation, XZM::vec3 scale);
 
-    void UpdateNodes(std::shared_ptr<ParserNode>&, glm::vec3 translation, glm::quat rotation, glm::vec3 scale);
+    void UpdateNodes(std::shared_ptr<ParserNode>&, XZM::vec3 translation, XZM::quat rotation, XZM::vec3 scale);
 
-    static glm::vec3 FindTranslation(const ParserNode&);
+    static XZM::vec3 FindTranslation(const ParserNode&);
 
-    static glm::quat FindRotation(const ParserNode&);
+    static XZM::quat FindRotation(const ParserNode&);
 
-    static glm::vec3 FindScale(const ParserNode&);
+    static XZM::vec3 FindScale(const ParserNode&);
 };
 
 

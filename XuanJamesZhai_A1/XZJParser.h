@@ -15,8 +15,8 @@
 #include <map>
 #include <memory>
 #include <cstring>
-#include <glm/glm.hpp>
-#include <glm/gtc/quaternion.hpp>
+
+#include "XZMath.h"
 
 /**
  * @brief Node That will store the parsed data and later form a tree structure
@@ -33,7 +33,7 @@ public:
     /* A type-define for a map of string and node. */
     typedef std::map<std::string,std::shared_ptr<ParserNode>> PNMap;
 
-    typedef std::variant<std::string, float, glm::vec3, glm::quat, PNVector, PNMap> PNData;
+    typedef std::variant<std::string, float, XZM::vec3, XZM::quat, PNVector, PNMap> PNData;
 
     /* Each node has a data, it can represent the four options. */
     PNData data;

@@ -11,15 +11,6 @@
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-
-#define GLM_ENABLE_EXPERIMENTAL
-#include <glm/gtx/hash.hpp>
-
 #include <windows.h>
 #include <iostream>
 #include <stdexcept>
@@ -35,6 +26,7 @@
 #include <array>
 #include <chrono>
 #include <unordered_map>
+#include <cmath>
 
 #include "S72Helper.h"
 
@@ -72,46 +64,9 @@ const bool enableValidationLayers = true;
 
 /* Structure of a Vertex which is a position and a color */
 struct Vertex {
-    glm::vec3 pos;
-    glm::vec3 color;
-    glm::vec3 normal;
-
-    /* Describes at which rate to load data from memory throughout the vertices */
-    //static VkVertexInputBindingDescription getBindingDescription()
-    //{
-    //    VkVertexInputBindingDescription bindingDescription{};
-
-   //     bindingDescription.binding = 0;         // Specifies the index of the binding in the array of bindings.
-    //    bindingDescription.stride = 28;     // Specifies the number of bytes from one entry to the next.
-   //     bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;  // Move to the next data entry after each vertex.
-
-    //    return bindingDescription;
-   // }
-
-    /* Describes how to handle vertex input */
-    //static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions()
-    //{
-    //    std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
-
-        /* Attribute for the vertex data */
-   //    attributeDescriptions[0].binding = 0;
-    //    attributeDescriptions[0].location = 0;
-    //    attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;  // Describes the type of data for the attribute
-   //     attributeDescriptions[0].offset = offsetof(Vertex, pos);
-
-        /* Attribute for the color data */
-    //    attributeDescriptions[1].binding = 0;
-    //    attributeDescriptions[1].location = 1;
-   //     attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-   //     attributeDescriptions[1].offset = 12;
-
-    //    attributeDescriptions[2].binding = 0;
-    //    attributeDescriptions[2].location = 2;
-    //    attributeDescriptions[2].format = VK_FORMAT_R8G8B8A8_UNORM;
-    //    attributeDescriptions[2].offset = 24;
-
-    //    return attributeDescriptions;
-    //}
+    XZM::vec3 pos;
+    XZM::vec3 color;
+    XZM::vec3 normal;
 
     /* Override the == operator for comparison */
     bool operator==(const Vertex& other) const {
@@ -122,22 +77,11 @@ struct Vertex {
 
 /* MVP data for the vertices */
 struct UniformBufferObject {
-    alignas(16) glm::mat4 model;
-    alignas(16) glm::mat4 view;
-    alignas(16) glm::mat4 proj;
+    alignas(16) XZM::mat4 model;
+    alignas(16) XZM::mat4 view;
+    alignas(16) XZM::mat4 proj;
 };
 
-
-/* Hash the vertex data */
-namespace std {
-    template<> struct hash<Vertex> {
-        size_t operator()(Vertex const& vertex) const {
-            return ((hash<glm::vec3>()(vertex.pos) ^
-                     (hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^
-                   (hash<glm::vec2>()(vertex.normal) << 1);
-        }
-    };
-}
 
 /* ===================================================================================== */
 
@@ -283,6 +227,7 @@ private:
 
     std::shared_ptr<S72Helper> s72Instance = nullptr;
 
+    std::shared_ptr<Camera> currCamera = nullptr;
 
     /* A struct of queue that will be submitted to Vulkan */
     struct QueueFamilyIndices {

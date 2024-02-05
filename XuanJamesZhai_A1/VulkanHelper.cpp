@@ -754,7 +754,7 @@ void VulkanHelper::CreateDescriptorSetLayout()
     /* Set the binding info */
     VkDescriptorSetLayoutBinding uboLayoutBinding{};
     uboLayoutBinding.binding = 0;
-    uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;    // The type of descriptor is a uniform buffer object
+    uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;    // The type of descriptor is a uniform buffer object
     uboLayoutBinding.descriptorCount = 1;
 
     uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
@@ -1302,7 +1302,7 @@ void VulkanHelper::CreateIndexBuffer()
 */
 void VulkanHelper::CreateUniformBuffers()
 {
-    VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+    VkDeviceSize bufferSize = sizeof(UniformBufferObject) * s72Instance->meshes.size();
 
     uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
     uniformBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
@@ -1331,24 +1331,30 @@ void VulkanHelper::UpdateUniformBuffer(uint32_t currentImage,size_t index)
     UniformBufferObject ubo{};
 
     /* Rotation 90 degrees per second */
-    ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians((float)index * 15.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    //ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians( 20.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    //std::cout << "BeforeBeforeApply " << glm::to_string(s72Instance->meshes[index]->modelMatrix) << std::endl;
+    //std::cout << "BeforeApply " << glm::to_string(s72Instance->meshes[index]->modelMatrix) << std::endl;
+    ubo.model = s72Instance->meshes[index]->GetModelMatrix();
+    //std::cout << "AfterApply " << glm::to_string(ubo.model) << std::endl;
 
     /* Look at the geometry from above at a 45-degree angle */
-    ubo.view = glm::lookAt(glm::vec3(5.0f, 5.0f, 5.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    //ubo.view = XZM::LookAt(XZM::vec3(-10.0f, 10.0f, 10.0f), XZM::vec3(0.0f, 0.0f, 0.0f), XZM::vec3(0.0f, 0.0f, 1.0f));
+    ubo.view = currCamera->viewMatrix;
 
     /* Use a perspective projection with a 45 degree vertical field-of-view. */
     if (swapChainExtent.width == 0 || (float)swapChainExtent.height == 0) {
-        ubo.proj = glm::perspective(glm::radians(45.0f), 1.0f, 0.1f, 10.0f);
+        ubo.proj = XZM::Perspective(0.785398f, 1.0f, 0.1f, 10.0f);
     }
     else {
-        ubo.proj = glm::perspective(glm::radians(45.0f), (float)swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
+        //ubo.proj = XZM::Perspective(0.785398f, (float)swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
+        ubo.proj = currCamera->projMatrix;
     }
 
     /* Since GLM was used for OpenGL which has different Y-Dir than Vulkan, we need to flip it */
-    ubo.proj[1][1] *= -1;
+    ubo.proj.data[1][1] *= -1;
 
     /* Copy the data to the current uniform buffer */
-    memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
+    memcpy((void*)((char*)uniformBuffersMapped[currentImage] + (VkDeviceSize)index*sizeof(UniformBufferObject)), &ubo, sizeof(ubo));
 }
 
 
@@ -1360,7 +1366,7 @@ void VulkanHelper::CreateDescriptorPool()
     /* Describe which descriptor types our descriptor sets are going to contain */
     /* The first is used for the uniform buffer. The second is used for the image sampler */
     std::array<VkDescriptorPoolSize, 2> poolSizes{};
-    poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
     poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
     poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     poolSizes[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
@@ -1415,7 +1421,7 @@ void VulkanHelper::CreateDescriptorSets()
         descriptorWrites[0].dstSet = descriptorSets[i];
         descriptorWrites[0].dstBinding = 0;
         descriptorWrites[0].dstArrayElement = 0;
-        descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         descriptorWrites[0].descriptorCount = 1;
         descriptorWrites[0].pBufferInfo = &bufferInfo;
 
@@ -1547,7 +1553,8 @@ void VulkanHelper::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t i
        // vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
         /* Bind the descriptor sets */
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
+        uint32_t dynamicOffset = i * sizeof(UniformBufferObject);
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 1, &dynamicOffset);
 
         UpdateUniformBuffer(currentFrame,i);
         /* Issue the drawing command */
@@ -1736,7 +1743,7 @@ void VulkanHelper::CreateTextureImage()
     VkDeviceSize imageSize = texWidth * texHeight * 4;      // 4 means 4 bytes for pixel.
 
     /* Determine the LOD */
-    mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;
+    mipLevels = static_cast<uint32_t>(std::floor(std::log2(max(texWidth, texHeight)))) + 1;
 
     if (!pixels) {
         throw std::runtime_error("failed to load texture image!");
@@ -1940,7 +1947,7 @@ void VulkanHelper::LoadModel()
     }
 
     /* A map of Vertices and Indices to make sure there are no duplicate vertex */
-    std::unordered_map<Vertex, uint32_t> uniqueVertices{};
+    //std::unordered_map<Vertex, uint32_t> uniqueVertices{};
 
     /* Loop through the shapes */
     for (const auto& shape : shapes) {
@@ -1963,10 +1970,10 @@ void VulkanHelper::LoadModel()
             vertex.color = { 1.0f, 1.0f, 1.0f };
 
             /* Check if there's a duplicate vertex */
-            if (uniqueVertices.count(vertex) == 0) {
+            //if (uniqueVertices.count(vertex) == 0) {
                 //uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
                 //vertices.push_back(vertex);
-            }
+            //}
 
             //indices.push_back(uniqueVertices[vertex]);
         }
@@ -2217,6 +2224,7 @@ void VulkanHelper::Run()
 
 void VulkanHelper::Run(const std::shared_ptr<S72Helper>& news72Instance){
     s72Instance = news72Instance;
+    currCamera = s72Instance->cameras[1];
     InitWindow();
     InitVulkan();
     MainLoop();
