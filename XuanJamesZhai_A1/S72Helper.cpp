@@ -55,14 +55,16 @@ void Camera::ComputeViewMatrix(){
     ParserNode::PNMap pnMap = std::get<ParserNode::PNMap>(data->data);
     //XZM::vec3 cameraPos =  XZM::GetTranslationFromMat(*std::get_if<XZM::mat4>(&(pnMap["wTransform"]->data)));
     //XZM::vec3 cameraPos = XZM::vec3(-3.857870,7.722800,-2.557720);
-    XZM::vec3 cameraPos = XZM::vec3(15,15,15);
+
+    //XZM::vec3 cameraPos = XZM::vec3(15,15,15);
+
     //XZM::quat* cameraDir = std::get_if<XZM::quat>(&(pnMap["wRotation"]->data));
 
     //if(cameraPos == nullptr || cameraDir == nullptr){
     //    throw std::runtime_error("Compute Camera Error: wTranslation/wRotation is empty");
     //}
 
-    viewMatrix = XZM::LookAt(cameraPos,XZM::vec3(0,0,0), XZM::vec3(0,0,1));
+    viewMatrix = XZM::LookAt(cameraPos,targetPos, XZM::vec3(0,0,1));
 
     //XZM::mat4 translate = XZM::Translate(XZM::mat4(1.0f), *cameraPos);
     //XZM::mat4 rotate = XZM::QuatToMat4(*cameraDir);
@@ -85,6 +87,16 @@ void Camera::ComputeProjectionMatrix(){
     float far = std::get<float>(perspective["far"]->data);
 
     projMatrix = XZM::Perspective(vfov,aspect,near,far);
+}
+
+
+void Camera::ProcessCamera(const XZM::mat4& transMatrix){
+    cameraPos = XZM::ExtractTranslationFromMat(transMatrix);
+    XZM::quat newQuat = XZM::ExtractQuatFromMat(transMatrix);
+    targetPos = cameraPos + XZM::FindForwardDirection(newQuat);
+    targetPos = XZM::vec3();
+    ComputeViewMatrix();
+    ComputeProjectionMatrix();
 }
 
 
@@ -183,54 +195,6 @@ void Mesh::SetTopology(const std::string& new_topology){
 }
 
 
-XZM::mat4 Mesh::GetModelMatrix(){
-    XZM::mat4 modelMatrix;
-
-    std::shared_ptr<ParserNode> parent = data->GetObjectValue("Parent");
-
-    if(parent == nullptr){
-        return XZM::mat4();
-    }
-
-    return std::get<XZM::mat4>(data->GetObjectValue("wTransform")->data);
-
-    //XZM::vec3 translation = std::get<XZM::vec3>(data->GetObjectValue("wTranslation")->data);
-    //XZM::mat4 translationMatrix = XZM::Translation(translation);
-
-    //XZM::quat rotation = std::get<XZM::quat>(data->GetObjectValue("wRotation")->data);
-    //XZM::mat4 rotationMatrix = XZM::QuatToMat4(rotation);
-
-    //modelMatrix = modelMatrix * XZM::QuatToMat4(rotation);
-
-    //XZM::vec3 scale = std::get<XZM::vec3>(data->GetObjectValue("wScale")->data);
-    //XZM::mat4 scaleMatrix = XZM::Scaling(scale);
-
-    //modelMatrix = translationMatrix * rotationMatrix * scaleMatrix;
-
-    return modelMatrix;
-}
-
-
-XZM::mat4 Mesh::GetModelMatrix(const std::shared_ptr<ParserNode>& currNode){
-
-    XZM::mat4 modelMatrix;
-
-    std::shared_ptr<ParserNode> parent = currNode->GetObjectValue("Parent");
-
-    if(parent == nullptr){
-        return XZM::mat4();
-    }
-
-    XZM::mat4 translation = XZM::Translation(S72Helper::FindTranslation(*currNode));
-    XZM::mat4 rotation = XZM::QuatToMat4(S72Helper::FindRotation(*currNode));
-    XZM::mat4 scale = XZM::Scaling(S72Helper::FindScale(*currNode));
-
-    return XZM::mat4();
-}
-
-
-
-
 void S72Helper::ReadS72(const std::string &filename) {
 
     XZJParser parser;
@@ -269,20 +233,20 @@ void S72Helper::ReconstructRoot() {
     }
 
     /* Recursively reconstruct its children and reset the root node */
-    tracingPath.emplace_back(newRoot);
-    ReconstructNode(newRoot, nullptr);
+    //tracingPath.emplace_back(newRoot);
+    ReconstructNode(newRoot, XZM::mat4());
     root = newRoot;
 
     for(auto& camera : cameras){
-        camera.first->SetName();
-        camera.first->ComputeViewMatrix();
-        camera.first->ComputeProjectionMatrix();
+        //camera.first->SetName();
+        //camera.first->ComputeViewMatrix();
+        //camera.first->ComputeProjectionMatrix();
         //camera.second = GetModelMatrix(camera.first->data);
     }
 
     for( auto& mesh : meshes){
-        mesh.first->ProcessMesh();
-        //mesh.second = GetModelMatrix(mesh.first->data);
+        mesh.mesh->ProcessMesh();
+       // mesh.second = GetModelMatrix(mesh.first->data);
     }
 
 }
@@ -292,7 +256,7 @@ void S72Helper::ReconstructRoot() {
  * @brief Reconstruct the child relation for a given node.
  * @param newNode The node we need to reconstruct.
  */
-void S72Helper::ReconstructNode(std::shared_ptr<ParserNode> newNode, std::shared_ptr<ParserNode> parent) {
+void S72Helper::ReconstructNode(std::shared_ptr<ParserNode> newNode, XZM::mat4 newMat) {
 
     /* If it is not an object, no need to reconstruct it. */
     if(std::get_if<ParserNode::PNMap>(&newNode->data) == nullptr){
@@ -301,31 +265,32 @@ void S72Helper::ReconstructNode(std::shared_ptr<ParserNode> newNode, std::shared
 
     ParserNode::PNMap newMap = std::get<ParserNode::PNMap>(newNode->data);
     std::string type = std::get<std::string>(newMap["type"]->data);
-    newMap.insert(std::make_pair("Parent", parent));
 
     if(type == "NODE"){
-        tracingPath.emplace_back(newNode);
+        //tracingPath.emplace_back(newNode);
 
-        //XZM::mat4 translation = XZM::Translation(S72Helper::FindTranslation(*newNode));
-        //XZM::mat4 rotation = XZM::QuatToMat4(S72Helper::FindRotation(*newNode));
-        //XZM::mat4 scale = XZM::Scaling(S72Helper::FindScale(*newNode));
-        //transformMatrix = transformMatrix * ((scale * rotation) * translation);
+        XZM::mat4 translation = XZM::Translation(S72Helper::FindTranslation(*newNode));
+        XZM::mat4 rotation = XZM::QuatToMat4(S72Helper::FindRotation(*newNode));
+        XZM::mat4 scale = XZM::Scaling(S72Helper::FindScale(*newNode));
+
+        newMat = scale * rotation * translation * newMat;
     }
     else if(type == "MESH" || type == "CAMERA"){
         //std::shared_ptr<ParserNode> transMat(new ParserNode);
-
-        XZM::mat4 transformMatrix = GetModelMatrix();
 
 
         //newMap.insert(std::make_pair("wTransform", transMat));
 
         if(type == "MESH"){
             //meshes.push_back(std::make_shared<Mesh>(newNode));
-            meshes.emplace_back(std::make_shared<Mesh>(newNode), transformMatrix);
+            meshes.emplace_back(std::make_shared<Mesh>(newNode), newMat);
         }
         else{
             //cameras.push_back(std::make_shared<Camera>(newNode));
-            cameras.emplace_back(std::make_shared<Camera>(newNode), transformMatrix);
+            std::shared_ptr<Camera> newCamera = std::make_shared<Camera>(newNode);
+            newCamera->ProcessCamera(newMat);
+            //cameras.emplace_back(std::make_shared<Camera>(newNode), newMat);
+            cameras.emplace_back(newCamera);
         }
     }
 
@@ -333,14 +298,14 @@ void S72Helper::ReconstructNode(std::shared_ptr<ParserNode> newNode, std::shared
     /* If it has a mesh key. */
     if(newMap.count("mesh")){
         size_t idx = (size_t)std::get<float>(newMap["mesh"]->data);
-        ReconstructNode(std::get<ParserNode::PNVector>(root->data)[idx],newNode);
+        ReconstructNode(std::get<ParserNode::PNVector>(root->data)[idx],newMat);
 
         //newMap["mesh"] = std::get<ParserNode::PNVector>(root->data)[idx];
     }
     /* If it has a camera key. */
     if(newMap.count("camera")){
         size_t idx = (size_t)std::get<float>(newMap["camera"]->data);
-        ReconstructNode(std::get<ParserNode::PNVector>(root->data)[idx],newNode);
+        ReconstructNode(std::get<ParserNode::PNVector>(root->data)[idx],newMat);
         //newMap["camera"] = std::get<ParserNode::PNVector>(root->data)[idx];
     }
     /* If it has a roots key. */
@@ -351,7 +316,7 @@ void S72Helper::ReconstructNode(std::shared_ptr<ParserNode> newNode, std::shared
         for(std::shared_ptr<ParserNode>& node : std::get<ParserNode::PNVector>(newMap["roots"]->data) ){
             auto idx = (size_t)std::get<float>(node ->data);
             node = std::get<ParserNode::PNVector>(root->data)[idx];
-            ReconstructNode(node,newNode);
+            ReconstructNode(node,newMat);
         }
         //newMap["roots"]->data = newVec;
     }
@@ -363,16 +328,16 @@ void S72Helper::ReconstructNode(std::shared_ptr<ParserNode> newNode, std::shared
         for(std::shared_ptr<ParserNode>& node : std::get<ParserNode::PNVector>(newMap["children"]->data) ){
             auto idx = (size_t)std::get<float>(node ->data);
             node = std::get<ParserNode::PNVector>(root->data)[idx];
-            ReconstructNode(node,newNode);
+            ReconstructNode(node,newMat);
         }
        // newMap["children"]->data = newVec;
     }
 
     newNode->data = newMap;
 
-    if(type == "NODE") {
-        tracingPath.pop_back();
-    }
+    //if(type == "NODE") {
+    //    tracingPath.pop_back();
+    //}
 }
 
 
@@ -440,13 +405,13 @@ XZM::mat4 S72Helper::GetModelMatrix(){
 
     XZM::mat4 result;
 
-    for(size_t i = tracingPath.size()-1; i > 0; --i){
-        XZM::mat4 translation = XZM::Translation(S72Helper::FindTranslation(*tracingPath[i]));
-        XZM::mat4 rotation = XZM::QuatToMat4(S72Helper::FindRotation(*tracingPath[i]));
-        XZM::mat4 scale = XZM::Scaling(S72Helper::FindScale(*tracingPath[i]));
+    //for(size_t i = tracingPath.size()-1; i > 0; --i){
+    //    XZM::mat4 translation = XZM::Translation(S72Helper::FindTranslation(*tracingPath[i]));
+   //     XZM::mat4 rotation = XZM::QuatToMat4(S72Helper::FindRotation(*tracingPath[i]));
+   //     XZM::mat4 scale = XZM::Scaling(S72Helper::FindScale(*tracingPath[i]));
 
-        result =  result * scale * rotation * translation;
-    }
+   //     result =  result * scale * rotation * translation;
+    //}
 
     return result;
 }
@@ -462,7 +427,7 @@ XZM::mat4 S72Helper::GetModelMatrix(std::shared_ptr<ParserNode> targetNode){
     XZM::mat4 rotation = XZM::QuatToMat4(S72Helper::FindRotation(*targetNode));
     XZM::mat4 scale = XZM::Scaling(S72Helper::FindScale(*targetNode));
 
-    return GetModelMatrix(targetNode->GetObjectValue("Parent")) * scale * rotation * translation;
+    return  scale * (rotation * (translation * GetModelMatrix(targetNode->GetObjectValue("Parent"))));
 }
 
 

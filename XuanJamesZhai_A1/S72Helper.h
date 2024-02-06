@@ -23,7 +23,10 @@ public:
     XZM::mat4 viewMatrix;
     XZM::mat4 projMatrix;
 
-    std::string name = "hello";
+    XZM::vec3 cameraPos;
+    XZM::vec3 targetPos;
+
+    std::string name = "Camera";
 
     explicit Camera(std::shared_ptr<ParserNode>& node);
 
@@ -32,10 +35,17 @@ public:
     void ComputeViewMatrix();
 
     void ComputeProjectionMatrix();
+
+    void ProcessCamera(const XZM::mat4& transMatrix);
 };
 
 
 class Mesh{
+
+private:
+    void SetSrc(const std::string& srcPath);
+    void SetFormat(size_t channel, const std::string& new_Format);
+    void SetTopology(const std::string& new_topology);
 
 public:
     std::shared_ptr<ParserNode> data = nullptr;
@@ -54,16 +64,22 @@ public:
     uint32_t nOffset;
     uint32_t cOffset;
 
-    //XZM::mat4 modelMatrix;
-
     explicit Mesh(std::shared_ptr<ParserNode>& node);
 
     void ProcessMesh();
-    void SetSrc(const std::string& srcPath);
-    void SetFormat(size_t channel, const std::string& new_Format);
-    void SetTopology(const std::string& new_topology);
-    XZM::mat4 GetModelMatrix();
-    static XZM::mat4 GetModelMatrix(const std::shared_ptr<ParserNode>& currNode);
+};
+
+
+class MeshInstance{
+
+public:
+    std::shared_ptr<Mesh> mesh = nullptr;
+    XZM::mat4 modelMatrix = XZM::mat4();
+
+    MeshInstance(const std::shared_ptr<Mesh>& newMesh, const XZM::mat4& newModelMatrix){
+        mesh = newMesh;
+        modelMatrix = newModelMatrix;
+    }
 };
 
 
@@ -77,12 +93,12 @@ private:
 public:
 
     /* The cameras in the scene */
-    std::vector<std::pair<std::shared_ptr<Camera>,XZM::mat4>> cameras;
+    std::vector<std::shared_ptr<Camera>> cameras;
 
     //std::vector<std::shared_ptr<ParserNode>> nodes;
-    std::vector<std::pair<std::shared_ptr<Mesh>,XZM::mat4>> meshes;
+    std::vector<MeshInstance> meshes;
 
-    std::vector<std::shared_ptr<ParserNode>> tracingPath;
+   // std::vector<std::shared_ptr<ParserNode>> tracingPath;
 
     //std::vector<std::pair<std::shared_ptr<Mesh>,XZM::mat4>> meshInstances;
 
@@ -93,7 +109,7 @@ public:
     void ReconstructRoot();
 
     /* Reconstruct a node and reset all its children */
-    void ReconstructNode(std::shared_ptr<ParserNode>, std::shared_ptr<ParserNode> parent);
+    void ReconstructNode(std::shared_ptr<ParserNode>, XZM::mat4 newMat);
 
     void UpdateNodes(std::shared_ptr<ParserNode>&, XZM::vec3 translation, XZM::quat rotation, XZM::vec3 scale);
 

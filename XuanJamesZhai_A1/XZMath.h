@@ -82,6 +82,12 @@ namespace XZM {
     std::string ToString(const vec3&);
 
     mat4 Transpose(const mat4&);
+
+    quat ExtractQuatFromMat(const mat4&);
+
+    vec3 ExtractTranslationFromMat(const mat4&);
+
+    vec3 FindForwardDirection(const quat& quaternion);
 }
 
 

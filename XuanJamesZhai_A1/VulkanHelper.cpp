@@ -1195,7 +1195,7 @@ void VulkanHelper::CreateVertexBuffers(){
     vertexBuffers.resize(s72Instance->meshes.size());
 
     for(size_t i = 0; i < vertexBuffers.size(); i++){
-        CreateVertexBuffer(*s72Instance->meshes[i].first,i);
+        CreateVertexBuffer(*s72Instance->meshes[i].mesh,i);
     }
 }
 
@@ -1334,7 +1334,7 @@ void VulkanHelper::UpdateUniformBuffer(uint32_t currentImage,size_t index)
     //ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians( 20.0f), glm::vec3(0.0f, 0.0f, 1.0f));
     //std::cout << "BeforeBeforeApply " << glm::to_string(s72Instance->meshes[index]->modelMatrix) << std::endl;
     //std::cout << "BeforeApply " << glm::to_string(s72Instance->meshes[index]->modelMatrix) << std::endl;
-    ubo.model = s72Instance->meshes[index].second;
+    ubo.model = s72Instance->meshes[index].modelMatrix;
     //ubo.model = XZM::Transpose(ubo.model);
     //std::cout << "AfterApply " << glm::to_string(ubo.model) << std::endl;
 
@@ -1544,8 +1544,8 @@ void VulkanHelper::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t i
         VkDeviceSize offsets[] = { 0 };
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, newVertexBuffers, offsets);
 
-        newBindingDescription = CreateBindingDescription(*s72Instance->meshes[i].first);
-        newAttributeDescription = CreateAttributeDescription(*s72Instance->meshes[i].first);
+        newBindingDescription = CreateBindingDescription(*s72Instance->meshes[i].mesh);
+        newAttributeDescription = CreateAttributeDescription(*s72Instance->meshes[i].mesh);
 
         vkCmdSetVertexInputExt(commandBuffer,static_cast<uint32_t>(1),&newBindingDescription,static_cast<uint32_t>(newAttributeDescription.size()),newAttributeDescription.data());
 
@@ -1565,7 +1565,7 @@ void VulkanHelper::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t i
         /* Fourth param: firstVertex (An offset into the vertex buffer) */
         /* Fifth param: firstInstance (An offset for instanced rendering) */
         // Draw Command without index buffer: vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
-        vkCmdDraw(commandBuffer, s72Instance->meshes[i].first->count, 1, 0, 0);
+        vkCmdDraw(commandBuffer, s72Instance->meshes[i].mesh->count, 1, 0, 0);
     }
 
     /* End the render pass */
@@ -2226,7 +2226,7 @@ void VulkanHelper::Run()
 
 void VulkanHelper::Run(const std::shared_ptr<S72Helper>& news72Instance){
     s72Instance = news72Instance;
-    currCamera = s72Instance->cameras[1].first;
+    currCamera = s72Instance->cameras[0];
     InitWindow();
     InitVulkan();
     MainLoop();

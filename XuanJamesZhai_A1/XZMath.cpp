@@ -461,12 +461,59 @@ XZM::mat4 XZM::Transpose(const mat4& nm){
 
     for (int i = 0; i < 4; ++i) {
         for (int j = i + 1; j < 4; ++j) {
-            // Swap elements (i, j) and (j, i)
-           // float temp = nm[i][j];
-            //matrix[i][j] = matrix[j][i];
-            //matrix[j][i] = temp;
             result.data[j][i] = nm.data[i][j];
         }
     }
     return result;
+}
+
+
+XZM::vec3 XZM::ExtractTranslationFromMat(const mat4& nm){
+    return vec3(nm.data[3][0],nm.data[3][1],nm.data[3][2]);
+}
+
+
+XZM::quat XZM::ExtractQuatFromMat(const mat4& rotationMatrix){
+    quat quaternion;
+    float trace = rotationMatrix.data[0][0] + rotationMatrix.data[1][1] + rotationMatrix.data[2][2];
+    if (trace > 0) {
+        float s = 0.5f / sqrt(trace + 1.0f);
+        quaternion.data[3] = 0.25f / s;
+        quaternion.data[0] = (rotationMatrix.data[1][2] - rotationMatrix.data[2][1]) * s;
+        quaternion.data[1] = (rotationMatrix.data[2][0] - rotationMatrix.data[0][2]) * s;
+        quaternion.data[2] = (rotationMatrix.data[0][1] - rotationMatrix.data[1][0]) * s;
+    } else {
+        if (rotationMatrix.data[0][0] > rotationMatrix.data[1][1] && rotationMatrix.data[0][0] > rotationMatrix.data[2][2]) {
+            float s = 2.0f * sqrt(1.0f + rotationMatrix.data[0][0] - rotationMatrix.data[1][1] - rotationMatrix.data[2][2]);
+            quaternion.data[3] = (rotationMatrix.data[1][2] - rotationMatrix.data[1][2]) / s;
+            quaternion.data[0] = 0.25f * s;
+            quaternion.data[1] = (rotationMatrix.data[1][0] + rotationMatrix.data[0][1]) / s;
+            quaternion.data[2] = (rotationMatrix.data[2][0] + rotationMatrix.data[0][2]) / s;
+        } else if (rotationMatrix.data[1][1] > rotationMatrix.data[2][2]) {
+            float s = 2.0f * sqrt(1.0f + rotationMatrix.data[1][1] - rotationMatrix.data[0][0] - rotationMatrix.data[2][2]);
+            quaternion.data[3] = (rotationMatrix.data[0][0] - rotationMatrix.data[0][2]) / s;
+            quaternion.data[0] = (rotationMatrix.data[1][0] + rotationMatrix.data[0][1]) / s;
+            quaternion.data[1] = 0.25f * s;
+            quaternion.data[2] = (rotationMatrix.data[2][1] + rotationMatrix.data[1][2]) / s;
+        } else {
+            float s = 2.0f * sqrt(1.0f + rotationMatrix.data[2][2] - rotationMatrix.data[0][0] - rotationMatrix.data[1][1]);
+            quaternion.data[3] = (rotationMatrix.data[0][1] - rotationMatrix.data[1][0]) / s;
+            quaternion.data[0] = (rotationMatrix.data[2][0] + rotationMatrix.data[0][2]) / s;
+            quaternion.data[1] = (rotationMatrix.data[2][1] + rotationMatrix.data[1][2]) / s;
+            quaternion.data[2] = 0.25f * s;
+        }
+    }
+    return quaternion;
+}
+
+
+XZM::vec3 XZM::FindForwardDirection(const quat& quaternion){
+
+    // Rotate the default forward vector [0, 0, -1] by the rotation quaternion
+    float forwardX = 2.0f * (quaternion.data[0] * quaternion.data[2] - quaternion.data[3] * quaternion.data[1]);
+    float forwardY = 2.0f * (quaternion.data[1] * quaternion.data[2] + quaternion.data[3] * quaternion.data[0]);
+    float forwardZ = 1.0f - 2.0f * (quaternion.data[0] * quaternion.data[0] + quaternion.data[1] * quaternion.data[1]);
+
+    // Normalize the resulting vector
+    return Normalize(vec3(forwardX, forwardY, forwardZ));
 }
