@@ -1335,24 +1335,25 @@ void VulkanHelper::UpdateUniformBuffer(uint32_t currentImage,size_t index)
     //std::cout << "BeforeBeforeApply " << glm::to_string(s72Instance->meshes[index]->modelMatrix) << std::endl;
     //std::cout << "BeforeApply " << glm::to_string(s72Instance->meshes[index]->modelMatrix) << std::endl;
     ubo.model = s72Instance->meshes[index].second;
+    //ubo.model = XZM::Transpose(ubo.model);
     //std::cout << "AfterApply " << glm::to_string(ubo.model) << std::endl;
 
     /* Look at the geometry from above at a 45-degree angle */
     //ubo.view = XZM::LookAt(XZM::vec3(-10.0f, 10.0f, 10.0f), XZM::vec3(0.0f, 0.0f, 0.0f), XZM::vec3(0.0f, 0.0f, 1.0f));
     ubo.view = currCamera->viewMatrix;
+    //ubo.view = XZM::Transpose(ubo.view);
 
     /* Use a perspective projection with a 45 degree vertical field-of-view. */
     if (swapChainExtent.width == 0 || (float)swapChainExtent.height == 0) {
         ubo.proj = XZM::Perspective(0.785398f, 1.0f, 0.1f, 10.0f);
     }
     else {
-        XZM::mat4 test1 =  XZM::Perspective(0.785398f, (float)swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 100.0f);
-        ubo.proj = test1;
-        //ubo.proj = currCamera->projMatrix;
+        ubo.proj = currCamera->projMatrix;
     }
 
     /* Since GLM was used for OpenGL which has different Y-Dir than Vulkan, we need to flip it */
     ubo.proj.data[1][1] *= -1;
+    //ubo.proj = XZM::Transpose(ubo.proj);
 
     /* Copy the data to the current uniform buffer */
     memcpy((void*)((char*)uniformBuffersMapped[currentImage] + (uint32_t)index*sizeof(UniformBufferObject)), &ubo, sizeof(ubo));
@@ -1744,7 +1745,7 @@ void VulkanHelper::CreateTextureImage()
     VkDeviceSize imageSize = texWidth * texHeight * 4;      // 4 means 4 bytes for pixel.
 
     /* Determine the LOD */
-    mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;
+    mipLevels = static_cast<uint32_t>(std::floor(std::log2(max(texWidth, texHeight)))) + 1;
 
     if (!pixels) {
         throw std::runtime_error("failed to load texture image!");
@@ -2225,7 +2226,7 @@ void VulkanHelper::Run()
 
 void VulkanHelper::Run(const std::shared_ptr<S72Helper>& news72Instance){
     s72Instance = news72Instance;
-    currCamera = s72Instance->cameras[2].first;
+    currCamera = s72Instance->cameras[1].first;
     InitWindow();
     InitVulkan();
     MainLoop();

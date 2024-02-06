@@ -293,15 +293,15 @@ XZM::mat4 XZM::QuatToMat4(const XZM::quat & nq) {
 
     mat4 rotationMatrix;
     rotationMatrix.data[0][0] = 1.0f - 2.0f * (yy + zz);
-    rotationMatrix.data[0][1] = 2.0f * (xy - wz);
-    rotationMatrix.data[0][2] = 2.0f * (xz + wy);
+    rotationMatrix.data[1][0] = 2.0f * (xy - wz);
+    rotationMatrix.data[2][0] = 2.0f * (xz + wy);
 
-    rotationMatrix.data[1][0] = 2.0f * (xy + wz);
+    rotationMatrix.data[0][1] = 2.0f * (xy + wz);
     rotationMatrix.data[1][1] = 1.0f - 2.0f * (xx + zz);
-    rotationMatrix.data[1][2] = 2.0f * (yz - wx);
+    rotationMatrix.data[2][1] = 2.0f * (yz - wx);
 
-    rotationMatrix.data[2][0] = 2.0f * (xz - wy);
-    rotationMatrix.data[2][1] = 2.0f * (yz + wx);
+    rotationMatrix.data[0][2] = 2.0f * (xz - wy);
+    rotationMatrix.data[1][2] = 2.0f * (yz + wx);
     rotationMatrix.data[2][2] = 1.0f - 2.0f * (xx + yy);
 
     return rotationMatrix;
@@ -316,27 +316,7 @@ XZM::mat4 XZM::Perspective(float vfov, float aspect, float near, float far){
     float top = scale;
     float bottom = -top;
 
-    projMatrix.data[0][0] = 2 * near / (right - left);
-    projMatrix.data[0][1] = 0;
-    projMatrix.data[0][2] = 0;
-    projMatrix.data[0][3] = -near*(right+left)/(right-left);
 
-    projMatrix.data[1][0] = 0;
-    projMatrix.data[1][1] = 2 * near / (top - bottom);
-    projMatrix.data[1][2] = 0;
-    projMatrix.data[1][3] = -near*(top+bottom)/(top-bottom);
-
-    projMatrix.data[2][0] = 0;
-    projMatrix.data[2][1] = 0;
-    projMatrix.data[2][2] = -(far + near) / (far - near);
-    projMatrix.data[2][3] = 2*far*near/(near-far);
-
-    projMatrix.data[3][0] = 0;
-    projMatrix.data[3][1] = 0;
-    projMatrix.data[3][2] = -1;
-    projMatrix.data[3][3] = 0;
-
-    /*
     projMatrix.data[0][0] = 2 * near / (right - left);
     projMatrix.data[0][1] = 0;
     projMatrix.data[0][2] = 0;
@@ -356,7 +336,7 @@ XZM::mat4 XZM::Perspective(float vfov, float aspect, float near, float far){
     projMatrix.data[3][1] = 0;
     projMatrix.data[3][2] = -2 * far * near / (far - near);
     projMatrix.data[3][3] = 0;
-     */
+
 
     return projMatrix;
 }
@@ -400,23 +380,23 @@ XZM::mat4 XZM::LookAt(const vec3& eyePos, const vec3& target, const vec3& up){
 
     // Set the view matrix components
     viewMatrix.data[0][0] = right.data[0];
-    viewMatrix.data[0][1] = right.data[1];
-    viewMatrix.data[0][2] = right.data[2];
-    viewMatrix.data[0][3] = -DotProduct(right, eyePos);
+    viewMatrix.data[1][0] = right.data[1];
+    viewMatrix.data[2][0] = right.data[2];
+    viewMatrix.data[3][0] = -DotProduct(right, eyePos);
 
-    viewMatrix.data[1][0] = newUp.data[0];
+    viewMatrix.data[0][1] = newUp.data[0];
     viewMatrix.data[1][1] = newUp.data[1];
-    viewMatrix.data[1][2] = newUp.data[2];
-    viewMatrix.data[1][3] = -DotProduct(newUp, eyePos);
+    viewMatrix.data[2][1] = newUp.data[2];
+    viewMatrix.data[3][1] = -DotProduct(newUp, eyePos);
 
-    viewMatrix.data[2][0] = -forward.data[0];
-    viewMatrix.data[2][1] = -forward.data[1];
+    viewMatrix.data[0][2] = -forward.data[0];
+    viewMatrix.data[1][2] = -forward.data[1];
     viewMatrix.data[2][2] = -forward.data[2];
-    viewMatrix.data[2][3] = DotProduct(forward, eyePos);
+    viewMatrix.data[3][2] = DotProduct(forward, eyePos);
 
-    viewMatrix.data[3][0] = 0.0f;
-    viewMatrix.data[3][1] = 0.0f;
-    viewMatrix.data[3][2] = 0.0f;
+    viewMatrix.data[0][3] = 0.0f;
+    viewMatrix.data[1][3] = 0.0f;
+    viewMatrix.data[2][3] = 0.0f;
     viewMatrix.data[3][3] = 1.0f;
 
     return viewMatrix;
@@ -458,9 +438,9 @@ XZM::mat4 XZM::Translation(const mat4& nm, const vec3& factor){
 
 XZM::mat4 XZM::Translation(const vec3& nv){
     mat4 newmat;
-    newmat.data[0][3] = nv.data[0];
-    newmat.data[1][3] = nv.data[1];
-    newmat.data[2][3] = nv.data[2];
+    newmat.data[3][0] = nv.data[0];
+    newmat.data[3][1] = nv.data[1];
+    newmat.data[3][2] = nv.data[2];
 
     return newmat;
 }
@@ -473,4 +453,20 @@ XZM::vec3 XZM::GetTranslationFromMat(const mat4& nm){
 
 std::string XZM::ToString(const vec3& nv){
     return std::string("{" + std::to_string(nv.data[0]) + "," + std::to_string(nv.data[1]) + "," + std::to_string(nv.data[2]) + "}");
+}
+
+
+XZM::mat4 XZM::Transpose(const mat4& nm){
+    XZM::mat4 result;
+
+    for (int i = 0; i < 4; ++i) {
+        for (int j = i + 1; j < 4; ++j) {
+            // Swap elements (i, j) and (j, i)
+           // float temp = nm[i][j];
+            //matrix[i][j] = matrix[j][i];
+            //matrix[j][i] = temp;
+            result.data[j][i] = nm.data[i][j];
+        }
+    }
+    return result;
 }

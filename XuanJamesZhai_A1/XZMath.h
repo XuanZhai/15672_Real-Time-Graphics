@@ -80,6 +80,8 @@ namespace XZM {
     vec3 GetTranslationFromMat(const mat4& nm);
 
     std::string ToString(const vec3&);
+
+    mat4 Transpose(const mat4&);
 }
 
 

@@ -36,9 +36,10 @@ public:
 
 
 class Mesh{
-    std::shared_ptr<ParserNode> data = nullptr;
 
 public:
+    std::shared_ptr<ParserNode> data = nullptr;
+
     std::string name;
     std::string src;
     uint32_t stride;
@@ -92,11 +93,13 @@ public:
     void ReconstructRoot();
 
     /* Reconstruct a node and reset all its children */
-    void ReconstructNode(std::shared_ptr<ParserNode>);
+    void ReconstructNode(std::shared_ptr<ParserNode>, std::shared_ptr<ParserNode> parent);
 
     void UpdateNodes(std::shared_ptr<ParserNode>&, XZM::vec3 translation, XZM::quat rotation, XZM::vec3 scale);
 
     XZM::mat4 GetModelMatrix();
+
+    XZM::mat4 GetModelMatrix(std::shared_ptr<ParserNode> targetNode);
 
     static XZM::vec3 FindTranslation(const ParserNode&);
 
