@@ -214,7 +214,7 @@ VkExtent2D VulkanHelper::ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabi
     else {
         int width, height;
 
-        if (ISWINWINDOW) {
+        if (USE_WSI) {
             RECT rect;
             if (GetWindowRect(hwnd, &rect))
             {
@@ -357,7 +357,7 @@ void VulkanHelper::CreateInstance()
     vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensionProps.data());
 
 
-    if (ISWINWINDOW) {
+    if (USE_WSI) {
         extensions.resize(extensionCount);
 
         for (uint32_t i = 0; i < extensionCount; i++) {
@@ -605,7 +605,7 @@ void VulkanHelper::CreateSurface()
     VkWin32SurfaceCreateInfoKHR createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
 
-    if (ISWINWINDOW) {
+    if (USE_WSI) {
         createInfo.hwnd = hwnd;
         createInfo.hinstance = hInstance;
     }
@@ -1188,12 +1188,18 @@ void VulkanHelper::CreateVertexBuffers(){
         throw std::runtime_error("Vertex Buffer Error: s72Instance is null.");
     }
 
-    vertexBufferMemories.resize(s72Instance->meshInstances.size());
-    vertexBuffers.resize(s72Instance->meshInstances.size());
+    vertexBufferMemories.resize(s72Instance->meshes.size());
+    vertexBuffers.resize(s72Instance->meshes.size());
 
-    for(size_t i = 0; i < vertexBuffers.size(); i++){
-        CreateVertexBuffer(*s72Instance->meshInstances[i].mesh,i);
+    size_t index = 0;
+    for(const auto& mesh : s72Instance->meshes){
+        CreateVertexBuffer(*mesh.second,index);
+        index++;
     }
+
+    //for(size_t i = 0; i < vertexBuffers.size(); i++){
+    //    CreateVertexBuffer(*s72Instance->meshes[i],i);
+    //}
 }
 
 
@@ -1312,7 +1318,7 @@ void VulkanHelper::CreateIndexBuffer()
 void VulkanHelper::CreateUniformBuffers()
 {
     /* We use a large uniform buffer to store all mesh instance's ubo data */
-    VkDeviceSize bufferSize = sizeof(UniformBufferObject) * s72Instance->meshInstances.size();
+    VkDeviceSize bufferSize = sizeof(UniformBufferObject) * s72Instance->instanceCount;
 
     uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
     uniformBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
@@ -1329,7 +1335,7 @@ void VulkanHelper::CreateUniformBuffers()
 /**
 * @brief Update the uniform buffer on the current image with given ubo data.
 */
-void VulkanHelper::UpdateUniformBuffer(uint32_t currentImage,size_t index)
+void VulkanHelper::UpdateUniformBuffer(uint32_t currentImage, const Mesh& mesh, size_t instanceIndex, size_t totalIndex)
 {
     //static auto startTime = std::chrono::high_resolution_clock::now();
 
@@ -1339,7 +1345,7 @@ void VulkanHelper::UpdateUniformBuffer(uint32_t currentImage,size_t index)
     /* Define the model, view and projection transformations in the uniform buffer object.*/
     UniformBufferObject ubo{};
 
-    ubo.model = s72Instance->meshInstances[index].modelMatrix;
+    ubo.model = mesh.instances.at(instanceIndex);
     ubo.view = currCamera->viewMatrix;
     ubo.proj = currCamera->projMatrix;
 
@@ -1347,7 +1353,7 @@ void VulkanHelper::UpdateUniformBuffer(uint32_t currentImage,size_t index)
     ubo.proj.data[1][1] *= -1;
 
     /* Copy the data to the current uniform buffer */
-    memcpy((void*)((char*)uniformBuffersMapped[currentImage] + (uint32_t)index*sizeof(UniformBufferObject)), &ubo, sizeof(ubo));
+    memcpy((void*)((char*)uniformBuffersMapped[currentImage] + (uint32_t)totalIndex*sizeof(UniformBufferObject)), &ubo, sizeof(ubo));
 }
 
 
@@ -1529,32 +1535,39 @@ void VulkanHelper::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t i
     auto vkCmdSetVertexInputExt = (PFN_vkCmdSetVertexInputEXT)vkGetDeviceProcAddr(device, "vkCmdSetVertexInputEXT");
     auto vkCmdSetPrimitiveTopologyEXT = (PFN_vkCmdSetPrimitiveTopologyEXT)( vkGetDeviceProcAddr( device, "vkCmdSetPrimitiveTopologyEXT" ) );
 
-    /* Loop through each mesh instance to draw. */
-    for(size_t i = 0; i < s72Instance->meshInstances.size(); i++){
-        /* Bind the vertex buffer during rendering operations */
-        VkBuffer newVertexBuffers[] = { vertexBuffers[i] };
+    size_t m_index = 0;
+    size_t i_index = 0;
+    /* Loop through each mesh in the list. */
+    for(const auto& mesh : s72Instance->meshes){
+        /* Bind its vertex buffer and set its info. */
+        VkBuffer newVertexBuffers[] = { vertexBuffers[m_index] };
         VkDeviceSize offsets[] = { 0 };
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, newVertexBuffers, offsets);
 
-        newBindingDescription = CreateBindingDescription(*s72Instance->meshInstances[i].mesh);
-        newAttributeDescription = CreateAttributeDescription(*s72Instance->meshInstances[i].mesh);
+        newBindingDescription = CreateBindingDescription(*mesh.second);
+        newAttributeDescription = CreateAttributeDescription(*mesh.second);
 
         vkCmdSetVertexInputExt(commandBuffer,static_cast<uint32_t>(1),&newBindingDescription,static_cast<uint32_t>(newAttributeDescription.size()),newAttributeDescription.data());
+        vkCmdSetPrimitiveTopologyEXT(commandBuffer,mesh.second->topology);
 
-        vkCmdSetPrimitiveTopologyEXT(commandBuffer,s72Instance->meshInstances[i].mesh->topology);
+        /* Loop through each instance of that mesh. */
+        for(size_t i = 0; i < mesh.second->instances.size(); i++){
+            /* Bind the descriptor sets */
+            uint32_t dynamicOffset = i_index * sizeof(UniformBufferObject);
+            vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 1, &dynamicOffset);
 
-        /* Bind the descriptor sets */
-        uint32_t dynamicOffset = i * sizeof(UniformBufferObject);
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 1, &dynamicOffset);
+            UpdateUniformBuffer(currentFrame, *mesh.second, i, i_index);
 
-        UpdateUniformBuffer(currentFrame,i);
-        /* Issue the drawing command */
-        /* Second param: vertexCount */
-        /* Third param: instanceCount (Used for instanced rendering) */
-        /* Fourth param: firstVertex (An offset into the vertex buffer) */
-        /* Fifth param: firstInstance (An offset for instanced rendering) */
-        // Draw Command without index buffer: vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
-        vkCmdDraw(commandBuffer, s72Instance->meshInstances[i].mesh->count, 1, 0, 0);
+            /* Issue the drawing command */
+            /* Second param: vertexCount */
+            /* Third param: instanceCount (Used for instanced rendering) */
+            /* Fourth param: firstVertex (An offset into the vertex buffer) */
+            /* Fifth param: firstInstance (An offset for instanced rendering) */
+            // Draw Command without index buffer: vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
+            vkCmdDraw(commandBuffer, mesh.second->count, 1, 0, 0);
+            i_index++;
+        }
+        m_index++;
     }
 
     /* End the render pass */
@@ -2001,7 +2014,7 @@ void VulkanHelper::RecreateSwapChain()
     /* Pause the window if the frame buffer size is 0 (window minimization)*/
     int width = 0, height = 0;
 
-    if (ISWINWINDOW) {
+    if (USE_WSI) {
         RECT rect;
         if (GetWindowRect(hwnd, &rect))
         {
@@ -2017,7 +2030,7 @@ void VulkanHelper::RecreateSwapChain()
     }
 
     while (width == 0 || height == 0) {
-        if (ISWINWINDOW) {
+        if (USE_WSI) {
             // TODO:
         }
         else {
@@ -2349,7 +2362,7 @@ void VulkanHelper::DrawFrame()
 */
 void VulkanHelper::CleanUp()
 {
-    if (ISWINWINDOW) {
+    if (USE_WSI) {
         /* Wait for the logical device to finish operations before exiting mainLoop and destroying the window */
         vkDeviceWaitIdle(device);
     }
@@ -2395,7 +2408,7 @@ void VulkanHelper::CleanUp()
     vkDestroySurfaceKHR(instance, surface, nullptr);    // Destroy the surface instance
     vkDestroyInstance(instance, nullptr);   // Destroy the vulkan instance
 
-    if (ISWINWINDOW) {
+    if (USE_WSI) {
         DestroyWindow(hwnd);
         PostQuitMessage(0);
     }

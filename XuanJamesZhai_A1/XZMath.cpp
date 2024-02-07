@@ -62,6 +62,15 @@ XZM::vec3 XZM::vec3::operator- (const vec3& nv) const{
 }
 
 
+XZM::vec3 XZM::vec3::operator* (float nf) const{
+    vec3 newvec;
+    newvec.data[0] = data[0] * nf;
+    newvec.data[1] = data[1] * nf;
+    newvec.data[2] = data[2] * nf;
+    return newvec;
+}
+
+
 
 
 
@@ -226,55 +235,6 @@ XZM::quat XZM::quat::operator * (const XZM::quat &nq) {
 /* ============================================================================================================== */
 
 
-XZM::mat4 XZM::Inverse(const XZM::mat4 &nm) {
-
-    mat4 tmp;
-    mat4 cur;
-
-    for (unsigned int y = 0; y < 4; ++y)
-    {
-        for (unsigned int x = 0; x < 4; ++x)
-        {
-            cur.data[y][x] = nm.data[y][x];
-        }
-    }
-
-    for (unsigned int x = 0; x < 4; x++)
-    {
-        if (cur.data[x][x] != 0)
-        {
-            float denominator = cur.data[x][x];
-            for (unsigned int a = x; a < 4; ++a)
-            {
-                cur.data[x][a] = cur.data[x][a] / denominator;
-            }
-            for (unsigned int a = 0; a < 4; ++a)
-            {
-                tmp.data[x][a] = tmp.data[x][a] / denominator;
-            }
-        }
-
-        for (unsigned int y = 0; y < 4; ++y)
-        {
-            if (y != x && cur.data[y][x] != 0)
-            {
-                float difference = cur.data[y][x];
-                for (unsigned int a = x; a < 4; ++a)
-                {
-                    cur.data[y][a] = (cur.data[y][a] - difference) * cur.data[x][a];
-                }
-                for (unsigned int a = 0; a < 4; ++a)
-                {
-                    tmp.data[y][a] = (tmp.data[y][a] - difference) * tmp.data[x][a];
-                }
-            }
-        }
-    }
-
-    return tmp;
-}
-
-
 XZM::mat4 XZM::QuatToMat4(const XZM::quat & nq) {
     float x = nq.data[0];
     float y = nq.data[1];
@@ -403,6 +363,24 @@ XZM::mat4 XZM::LookAt(const vec3& eyePos, const vec3& target, const vec3& up){
 }
 
 
+XZM::vec3 XZM::GetLookAtDir(const vec3& eyePos, const mat4& rotationMatrix){
+    // Convert quaternion to rotation matrix
+    // Create forward vector
+    vec3 forward = { 0.0f, 0.0f, -1.0f };
+
+    // Transform forward vector using rotation matrix
+    vec3 lookAtDirection = {
+            rotationMatrix.data[0][0] * forward.data[0] + rotationMatrix.data[1][0] * forward.data[1] + rotationMatrix.data[2][0] * forward.data[2],
+            rotationMatrix.data[0][1] * forward.data[0] + rotationMatrix.data[1][1] * forward.data[1] + rotationMatrix.data[2][1] * forward.data[2],
+            rotationMatrix.data[0][2] * forward.data[0] + rotationMatrix.data[1][2] * forward.data[1] + rotationMatrix.data[2][2] * forward.data[2]
+    };
+
+    // Normalize look-at direction
+    Normalize(lookAtDirection);
+    return lookAtDirection;
+}
+
+
 XZM::mat4 XZM::Scaling(const mat4& nm, const vec3& factor){
     mat4 result = nm;
 
@@ -516,4 +494,15 @@ XZM::vec3 XZM::FindForwardDirection(const quat& quaternion){
 
     // Normalize the resulting vector
     return Normalize(vec3(forwardX, forwardY, forwardZ));
+}
+
+
+XZM::vec3 XZM::ConvertQuatToVec3(const XZM::quat &quaternion) {
+    float norm = std::sqrt(quaternion.data[0] * quaternion.data[0] + quaternion.data[1] * quaternion.data[1] + quaternion.data[2] * quaternion.data[2] + quaternion.data[3] * quaternion.data[3]);
+    quat normalizedQuat = { quaternion.data[0] / norm, quaternion.data[1] / norm, quaternion.data[2] / norm, quaternion.data[3] / norm };
+
+    // Extract axis of rotation
+    vec3 axis = { quaternion.data[0], quaternion.data[1], quaternion.data[2] };
+    Normalize(axis);
+    return axis;
 }

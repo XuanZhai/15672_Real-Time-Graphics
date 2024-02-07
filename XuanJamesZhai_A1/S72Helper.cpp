@@ -7,7 +7,7 @@
 #include <memory>
 
 
-std::unordered_map<std::string, VkPrimitiveTopology> topoMap = {
+std::unordered_map<std::string, VkPrimitiveTopology> topologyMap = {
         {"POINT_LIST", VK_PRIMITIVE_TOPOLOGY_POINT_LIST},
         {"LINE_LIST",VK_PRIMITIVE_TOPOLOGY_LINE_LIST},
         {"LINE_STRIP",VK_PRIMITIVE_TOPOLOGY_LINE_STRIP},
@@ -83,9 +83,10 @@ void Camera::ComputeProjectionMatrix(){
 
 void Camera::ProcessCamera(const XZM::mat4& transMatrix){
     cameraPos = XZM::ExtractTranslationFromMat(transMatrix);
-    XZM::quat newQuat = XZM::ExtractQuatFromMat(transMatrix);
-    targetPos = cameraPos + XZM::FindForwardDirection(newQuat);
-    targetPos = XZM::vec3();
+
+    XZM::vec3 lookatDir = XZM::GetLookAtDir(cameraPos,transMatrix);
+    targetPos = cameraPos + lookatDir;
+    //targetPos = XZM::vec3();
     ComputeViewMatrix();
     ComputeProjectionMatrix();
 }
@@ -179,7 +180,7 @@ void Mesh::SetFormat(size_t channel, const std::string& format){
 
 
 void Mesh::SetTopology(const std::string& new_topology){
-    topology = topoMap[new_topology];
+    topology = topologyMap[new_topology];
 }
 
 
@@ -276,7 +277,9 @@ void S72Helper::ReconstructNode(std::shared_ptr<ParserNode> newNode, XZM::mat4 n
                 meshes.insert(std::make_pair(meshName,std::make_shared<Mesh>(newNode)));
             }
 
-            meshInstances.emplace_back(meshes[meshName], newMat);
+            //meshInstances.emplace_back(meshes[meshName], newMat);
+            meshes[meshName]->instances.emplace_back(newMat);
+            instanceCount++;
         }
         else{
             //cameras.push_back(std::make_shared<Camera>(newNode));
@@ -388,20 +391,6 @@ void S72Helper::UpdateNodes(std::shared_ptr<ParserNode> &newNode, XZM::vec3 tran
     //}
 
    // newNode->data = newMap;
-}
-
-
-XZM::mat4 S72Helper::GetModelMatrix(const std::shared_ptr<ParserNode>& targetNode){
-
-    if(std::get<std::string>(targetNode->GetObjectValue("type")->data) == "SCENE"){
-        return XZM::mat4();
-    }
-
-    XZM::mat4 translation = XZM::Translation(S72Helper::FindTranslation(*targetNode));
-    XZM::mat4 rotation = XZM::QuatToMat4(S72Helper::FindRotation(*targetNode));
-    XZM::mat4 scale = XZM::Scaling(S72Helper::FindScale(*targetNode));
-
-    return scale * (rotation * (translation * GetModelMatrix(targetNode->GetObjectValue("Parent"))));
 }
 
 

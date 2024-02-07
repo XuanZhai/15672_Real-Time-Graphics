@@ -33,7 +33,7 @@
 
 
 /* A macro to select if we want to create a window using WSI. If false it will be created with GLFW. */
-#define ISWINWINDOW false
+#define USE_WSI false
 
 const std::string MODEL_PATH = "models/viking_room.obj";
 const std::string TEXTURE_PATH = "Textures/viking_room.png";
@@ -106,7 +106,7 @@ private:
     /* Vulkan instance */
     VkInstance instance = VK_NULL_HANDLE;
 
-    /* Vulkan Debug unil */
+    /* Vulkan Debug util */
     VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
 
     /* Vulkan physical device handle, will be implicitly destroyed */
@@ -142,10 +142,10 @@ private:
     /* Vulkan render pass; the attachments referenced by the pipeline stages and their usage */
     VkRenderPass renderPass = VK_NULL_HANDLE;
 
-    /* Used to specify the 'uniform' values in the pipline; the uniform and push values referenced by the shader that can be updated at draw time */
+    /* Used to specify the 'uniform' values in the pipeline; the uniform and push values referenced by the shader that can be updated at draw time */
     VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
 
-    /* An instance of the render pipline */
+    /* An instance of the render pipeline */
     VkPipeline graphicsPipeline = VK_NULL_HANDLE;
 
     /* The frame buffer instances. Each for an image in the swap chain */
@@ -157,7 +157,7 @@ private:
     /* Store the commands like the drawing operation */
     std::vector<VkCommandBuffer> commandBuffers;
 
-    /* Semaphore and fence to synchronize the Swapchain operations and waiting for the previous frame to finish */
+    /* Semaphore and fence to synchronize the swap chain operations and waiting for the previous frame to finish */
     std::vector<VkSemaphore> imageAvailableSemaphores;
     std::vector<VkSemaphore> renderFinishedSemaphores;
     std::vector<VkFence> inFlightFences;
@@ -195,7 +195,7 @@ private:
     /* Handle to the descriptor pool */
     VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
 
-    /* Handles to the desciptor sets */
+    /* Handles to the descriptor sets */
     std::vector<VkDescriptorSet> descriptorSets;
 
     /* The image of the texture */
@@ -358,7 +358,7 @@ private:
     void CreateUniformBuffers();
 
 
-    void UpdateUniformBuffer(uint32_t currentImage,size_t index);
+    void UpdateUniformBuffer(uint32_t currentImage, const Mesh& mesh, size_t instanceIndex, size_t totalIndex);
 
 
     void CreateDescriptorPool();
