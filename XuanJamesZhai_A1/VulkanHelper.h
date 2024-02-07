@@ -11,7 +11,6 @@
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 
-
 #include <windows.h>
 #include <iostream>
 #include <stdexcept>
@@ -35,10 +34,6 @@
 
 /* A macro to select if we want to create a window using WSI. If false it will be created with GLFW. */
 #define ISWINWINDOW false
-
-const uint32_t WIDTH = 1920;
-const uint32_t HEIGHT = 1080;
-
 
 const std::string MODEL_PATH = "models/viking_room.obj";
 const std::string TEXTURE_PATH = "Textures/viking_room.png";
@@ -89,6 +84,15 @@ struct UniformBufferObject {
 
 class VulkanHelper {
 private:
+
+    /* The display window width */
+    uint32_t windowWidth = 1920;
+
+    /* The display window height */
+    uint32_t windowHeight = 1080;
+
+    /* The name of the physical device that will be used */
+    std::string deviceName;
 
     /* The GLFW Window instance */
     GLFWwindow* window = nullptr;
@@ -164,12 +168,10 @@ private:
     /* Used to handle the explicit window resize event */
     bool framebufferResized = false;
 
-    /* The vertex buffer used to store the vertex data */
-    //VkBuffer vertexBuffer = VK_NULL_HANDLE;
+    /* The vertex buffers used to store the vertex data */
     std::vector<VkBuffer> vertexBuffers;
 
-    /* Handle to the memory of the vertex buffer */
-    //VkDeviceMemory vertexBufferMemory = VK_NULL_HANDLE;
+    /* Handle to the memory of the vertex buffers */
     std::vector<VkDeviceMemory> vertexBufferMemories;
 
     /* The index buffer used to store the indices */
@@ -220,15 +222,12 @@ private:
     /* The image view of the depth image */
     VkImageView depthImageView = VK_NULL_HANDLE;
 
-    /* A list of vertex which are vertices to draw */
-    //std::vector<Vertex> vertices;
-
-    /* indices to arrange the order of vertices to draw */
-    //std::vector<uint32_t> indices;
-
+    /* Contain the mesh data and the scene graph */
     std::shared_ptr<S72Helper> s72Instance = nullptr;
 
+    /* Refers to the camera instance that is using currently */
     std::shared_ptr<Camera> currCamera = nullptr;
+
 
     /* A struct of queue that will be submitted to Vulkan */
     struct QueueFamilyIndices {
@@ -240,7 +239,7 @@ private:
         }
     };
 
-    /* A struct of details of Swap Chain */
+    /* A struct of details of the Swap Chain */
     struct SwapChainSupportDetails {
         VkSurfaceCapabilitiesKHR capabilities;      // Basic surface capabilities (min/max number of images in swap chain, min/max width and height of images)
         std::vector<VkSurfaceFormatKHR> formats;    // Surface formats (pixel format, color space)
@@ -346,7 +345,9 @@ private:
 
     void CreateVertexBuffers();
 
+
     static VkVertexInputBindingDescription2EXT CreateBindingDescription(const Mesh& newMesh);
+
 
     static std::array<VkVertexInputAttributeDescription2EXT, 3> CreateAttributeDescription(const Mesh& newMesh);
 
@@ -432,14 +433,13 @@ private:
 public:
 
 
+    void InitializeData(const std::shared_ptr<S72Helper>& news72Instance, uint32_t width, uint32_t height, const std::string& newDeviceName, const std::string& cameraName);
+
+
     void Run();
 
 
     void RunWIN(HINSTANCE new_Instance, HWND new_hwnd);
-
-    void Run(const std::shared_ptr<S72Helper>& news72Instance);
-
-    void UpdateFrame();
 
 
     void DrawFrame();

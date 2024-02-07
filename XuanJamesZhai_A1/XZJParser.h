@@ -25,6 +25,7 @@
  *      float: Number in JSON
  *      PNVector: Array in JSON
  *      PNMap: Object in JSON
+ *      mat4: Custom block for storing the rotation matrix.
  */
 class ParserNode{
 public:
@@ -33,11 +34,13 @@ public:
     /* A type-define for a map of string and node. */
     typedef std::map<std::string,std::shared_ptr<ParserNode>> PNMap;
 
+    /* The data type of this variant, can be string, float, mat4, vector, and has map. */
     typedef std::variant<std::string, float, XZM::mat4, PNVector, PNMap> PNData;
 
     /* Each node has a data, it can represent the four options. */
     PNData data;
 
+    /* Return the hashmap's value based on a given key. */
     std::shared_ptr<ParserNode> GetObjectValue(const std::string& key);
 };
 

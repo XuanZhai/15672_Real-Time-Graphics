@@ -11,11 +11,16 @@ static std::string sceneName;
 /* The camera name passed from the command line. */
 static std::string cameraName;
 
+/* The name of the physical device that will be used for Vulkan. */
+static std::string deviceName;
+
 /* The window width passed from the command line. */
-static size_t drawingWidth;
+static size_t windowWidth = 1920;
 
 /* The Window height passed from the command line. */
-static size_t drawingHeight;
+static size_t windowHeight = 1080;
+
+static std::shared_ptr<VulkanHelper> newVKHelper = std::make_shared<VulkanHelper>();
 
 
 /**
@@ -32,8 +37,8 @@ void ReadCMDArguments(int argc, char** argv){
             cameraName = argv[i+1];
         }
         else if(strcmp(argv[i],"--drawing-size") == 0){
-            drawingWidth = strtoul(argv[i+1],nullptr,0);
-            drawingHeight = strtoul(argv[i+2],nullptr,0);
+            windowWidth = strtoul(argv[i+1],nullptr,0);
+            windowHeight = strtoul(argv[i+2],nullptr,0);
         }
     }
 }
@@ -43,26 +48,18 @@ int main(int argc, char** argv) {
 
     ReadCMDArguments(argc,argv);
 
-    //S72Helper newS72Helper;
-
     std::shared_ptr<S72Helper> newS72Helper(new S72Helper());
-
-    newS72Helper->ReadS72("sg-Articulation.s72");
-
-    auto* newVKHelper = new VulkanHelper();
+    newS72Helper->ReadS72(sceneName);
 
     try
     {
-        newVKHelper->Run(newS72Helper);
-
-
+        newVKHelper->InitializeData(newS72Helper,windowWidth,windowHeight,deviceName,cameraName);
+        newVKHelper->Run();
     }
     catch (const std::exception& e)
     {
-        std::cout << "Failed to Run the Program: " << e.what() << std::endl;
-        delete newVKHelper;
-        return EXIT_FAILURE;
+        throw std::runtime_error(e.what());
     }
-    delete newVKHelper;
+
     return EXIT_SUCCESS;
 }

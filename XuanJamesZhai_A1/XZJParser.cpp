@@ -4,16 +4,26 @@
 
 #include "XZJParser.h"
 
+/* ====================================== ParserNode ================================================================ */
 
 
+/**
+ * @brief If the data is a hash map, return the value for the given key. Else return nullptr.
+ * @param key The key as a string.
+ * @return A ParserNode value mapped on that key.
+ */
 std::shared_ptr<ParserNode> ParserNode::GetObjectValue(const std::string& key){
     ParserNode::PNMap* pnMap = std::get_if<ParserNode::PNMap>(&data);
-    if(pnMap == nullptr) return nullptr;
 
+    /* If it's not a hashmap or if it does not contain the key. */
+    if(pnMap == nullptr || pnMap->find(key) == pnMap->end()) {
+        return nullptr;
+    }
     return (*pnMap)[key];
 }
 
 
+/* ====================================== XZJParser ================================================================= */
 
 
 /**

@@ -28,9 +28,7 @@ public:
 
     std::string name = "Camera";
 
-    explicit Camera(std::shared_ptr<ParserNode>& node);
-
-    void SetName();
+    explicit Camera(const std::shared_ptr<ParserNode>& node, const std::string& newName);
 
     void ComputeViewMatrix();
 
@@ -96,7 +94,9 @@ public:
     std::vector<std::shared_ptr<Camera>> cameras;
 
     //std::vector<std::shared_ptr<ParserNode>> nodes;
-    std::vector<MeshInstance> meshes;
+    std::vector<MeshInstance> meshInstances;
+
+    std::unordered_map<std::string, std::shared_ptr<Mesh>> meshes;
 
    // std::vector<std::shared_ptr<ParserNode>> tracingPath;
 
@@ -113,9 +113,8 @@ public:
 
     void UpdateNodes(std::shared_ptr<ParserNode>&, XZM::vec3 translation, XZM::quat rotation, XZM::vec3 scale);
 
-    XZM::mat4 GetModelMatrix();
 
-    XZM::mat4 GetModelMatrix(std::shared_ptr<ParserNode> targetNode);
+    XZM::mat4 GetModelMatrix(const std::shared_ptr<ParserNode>& targetNode);
 
     static XZM::vec3 FindTranslation(const ParserNode&);
 
