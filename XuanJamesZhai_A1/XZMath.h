@@ -24,6 +24,10 @@ namespace XZM {
             vec3 operator* (const vec3& nv) const;
             vec3 operator* (float nf) const;
             vec3 operator- (const vec3& nv) const;
+            vec3& operator+= (const vec3& nv);
+            vec3& operator-= (const vec3& nv);
+
+            bool IsEmpty() const;
     };
 
     class mat4{
@@ -90,6 +94,8 @@ namespace XZM {
     vec3 FindForwardDirection(const quat& quaternion);
 
     vec3 ConvertQuatToVec3(const quat& quaternion);
+
+    vec3 RotateVec3(const vec3& vector, const vec3& axis, float radians);
 }
 
 

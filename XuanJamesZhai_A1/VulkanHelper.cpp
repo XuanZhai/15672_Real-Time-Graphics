@@ -11,6 +11,7 @@
 #include <utility>
 
 
+
 /**
 * @brief It creates a VkDebugUtilsMessengerEXT object that's used for the validation extension
 */
@@ -82,6 +83,38 @@ static std::vector<char> ReadFile(const std::string& filename) {
 }
 
 
+void GLFW_Key_Callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    auto* instance = reinterpret_cast<VulkanHelper*>(glfwGetWindowUserPointer(window));
+    if(instance == nullptr) return;
+
+    if (key == GLFW_KEY_W && action == GLFW_REPEAT){
+        instance->ProcessGLFWInputCallBack('W');
+    }
+    else if (key == GLFW_KEY_S && action == GLFW_REPEAT){
+        instance->ProcessGLFWInputCallBack('S');
+    }
+    else if (key == GLFW_KEY_A && action == GLFW_REPEAT){
+        instance->ProcessGLFWInputCallBack('A');
+    }
+    else if (key == GLFW_KEY_D && action == GLFW_REPEAT){
+        instance->ProcessGLFWInputCallBack('D');
+    }
+    else if (key == GLFW_KEY_Q && action == GLFW_REPEAT){
+        instance->ProcessGLFWInputCallBack('Q');
+    }
+    else if (key == GLFW_KEY_E && action == GLFW_REPEAT){
+        instance->ProcessGLFWInputCallBack('E');
+    }
+    else if (key == GLFW_KEY_R && action == GLFW_PRESS){
+        instance->ProcessGLFWInputCallBack('R');
+    }
+    else if (key == GLFW_KEY_T && action == GLFW_PRESS){
+        instance->ProcessGLFWInputCallBack('T');
+    }
+}
+
+
 /* ====================================== VulkanHelper ============================================================== */
 
 
@@ -111,6 +144,8 @@ void VulkanHelper::InitWindow()
 
     glfwSetWindowUserPointer(window, this);
     glfwSetFramebufferSizeCallback(window, FramebufferResizeCallback);      // Callback for window resize
+
+    glfwSetKeyCallback(window, GLFW_Key_Callback);
 }
 
 
@@ -2192,6 +2227,7 @@ void VulkanHelper::MainLoop()
 {
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();       // Check for inputs
+        s72Instance->UpdateObjects();
         DrawFrame();
     }
 
@@ -2228,7 +2264,7 @@ void VulkanHelper::InitializeData(const std::shared_ptr<S72Helper>& news72Instan
     deviceName = newDeviceName;
 
     s72Instance = news72Instance;
-    currCamera = s72Instance->cameras[1];
+    currCamera = s72Instance->cameras["User-Camera"];
 
     if(s72Instance->cameras.empty()){
         throw std::runtime_error("Vulkan initialization error: No camera in s72.");
@@ -2238,11 +2274,8 @@ void VulkanHelper::InitializeData(const std::shared_ptr<S72Helper>& news72Instan
     if(cameraName.empty()) return;
 
     /* Find if there's a camera with the target name. */
-    for(const auto & camera : s72Instance->cameras){
-        if(camera->name == cameraName){
-            currCamera = camera;
-            break;
-        }
+    if(s72Instance->cameras.count(cameraName)){
+        currCamera = s72Instance->cameras[cameraName];
     }
 }
 
@@ -2267,6 +2300,49 @@ void VulkanHelper::RunWIN(HINSTANCE new_Instance, HWND new_hwnd)
     InitWindowWIN(new_Instance, new_hwnd);
     InitVulkan();
     MainLoopWIN();
+}
+
+
+void VulkanHelper::ProcessGLFWInputCallBack(char key){
+    if(currCamera == nullptr) return;
+
+    switch (key) {
+        case 'E':
+            currCamera->MoveCameraUpDown(true);
+            break;
+        case 'Q':
+            currCamera->MoveCameraUpDown(false);
+            break;
+        case 'W':
+            currCamera->MoveCameraForwardBackward(true);
+            break;
+        case 'S':
+            currCamera->MoveCameraForwardBackward(false);
+            break;
+        case 'A':
+            currCamera->MoveCameraLeftRight(true);
+            break;
+        case 'D':
+            currCamera->MoveCameraLeftRight(false);
+            break;
+        case 'R':
+            currCamera->ReFocusToCenter();
+            break;
+        case 'T': {
+            if (s72Instance == nullptr) return;
+
+            auto Camera_iterator = s72Instance->cameras.find(currCamera->name);
+            Camera_iterator++;
+
+            if (Camera_iterator == s72Instance->cameras.end()) {
+                Camera_iterator = s72Instance->cameras.begin();
+            }
+            currCamera = Camera_iterator->second;
+            break;
+        }
+        default:
+            break;
+    }
 }
 
 

@@ -446,6 +446,9 @@ public:
 
 
     void CleanUp();
+
+
+    void ProcessGLFWInputCallBack(char key);
 };
 
 

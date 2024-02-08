@@ -14,6 +14,10 @@
 #include "XZJParser.h"
 #include "XZMath.h"
 
+
+/**
+ * @brief A camera object listed in the s72 file.
+ */
 class Camera{
 
 private:
@@ -21,7 +25,14 @@ private:
     std::shared_ptr<ParserNode> data = nullptr;
 
     XZM::vec3 cameraPos;
-    XZM::vec3 targetPos;
+    /* The normalized vector the camera is facing. */
+    XZM::vec3 cameraDir;
+
+    /* Fundamental data for a camera, use to build the projection matrix. */
+    float aspect;
+    float v_fov;
+    float near_z;
+    float far_z;
 
 public:
     XZM::mat4 viewMatrix;
@@ -29,17 +40,34 @@ public:
 
     std::string name = "Camera";
 
+    /* If this camera can be controlled by the keyboard input. */
+    bool isMovable = false;
+
+    Camera();
     /* Construct a camera based on the node and its name. */
-    explicit Camera(const std::shared_ptr<ParserNode>& node, const std::string& newName);
+    explicit Camera(std::shared_ptr<ParserNode> node, const std::string& newName);
+    /* Set the data for the camera. */
+    void SetCameraData(float newAspect, float new_V_fov, float newNear, float newFar);
     /* Compute and set the view matrix. */
     void ComputeViewMatrix();
     /* Compute and set the project matrix. */
     void ComputeProjectionMatrix();
     /* Given the transform matrix, find its view matrix and projection matrix. */
     void ProcessCamera(const XZM::mat4& transMatrix);
+    /* Move the camera position based along its facing direction. */
+    void MoveCameraForwardBackward(bool isForward);
+    /* Rotate the camera around the world right direction. */
+    void MoveCameraUpDown(bool isUp);
+    /* Rotate the camera around the world up direction. */
+    void MoveCameraLeftRight(bool isRight);
+    /* Let the camera loop toward the world center. */
+    void ReFocusToCenter();
 };
 
 
+/**
+ * @brief A mesh object listed in the s72 file.
+ */
 class Mesh{
 
 private:
@@ -87,29 +115,27 @@ private:
 public:
 
     /* The cameras in the scene */
-    std::vector<std::shared_ptr<Camera>> cameras;
+    std::map<std::string, std::shared_ptr<Camera>> cameras;
     /* The mesh object, they are identified by its unique name. */
     std::map<std::string, std::shared_ptr<Mesh>> meshes;
     /* The total number of mesh instance. */
     size_t instanceCount = 0;
 
+    S72Helper();
     /* Read and parse a s72 file from a given path. */
     void ReadS72(const std::string &filename);
-
     /* Reconstruct all the nodes to form a tree structure and let the scene object to be the root */
     void ReconstructRoot();
-
     /* Reconstruct a node and reset all its children */
     void ReconstructNode(std::shared_ptr<ParserNode>, XZM::mat4 newMat);
-
-    void UpdateNodes(std::shared_ptr<ParserNode>&, XZM::vec3 translation, XZM::quat rotation, XZM::vec3 scale);
-
+    /* Recursively update all object's transform data. */
+    void UpdateObjects();
+    /* Update an object's transform data and visit its children. */
+    void UpdateObject(const std::shared_ptr<ParserNode>&, XZM::mat4 newMat);
     /* Extract the translation data as a vec3 from a ParserNode. */
     static XZM::vec3 FindTranslation(const ParserNode&);
-
     /* Extract the rotation data as a quaternion from a ParserNode. */
     static XZM::quat FindRotation(const ParserNode&);
-
     /* Extract the scale data as a vec3 from a ParserNode. */
     static XZM::vec3 FindScale(const ParserNode&);
 };

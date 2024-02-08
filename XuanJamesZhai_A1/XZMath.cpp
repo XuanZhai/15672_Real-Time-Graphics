@@ -71,6 +71,27 @@ XZM::vec3 XZM::vec3::operator* (float nf) const{
 }
 
 
+bool XZM::vec3::IsEmpty() const{
+    return data[0] == 0 && data[1] == 0 && data[2] == 0;
+}
+
+
+XZM::vec3& XZM::vec3::operator+= (const vec3& nv){
+    data[0] += nv.data[0];
+    data[1] += nv.data[1];
+    data[2] += nv.data[2];
+
+    return *this;
+}
+
+
+XZM::vec3& XZM::vec3::operator-= (const vec3& nv){
+    data[0] -= nv.data[0];
+    data[1] -= nv.data[1];
+    data[2] -= nv.data[2];
+
+    return *this;
+}
 
 
 
@@ -161,10 +182,6 @@ XZM::mat4 XZM::mat4::operator * (const mat4& nm){
 
     return newMat;
 }
-
-
-
-
 
 
 
@@ -505,4 +522,32 @@ XZM::vec3 XZM::ConvertQuatToVec3(const XZM::quat &quaternion) {
     vec3 axis = { quaternion.data[0], quaternion.data[1], quaternion.data[2] };
     Normalize(axis);
     return axis;
+}
+
+
+XZM::vec3 XZM::RotateVec3(const vec3& vector, const vec3& axis, float radians){
+    float cosTheta = cos(radians);
+    float sinTheta = sin(radians);
+
+    vec3 rotatedVec;
+
+    XZM::mat4 rotationMatrix;
+    rotationMatrix.data[0][0] = cosTheta + (1 - cosTheta) * axis.data[0] * axis.data[0];
+    rotationMatrix.data[0][1] = (1 - cosTheta) * axis.data[0] * axis.data[1] - sinTheta * axis.data[2];
+    rotationMatrix.data[0][2] = (1 - cosTheta) * axis.data[0] * axis.data[2] + sinTheta * axis.data[1];
+
+    rotationMatrix.data[1][0] = (1 - cosTheta) * axis.data[0] * axis.data[1] + sinTheta * axis.data[2];
+    rotationMatrix.data[1][1] = cosTheta + (1 - cosTheta) * axis.data[1] * axis.data[1];
+    rotationMatrix.data[1][2] = (1 - cosTheta) * axis.data[1] * axis.data[2] - sinTheta * axis.data[0];
+
+    rotationMatrix.data[2][0] = (1 - cosTheta) * axis.data[0] * axis.data[2] - sinTheta * axis.data[1];
+    rotationMatrix.data[2][1] = (1 - cosTheta) * axis.data[1] * axis.data[2] + sinTheta * axis.data[0];
+    rotationMatrix.data[2][2] = cosTheta + (1 - cosTheta) * axis.data[2] * axis.data[2];
+
+    // Apply the rotation matrix to the vector
+    rotatedVec.data[0] = vector.data[0] * rotationMatrix.data[0][0] + vector.data[1] * rotationMatrix.data[0][1] + vector.data[2] * rotationMatrix.data[0][2];
+    rotatedVec.data[1] = vector.data[0] * rotationMatrix.data[1][0] + vector.data[1] * rotationMatrix.data[1][1] + vector.data[2] * rotationMatrix.data[1][2];
+    rotatedVec.data[2] = vector.data[0] * rotationMatrix.data[2][0] + vector.data[1] * rotationMatrix.data[2][1] + vector.data[2] * rotationMatrix.data[2][2];
+
+    return rotatedVec;
 }
