@@ -131,7 +131,7 @@ void VulkanHelper::FramebufferResizeCallback(GLFWwindow* window, int width, int 
 
 
 /**
-* @brief Initialize the GLFW window used for the Vulkan Display
+* @brief Initialize the GLFW window used for the Vulkan Display.
 */
 void VulkanHelper::InitWindow()
 {
@@ -160,7 +160,7 @@ void VulkanHelper::InitWindowWIN(HINSTANCE new_hInstance, HWND new_hwnd)
 
 
 /**
-* @brief Populate the detail of swap chain
+* @brief Populate the detail of swap chain.
 * @param[in] device: The physical device that is using
 * @return The Swap Chain Detail struct
 */
@@ -213,7 +213,7 @@ VkSurfaceFormatKHR VulkanHelper::ChooseSwapSurfaceFormat(const std::vector<VkSur
 
 
 /**
-* @brief Select the Swap Chain present mode
+* @brief Select the Swap Chain present mode.
 * VK_PRESENT_MODE_IMMEDIATE_KHR: Submit right away. may have tearing.
 * VK_PRESENT_MODE_FIFO_KHR swap chain with a queue.
 * VK_PRESENT_MODE_FIFO_RELAXED_KHR Instead of waiting for the next vertical blank, the image is transferred right away when it finally arrives.
@@ -236,7 +236,7 @@ VkPresentModeKHR VulkanHelper::ChooseSwapPresentMode(const std::vector<VkPresent
 
 
 /**
-* @brief The swap extent is the resolution of the swap chain images
+* @brief The swap extent is the resolution of the swap chain images.
 * and it’s almost always exactly equal to the resolution of the window that we’re drawing to in pixels (more on that in a moment).
 * @param[in] capabilities: The surface capabilities for the swap chain image.
 * @return The 2D extent we choose.
@@ -723,7 +723,7 @@ void VulkanHelper::CreateSwapChain()
 
 
 /**
-* @brief Create a image view instance based on the image and its format
+* @brief Create an image view instance based on the image and its format.
 * @param[in] image: The image we are using.
 * @param[in] format: The format of the image view.
 * @param[in] aspectFlags: The aspect mask. Can be color or depth.
@@ -973,7 +973,7 @@ void VulkanHelper::CreateGraphicsPipeline()
 
 
 /**
-* @brief Create the render pass to attach the framebuffer
+* @brief Create the render pass to attach the framebuffer.
 */
 void VulkanHelper::CreateRenderPass()
 {
@@ -1231,10 +1231,6 @@ void VulkanHelper::CreateVertexBuffers(){
         CreateVertexBuffer(*mesh.second,index);
         index++;
     }
-
-    //for(size_t i = 0; i < vertexBuffers.size(); i++){
-    //    CreateVertexBuffer(*s72Instance->meshes[i],i);
-    //}
 }
 
 
@@ -1393,7 +1389,7 @@ void VulkanHelper::UpdateUniformBuffer(uint32_t currentImage, const Mesh& mesh, 
 
 
 /**
-* @brief Create a pool to allocate descriptor sets
+* @brief Create a pool to allocate descriptor sets.
 */
 void VulkanHelper::CreateDescriptorPool()
 {
@@ -1510,7 +1506,7 @@ void VulkanHelper::CreateCommandBuffers()
 
 
 /**
-* @brief Writes the commands we want to execute into a command buffer
+* @brief Writes the commands we want to execute into a command buffer.
 * @param[in] commandBuffer: The buffer we are writing to
 * @param[in] imageIndex: The index of the current swap chain image we want to write to
 */
@@ -1587,6 +1583,13 @@ void VulkanHelper::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t i
 
         /* Loop through each instance of that mesh. */
         for(size_t i = 0; i < mesh.second->instances.size(); i++){
+
+            if(FrustumCulling::IsCulled(currCamera,mesh.second,mesh.second->instances[i]) && cullingMode == "frustum"){
+                //std::cout << mesh.first << " is Culled." << std::endl;
+                i_index++;
+                continue;
+            }
+
             /* Bind the descriptor sets */
             uint32_t dynamicOffset = i_index * sizeof(UniformBufferObject);
             vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 1, &dynamicOffset);
@@ -1616,7 +1619,7 @@ void VulkanHelper::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t i
 
 
 /**
-* @brief Create the image instance
+* @brief Create the image instance.
 * @param[in] width: The image's width.
 * @param[in] height: The image's height.
 * @param[in] format: Image's format
@@ -1880,7 +1883,7 @@ void VulkanHelper::CreateTextureSampler()
 
 
 /**
-* @brief Create all the semaphores and fences used for sync updating the command buffers
+* @brief Create all the semaphores and fences used for sync updating the command buffers.
 */
 void VulkanHelper::CreateSyncObjects()
 {
@@ -1935,7 +1938,7 @@ VkFormat VulkanHelper::FindSupportedFormat(const std::vector<VkFormat>& candidat
 
 
 /**
-* @brief select a format with a depth component that supports usage as depth attachment.
+* @brief Select a format with a depth component that supports usage as depth attachment.
 * @return The found depth format.
 */
 VkFormat VulkanHelper::FindDepthFormat() {
@@ -1948,7 +1951,7 @@ VkFormat VulkanHelper::FindDepthFormat() {
 
 
 /**
-* @brief Check if a format contains a stencil component (Can be used for the depth test)
+* @brief Check if a format contains a stencil component. (Can be used for the depth test)
 * @param[in] format: The format we want to testify.
 * @return True if it has the component.
 */
@@ -1958,7 +1961,7 @@ bool VulkanHelper::HasStencilComponent(VkFormat format) {
 
 
 /**
-* @brief Create the depth image and the image view
+* @brief Create the depth image and the image view.
 */
 void VulkanHelper::CreateDepthResources()
 {
@@ -1971,7 +1974,7 @@ void VulkanHelper::CreateDepthResources()
 
 
 /**
-* @brief Load a obj model from the given path.
+* @brief Load an obj model from the given path.
 */
 void VulkanHelper::LoadModel()
 {
@@ -2257,11 +2260,13 @@ void VulkanHelper::MainLoopWIN()
  * @param height The display window height
  * @param newDeviceName The physical device name.
  * @param cameraName The camera name.
+ * @param newCullingMode The new culling mode.
  */
-void VulkanHelper::InitializeData(const std::shared_ptr<S72Helper>& news72Instance, uint32_t width, uint32_t height, const std::string& newDeviceName, const std::string& cameraName){
+void VulkanHelper::InitializeData(const std::shared_ptr<S72Helper>& news72Instance, uint32_t width, uint32_t height, const std::string& newDeviceName, const std::string& cameraName, const std::string& newCullingMode){
     windowWidth = width;
     windowHeight = height;
     deviceName = newDeviceName;
+    cullingMode = newCullingMode;
 
     s72Instance = news72Instance;
     currCamera = s72Instance->cameras["User-Camera"];
@@ -2303,6 +2308,10 @@ void VulkanHelper::RunWIN(HINSTANCE new_Instance, HWND new_hwnd)
 }
 
 
+/**
+ * @brief Handle the GLFW input based on the key the user typed.
+ * @param key The key the user typed as a char.
+ */
 void VulkanHelper::ProcessGLFWInputCallBack(char key){
     if(currCamera == nullptr) return;
 
@@ -2376,9 +2385,6 @@ void VulkanHelper::DrawFrame()
     vkResetCommandBuffer(commandBuffers[currentFrame], 0);
     RecordCommandBuffer(commandBuffers[currentFrame], imageIndex);
 
-    /* Update the Uniform Buffer */
-    //UpdateUniformBuffer(currentFrame);
-
     /* Create the info to submit the command buffer */
     VkSubmitInfo submitInfo{};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -2402,7 +2408,6 @@ void VulkanHelper::DrawFrame()
     if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
         throw std::runtime_error("failed to submit draw command buffer!");
     }
-
 
     VkPresentInfoKHR presentInfo{};
     presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;

@@ -71,6 +71,11 @@ XZM::vec3 XZM::vec3::operator* (float nf) const{
 }
 
 
+XZM::vec3 XZM::vec3::operator/ (float nf) const{
+    return {data[0]/nf, data[1]/nf, data[2]/nf};
+}
+
+
 bool XZM::vec3::IsEmpty() const{
     return data[0] == 0 && data[1] == 0 && data[2] == 0;
 }
@@ -93,6 +98,9 @@ XZM::vec3& XZM::vec3::operator-= (const vec3& nv){
     return *this;
 }
 
+float XZM::vec3::Length() const {
+    return std::sqrt(data[0] * data[0] + data[1] * data[1] + data[2] * data[2]);
+}
 
 
 /* ===================================================================================================== */
@@ -183,14 +191,13 @@ XZM::mat4 XZM::mat4::operator * (const mat4& nm){
     return newMat;
 }
 
-
-
-
-
-
-
-
-
+XZM::vec3 XZM::mat4::operator*(const XZM::vec3 &nv) {
+    vec3 result;
+    result.data[0] = data[0][0] * nv.data[0] + data[1][0] * nv.data[1] + data[2][0] * nv.data[2] + data[3][0];
+    result.data[1] = data[0][1] * nv.data[0] + data[1][1] * nv.data[1] + data[2][1] * nv.data[2] + data[3][1];
+    result.data[2] = data[0][2] * nv.data[0] + data[1][2] * nv.data[1] + data[2][2] * nv.data[2] + data[3][2];
+    return result;
+}
 
 
 /* ============================================================================================================== */
@@ -433,9 +440,9 @@ XZM::mat4 XZM::Translation(const mat4& nm, const vec3& factor){
 
 XZM::mat4 XZM::Translation(const vec3& nv){
     mat4 newmat;
-    newmat.data[3][0] = nv.data[0];
-    newmat.data[3][1] = nv.data[1];
-    newmat.data[3][2] = nv.data[2];
+    newmat.data[3][0] += nv.data[0];
+    newmat.data[3][1] += nv.data[1];
+    newmat.data[3][2] += nv.data[2];
 
     return newmat;
 }

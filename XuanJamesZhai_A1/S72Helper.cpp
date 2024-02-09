@@ -73,6 +73,13 @@ void Camera::SetCameraData(float newAspect, float new_V_fov, float newNear, floa
     v_fov = new_V_fov;
     near_z = newNear;
     far_z = newFar;
+    float tan_fov = tanf(v_fov * 0.5f);
+
+    /* Use the camera data to set the frustum. */
+    frustum.near_right = aspect * near_z * tan_fov,
+    frustum.near_top = near_z * tan_fov,
+    frustum.near_plane = -near_z;
+    frustum.far_plane = -far_z;
 }
 
 
@@ -235,18 +242,19 @@ void Mesh::ProcessMesh(){
     std::shared_ptr<ParserNode> new_cFormat = color->GetObjectValue("format");
 
     name = std::get<std::string>(new_name->data);
+    count = (uint32_t) std::get<float>(new_count->data);
+
+    stride = (uint32_t) std::get<float>(new_stride->data);
+    pOffset = (uint32_t) std::get<float>(new_pOffset->data);
+    nOffset = (uint32_t) std::get<float>(new_nOffset->data);
+    cOffset = (uint32_t) std::get<float>(new_cOffset->data);
+
     SetSrc(std::get<std::string>(new_src->data));
     SetTopology(std::get<std::string>(new_topology->data));
-    count = (uint32_t) std::get<float>(new_count->data);
-    stride = (uint32_t) std::get<float>(new_stride->data);
 
     SetFormat(0,std::get<std::string>(new_pFormat->data));
     SetFormat(1,std::get<std::string>(new_nFormat->data));
     SetFormat(2,std::get<std::string>(new_cFormat->data));
-
-    pOffset = (uint32_t) std::get<float>(new_pOffset->data);
-    nOffset = (uint32_t) std::get<float>(new_nOffset->data);
-    cOffset = (uint32_t) std::get<float>(new_cOffset->data);
 }
 
 
@@ -264,6 +272,10 @@ void Mesh::SetSrc(const std::string& srcPath){
     /* Read the file into the src string. */
     std::stringstream buffer;
     buffer << input_file.rdbuf();
+
+    /* Set the bounding box while reading the b72 file. */
+    ReadBoundingBox(buffer);
+
     src = buffer.str();
 }
 
@@ -299,6 +311,44 @@ void Mesh::SetTopology(const std::string& new_topology){
 }
 
 
+/**
+ * @brief Read the b72 file. Loop through each vertex position and construct the bounding box.
+ * @param buffer The b72 file stored in a string stream buffer.
+ */
+void Mesh::ReadBoundingBox(std::stringstream& buffer){
+
+    XZM::vec3 currPos,currNormal, currColor;
+
+    /* The size of the position, normal, and color are determined by the offsets. */
+    long long posSize = (nOffset - pOffset) / 3;
+    long long normSize = (cOffset-nOffset) / 3;
+    long long colorSize = (stride - cOffset) / 4;
+
+    for(size_t i = 0; i < count; i++){
+        buffer.read(reinterpret_cast<char*>(&currPos.data[0]), posSize);
+        buffer.read(reinterpret_cast<char*>(&currPos.data[1]), posSize);
+        buffer.read(reinterpret_cast<char*>(&currPos.data[2]), posSize);
+
+        buffer.read(reinterpret_cast<char*>(&currNormal.data[0]), normSize);
+        buffer.read(reinterpret_cast<char*>(&currNormal.data[1]), normSize);
+        buffer.read(reinterpret_cast<char*>(&currNormal.data[2]), normSize);
+
+        buffer.read(reinterpret_cast<char*>(&currColor.data[0]), colorSize);
+        buffer.read(reinterpret_cast<char*>(&currColor.data[1]), colorSize);
+        buffer.read(reinterpret_cast<char*>(&currColor.data[2]), colorSize);
+        buffer.read(reinterpret_cast<char*>(&currColor.data[2]), colorSize);
+
+        /* Update the min/max position in different axis. */
+        boundingBox.b_min.data[0] = std::min(currPos.data[0], boundingBox.b_min.data[0]);
+        boundingBox.b_min.data[1] = std::min(currPos.data[1], boundingBox.b_min.data[1]);
+        boundingBox.b_min.data[2] = std::min(currPos.data[2], boundingBox.b_min.data[2]);
+        boundingBox.b_max.data[0] = std::max(currPos.data[0], boundingBox.b_max.data[0]);
+        boundingBox.b_max.data[1] = std::max(currPos.data[1], boundingBox.b_max.data[1]);
+        boundingBox.b_max.data[2] = std::max(currPos.data[2], boundingBox.b_max.data[2]);
+    }
+}
+
+
 /* =============================================== S72Helper ======================================================== */
 
 
@@ -313,6 +363,8 @@ S72Helper::S72Helper(){
     newCamera->isMovable = true;
     newCamera->ComputeViewMatrix();
     newCamera->ComputeProjectionMatrix();
+    newCamera->SetCameraData(1.7778f,0.287167f,0.1f,1000);
+
     cameras.insert(std::make_pair(newCamera->name,newCamera));
 }
 

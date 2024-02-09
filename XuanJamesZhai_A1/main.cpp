@@ -3,7 +3,6 @@
 #include <string>
 #include <memory>
 #include "VulkanHelper.h"
-#include "S72Helper.h"
 
 /* The s72 scene file name passed from the command line. */
 static std::string sceneName;
@@ -20,6 +19,10 @@ static size_t windowWidth = 1920;
 /* The Window height passed from the command line. */
 static size_t windowHeight = 1080;
 
+/* The culling mode applied when render the scene. */
+static std::string cullingMode = "none";
+
+/* A dynamic allocated instance of the VKHelper. */
 static std::shared_ptr<VulkanHelper> newVKHelper = std::make_shared<VulkanHelper>();
 
 
@@ -40,6 +43,9 @@ void ReadCMDArguments(int argc, char** argv){
             windowWidth = strtoul(argv[i+1],nullptr,0);
             windowHeight = strtoul(argv[i+2],nullptr,0);
         }
+        else if(strcmp(argv[i],"--culling") == 0){
+            cullingMode = argv[i+1];
+        }
     }
 }
 
@@ -48,18 +54,19 @@ int main(int argc, char** argv) {
 
     ReadCMDArguments(argc,argv);
 
+    /* Parse the s72 file. */
     std::shared_ptr<S72Helper> newS72Helper(new S72Helper());
     newS72Helper->ReadS72(sceneName);
 
     try
     {
-        newVKHelper->InitializeData(newS72Helper,windowWidth,windowHeight,deviceName,cameraName);
+        /* Initialize the vulkan helper and pass data from the command line arguments. */
+        newVKHelper->InitializeData(newS72Helper,windowWidth,windowHeight,deviceName,cameraName,cullingMode);
         newVKHelper->Run();
     }
     catch (const std::exception& e)
     {
         throw std::runtime_error(e.what());
     }
-
     return EXIT_SUCCESS;
 }

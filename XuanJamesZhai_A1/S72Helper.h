@@ -13,6 +13,7 @@
 
 #include "XZJParser.h"
 #include "XZMath.h"
+#include "FrustumCulling.h"
 
 
 /**
@@ -42,6 +43,9 @@ public:
 
     /* If this camera can be controlled by the keyboard input. */
     bool isMovable = false;
+
+    /* The frustum based on the camera's view angle and distance. */
+    Frustum frustum;
 
     Camera();
     /* Construct a camera based on the node and its name. */
@@ -99,10 +103,15 @@ public:
     /* A list of mesh instance, they are represented by its unique model matrix. */
     std::vector<XZM::mat4> instances;
 
+    /* An AABB bounding box for the mesh. */
+    AABB boundingBox;
+
     /* Construct a mesh based on the node. */
     explicit Mesh(std::shared_ptr<ParserNode>& node);
     /* Set all the mesh's variable based on the data in the s72 file. */
     void ProcessMesh();
+    /* Given a mesh's b72 data, read and set the mesh's bounding box. */
+    void ReadBoundingBox(std::stringstream& buffer);
 };
 
 
