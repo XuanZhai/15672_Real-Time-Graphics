@@ -68,6 +68,8 @@ namespace XZM {
 
     float DotProduct(const vec3& v1, const vec3& v2);
 
+    float DotProduct(const quat& q1, const quat& q2);
+
     vec3 Normalize(const vec3& nv);
 
     mat4 LookAt(const vec3& eyePos, const vec3& target, const vec3& up);
@@ -99,6 +101,10 @@ namespace XZM {
     vec3 ConvertQuatToVec3(const quat& quaternion);
 
     vec3 RotateVec3(const vec3& vector, const vec3& axis, float radians);
+
+    vec3 Lerp(const vec3& low, const vec3& high, float t);
+
+    quat Lerp(const quat& low, const quat& high, float t);
 }
 
 

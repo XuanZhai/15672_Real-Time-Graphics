@@ -10,6 +10,7 @@
 #include <vector>
 #include <vulkan/vulkan.h>
 #include <unordered_map>
+#include <chrono>
 
 #include "XZJParser.h"
 #include "XZMath.h"
@@ -115,6 +116,20 @@ public:
 };
 
 
+class Driver{
+public:
+    int nodeIndex = 0;
+    std::string channel;
+    std::vector<float> timers;
+    std::vector<std::variant<XZM::vec3,XZM::quat>> values;
+
+    void Initialization(const std::shared_ptr<ParserNode>& node);
+    std::variant<XZM::vec3,XZM::quat> GetCurrentData(float currTime);
+    std::string HasMatchNodeAndChannel(const std::shared_ptr<ParserNode>& node);
+};
+
+
+
 class S72Helper {
 
 private:
@@ -129,6 +144,12 @@ public:
     std::map<std::string, std::shared_ptr<Mesh>> meshes;
     /* The total number of mesh instance. */
     size_t instanceCount = 0;
+
+
+    std::chrono::steady_clock::time_point startTimePoint;
+    float currTime = 0;
+
+    std::vector<std::shared_ptr<Driver>> movingNodes;
 
     S72Helper();
     /* Read and parse a s72 file from a given path. */

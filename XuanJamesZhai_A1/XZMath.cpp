@@ -341,6 +341,11 @@ float XZM::DotProduct(const XZM::vec3 &v1, const XZM::vec3 &v2) {
 }
 
 
+float XZM::DotProduct(const quat& q1, const quat& q2){
+    return q1.data[0] * q2.data[0] + q1.data[1] * q2.data[1] + q1.data[2] * q2.data[2] + q1.data[3] * q2.data[3];
+}
+
+
 XZM::vec3 XZM::Normalize(const vec3& nv){
     float length = std::sqrt(nv.data[0] * nv.data[0] + nv.data[1] * nv.data[1] + nv.data[2] * nv.data[2]);
     return vec3(nv.data[0] / length, nv.data[1] / length, nv.data[2] / length);
@@ -557,4 +562,51 @@ XZM::vec3 XZM::RotateVec3(const vec3& vector, const vec3& axis, float radians){
     rotatedVec.data[2] = vector.data[0] * rotationMatrix.data[2][0] + vector.data[1] * rotationMatrix.data[2][1] + vector.data[2] * rotationMatrix.data[2][2];
 
     return rotatedVec;
+}
+
+
+XZM::vec3 XZM::Lerp(const vec3& low, const vec3& high, float t){
+    float x = low.data[0] * (1.0f - t) + high.data[0] * t;
+    float y = low.data[1] * (1.0f - t) + high.data[1] * t;
+    float z = low.data[2] * (1.0f - t) + high.data[2] * t;
+
+    return {x,y,z};
+}
+
+
+XZM::quat XZM::Lerp(const quat& low, const quat& high, float t){
+    float dot = DotProduct(low,high);
+
+    // If the dot product is negative, invert one of the quaternions to take the shortest path
+    quat high_adj = high;
+    if (dot < 0.0f) {
+        high_adj.data[0] = -high.data[0];
+        high_adj.data[1] = -high.data[1];
+        high_adj.data[2] = -high.data[2];
+        high_adj.data[3] = -high.data[3];
+        dot = -dot;
+    }
+
+    quat result;
+    // Interpolate the quaternions
+    if (dot > 0.9995f) {
+        // Quaternions are very close, perform linear interpolation
+        result.data[0] = low.data[0] * (1.0f - t) + high_adj.data[0] * t;
+        result.data[1] = low.data[1] * (1.0f - t) + high_adj.data[1] * t;
+        result.data[2] = low.data[2] * (1.0f - t) + high_adj.data[2] * t;
+        result.data[3] = low.data[3] * (1.0f - t) + high_adj.data[3] * t;
+    } else {
+        // Quaternions are not close, use spherical linear interpolation (slerp)
+        float angle = acos(dot);
+        float sinAngle = sin(angle);
+        float invSinAngle = 1.0f / sinAngle;
+        float coeff1 = sin((1.0f - t) * angle) * invSinAngle;
+        float coeff2 = sin(t * angle) * invSinAngle;
+
+        result.data[0] = low.data[0] * coeff1 + high_adj.data[0] * coeff2;
+        result.data[1] = low.data[1] * coeff1 + high_adj.data[1] * coeff2;
+        result.data[2] = low.data[2] * coeff1 + high_adj.data[2] * coeff2;
+        result.data[3] = low.data[3] * coeff1 + high_adj.data[3] * coeff2;
+    }
+    return result;
 }

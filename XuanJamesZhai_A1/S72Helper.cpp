@@ -349,6 +349,74 @@ void Mesh::ReadBoundingBox(std::stringstream& buffer){
 }
 
 
+void Driver::Initialization(const std::shared_ptr<ParserNode>& node){
+
+    if(node == nullptr) return;
+
+    nodeIndex = (int)std::get<float>(node->GetObjectValue("node")->data);
+    channel = std::get<std::string>(node->GetObjectValue("channel")->data);
+    ParserNode::PNVector timerNode = std::get<ParserNode::PNVector>(node->GetObjectValue("times")->data);
+    ParserNode::PNVector valueNode = std::get<ParserNode::PNVector>(node->GetObjectValue("values")->data);
+
+    for(size_t i = 0; i < timerNode.size(); i++){
+        timers.emplace_back(std::get<float>(timerNode[i]->data));
+
+        if(channel == "translation" || channel == "scale"){
+            XZM::vec3 newNumber(std::get<float>(valueNode[3*i]->data), std::get<float>(valueNode[3*i+1]->data), std::get<float>(valueNode[3*i+2]->data));
+            values.emplace_back(newNumber);
+        }
+        else{
+            XZM::quat newNumber(std::get<float>(valueNode[4*i]->data), std::get<float>(valueNode[4*i+1]->data), std::get<float>(valueNode[4*i+2]->data), std::get<float>(valueNode[4*i+3]->data));
+            values.emplace_back(newNumber);
+        }
+    }
+
+}
+
+
+std::variant<XZM::vec3,XZM::quat> Driver::GetCurrentData(float currTime){
+    if(timers.empty()) return XZM::vec3();
+
+    currTime = fmodf(currTime, timers.back());
+
+    if(currTime <= timers.at(0)){
+        return values.at(0);
+    }
+
+    auto low = std::lower_bound(timers.begin(),timers.end(), currTime);
+    if(*low == timers.back()){
+        return values.back();
+    }
+
+    auto high = std::next(low);
+    float range = *high - *low;
+    float t = 0;
+    size_t lowIndex = low - timers.begin();
+    size_t highIndex = high - timers.begin();
+
+    if(range != 0){
+        t = (currTime - *low)/range;
+    }
+
+    if(channel == "translation" || channel == "scale"){
+        return XZM::Lerp(std::get<XZM::vec3>(values.at(lowIndex)), std::get<XZM::vec3>(values.at(highIndex)), t);
+    }
+    else{
+        return XZM::Lerp(std::get<XZM::quat>(values.at(lowIndex)), std::get<XZM::quat>(values.at(highIndex)), t);
+    }
+}
+
+
+std::string Driver::HasMatchNodeAndChannel(const std::shared_ptr<ParserNode>& node){
+    int newIndex = (int)std::get<float>(node->GetObjectValue("ListIndex")->data);
+
+    if(newIndex == nodeIndex){
+        return channel;
+    }
+    return "";
+}
+
+
 /* =============================================== S72Helper ======================================================== */
 
 
@@ -379,6 +447,8 @@ void S72Helper::ReadS72(const std::string &filename) {
     root = parser.Parse(filename);
     /* Reconstruct the parser data to form a tree structure. */
     ReconstructRoot();
+
+    startTimePoint = std::chrono::high_resolution_clock::now();
 }
 
 
@@ -389,20 +459,37 @@ void S72Helper::ReadS72(const std::string &filename) {
 void S72Helper::ReconstructRoot() {
 
     std::shared_ptr<ParserNode> newRoot;
+    float index = 0;
 
     /* Loop through the all the nodes to find the scene node. */
     for(const std::shared_ptr<ParserNode>& node : std::get<ParserNode::PNVector>(root->data) ){
 
         /* Skip the first node which is the "s72-v1" */
         if(std::get_if<std::string>(&node->data) != nullptr){
+            index++;
             continue;
         }
+
+        std::shared_ptr<ParserNode> newIndex = std::make_shared<ParserNode>();
+        newIndex->data = index;
+        std::get<ParserNode::PNMap>(node->data).insert(make_pair("ListIndex", newIndex));
 
         /* If the object has a key which is the roots, we found the scene node */
         if(std::get<std::string>(node->GetObjectValue("type")->data) == "SCENE"){
             newRoot = node;
-            break;
         }
+        else if(std::get<std::string>(node->GetObjectValue("type")->data) == "DRIVER"){
+            //size_t nodeIdx = (size_t)std::get<float>(node->GetObjectValue("node")->data);
+            //std::shared_ptr<ParserNode> targetNode = std::get<ParserNode::PNVector>(root->data)[nodeIdx];
+            //std::string nodeName = std::get<std::string>(targetNode->GetObjectValue("name")->data);
+            //std::string name = std::get<std::string>(node->GetObjectValue("name")->data);
+
+            std::shared_ptr<Driver> newDriver = std::make_shared<Driver>();
+            newDriver->Initialization(node);
+
+            movingNodes.emplace_back(newDriver);
+        }
+        index++;
     }
 
     /* Recursively reconstruct its children and reset the root node */
@@ -433,11 +520,23 @@ void S72Helper::ReconstructNode(std::shared_ptr<ParserNode> newNode, XZM::mat4 n
 
     /* If it is a node object, find its world transformation */
     if(type == "NODE"){
-        XZM::mat4 translation = XZM::Translation(S72Helper::FindTranslation(*newNode));
-        XZM::mat4 rotation = XZM::QuatToMat4(S72Helper::FindRotation(*newNode));
-        XZM::mat4 scale = XZM::Scaling(S72Helper::FindScale(*newNode));
+        XZM::vec3 translation = S72Helper::FindTranslation(*newNode);
+        XZM::quat rotation = S72Helper::FindRotation(*newNode);
+        XZM::vec3 scale = S72Helper::FindScale(*newNode);
 
-        newMat = scale * rotation * translation * newMat;
+        for(const auto& driver : movingNodes){
+            std::string channel = driver->HasMatchNodeAndChannel(newNode);
+            if(channel.empty()) continue;
+            if(channel == "translation") translation = std::get<XZM::vec3>(driver->GetCurrentData(currTime));
+            else if(channel == "rotation") rotation = std::get<XZM::quat>(driver->GetCurrentData(currTime));
+            else if(channel == "scale") scale = std::get<XZM::vec3>(driver->GetCurrentData(currTime));
+        }
+
+        XZM::mat4 translationMatrix = XZM::Translation(translation);
+        XZM::mat4 rotationMatrix = XZM::QuatToMat4(rotation);
+        XZM::mat4 scaleMatrix = XZM::Scaling(scale);
+
+        newMat = scaleMatrix * rotationMatrix * translationMatrix * newMat;
     }
     else if(type == "MESH"){
             std::string meshName = std::get<std::string>(newNode->GetObjectValue("name")->data);
@@ -509,6 +608,10 @@ void S72Helper::UpdateObjects(){
         mesh.second->instances.clear();
     }
 
+    auto currentTimePoint = std::chrono::high_resolution_clock::now();
+    float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTimePoint - startTimePoint).count();
+    currTime = std::fmodf(time,120);
+
     UpdateObject(root,XZM::mat4());
 }
 
@@ -530,18 +633,32 @@ void S72Helper::UpdateObject(const std::shared_ptr<ParserNode>& newNode, XZM::ma
 
     if(type == "NODE"){
         /* If it is a node object, find its world transform matrix. */
-        XZM::mat4 translation = XZM::Translation(S72Helper::FindTranslation(*newNode));
-        XZM::mat4 rotation = XZM::QuatToMat4(S72Helper::FindRotation(*newNode));
-        XZM::mat4 scale = XZM::Scaling(S72Helper::FindScale(*newNode));
+        XZM::vec3 translation = S72Helper::FindTranslation(*newNode);
+        XZM::quat rotation = S72Helper::FindRotation(*newNode);
+        XZM::vec3 scale = S72Helper::FindScale(*newNode);
 
-        newMat = scale * rotation * translation * newMat;
+        for(const auto& driver : movingNodes){
+            std::string channel = driver->HasMatchNodeAndChannel(newNode);
+            if(channel.empty()) continue;
+            if(channel == "translation") translation = std::get<XZM::vec3>(driver->GetCurrentData(currTime));
+            else if(channel == "rotation") {
+                rotation = std::get<XZM::quat>(driver->GetCurrentData(currTime));
+            }
+            else if(channel == "scale") scale = std::get<XZM::vec3>(driver->GetCurrentData(currTime));
+        }
+
+        XZM::mat4 translationMatrix = XZM::Translation(translation);
+        XZM::mat4 rotationMatrix = XZM::QuatToMat4(rotation);
+        XZM::mat4 scaleMatrix = XZM::Scaling(scale);
+
+        newMat = scaleMatrix * rotationMatrix * translationMatrix * newMat;
     }
     else if(type == "MESH"){
         /* Update the mesh instance with the new transform data. */
         std::string meshName = std::get<std::string>(newNode->GetObjectValue("name")->data);
         meshes[meshName]->instances.emplace_back(newMat);
     }
-    else if(type == "Camera"){
+    else if(type == "CAMERA"){
         /* Update the camera with the new transform data. */
         std::string cameraName = std::get<std::string>(newNode->GetObjectValue("name")->data);
         cameras[cameraName]->ProcessCamera(newMat);

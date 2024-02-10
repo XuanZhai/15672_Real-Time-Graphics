@@ -6,7 +6,6 @@ set(CMAKE_CXX_STANDARD 17)
 include_directories(
         C:/VulkanSDK/glfw-3.3.9.bin.WIN64/include
         C:/VulkanSDK/stb
-        C:/VulkanSDK/tiny_obj_loader
 )
 
 find_package(Vulkan REQUIRED)
