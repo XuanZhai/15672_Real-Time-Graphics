@@ -5,6 +5,7 @@ layout(binding = 0) uniform UniformBufferObject{
     mat4 model;
     mat4 view;
     mat4 proj;
+    mat4 tranposeModel;
 } ubo;
 
 layout(location = 0) in vec3 inPosition;
@@ -19,6 +20,6 @@ void main() {
     gl_Position = ubo.proj * ubo.view * ubo.model * vec4(inPosition, 1.0);
 
     fragColor = inColor;
-    fragNormal = normal;
+    fragNormal = (ubo.tranposeModel * vec4(normal,1.0)).xyz;
     fragTexCoord = vec2(0,0);
 }

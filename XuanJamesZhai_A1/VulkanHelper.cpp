@@ -451,7 +451,7 @@ VulkanHelper::QueueFamilyIndices VulkanHelper::FindQueueFamilies(VkPhysicalDevic
     int i = 0;
     for (const auto& queueFamily : queueFamilies) {
 
-        if (QFIndices.isComplete()) {
+        if (QFIndices.isComplete(useHeadlessRendering)) {
             break;
         }
 
@@ -459,11 +459,13 @@ VulkanHelper::QueueFamilyIndices VulkanHelper::FindQueueFamilies(VkPhysicalDevic
             QFIndices.graphicsFamily = i;
         }
 
-        /* Check if the device support surface */
-        VkBool32 presentSupport = false;
-        vkGetPhysicalDeviceSurfaceSupportKHR(newDevice, i, surface, &presentSupport);
-        if (presentSupport) {
-            QFIndices.presentFamily = i;
+        if(!useHeadlessRendering) {
+            /* Check if the device support surface */
+            VkBool32 presentSupport = false;
+            vkGetPhysicalDeviceSurfaceSupportKHR(newDevice, i, surface, &presentSupport);
+            if (presentSupport) {
+                QFIndices.presentFamily = i;
+            }
         }
 
         i++;
@@ -493,13 +495,16 @@ bool VulkanHelper::IsDeviceSuitable(VkPhysicalDevice newDevice)
     bool extensionsSupported = CheckDeviceExtensionSupport(newDevice);
 
     bool swapChainAdequate = false;
-    if (extensionsSupported) {
+    if(useHeadlessRendering){
+        swapChainAdequate = true;
+    }
+    else if (extensionsSupported) {
         SwapChainSupportDetails swapChainSupport = QuerySwapChainSupport(newDevice);
         swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
     }
 
     bool result = deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU &&
-           deviceFeatures.geometryShader && QFIndices.isComplete() && extensionsSupported && swapChainAdequate && deviceFeatures.samplerAnisotropy;
+           deviceFeatures.geometryShader && QFIndices.isComplete(useHeadlessRendering) && extensionsSupported && swapChainAdequate && deviceFeatures.samplerAnisotropy;
 
     if(deviceName.empty()) return result;
 
@@ -572,7 +577,11 @@ void VulkanHelper::CreateLogicalDevice()
     QueueFamilyIndices QFIndices = FindQueueFamilies(physicalDevice);
 
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-    std::set<uint32_t> uniqueQueueFamilies = { QFIndices.graphicsFamily.value(), QFIndices.presentFamily.value() };
+
+    std::set<uint32_t> uniqueQueueFamilies = { QFIndices.graphicsFamily.value()};
+    if(!useHeadlessRendering){
+        uniqueQueueFamilies = { QFIndices.graphicsFamily.value(), QFIndices.presentFamily.value() };
+    }
 
     /* We need to have multiple VkDeviceQueueCreateInfo structs to create a queue from both queue families. */
     float queuePriority = 1.0f;
@@ -611,6 +620,10 @@ void VulkanHelper::CreateLogicalDevice()
     createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
     createInfo.ppEnabledExtensionNames = deviceExtensions.data();
 
+    if(useHeadlessRendering){
+        createInfo.enabledExtensionCount--;
+    }
+
     if (enableValidationLayers) {
         createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
         createInfo.ppEnabledLayerNames = validationLayers.data();
@@ -627,8 +640,10 @@ void VulkanHelper::CreateLogicalDevice()
 
     /* Retrieve queue handles for each queue family */
     vkGetDeviceQueue(device, QFIndices.graphicsFamily.value(), 0, &graphicsQueue);
-    /* Retrieve queue handles for each present family*/
-    vkGetDeviceQueue(device, QFIndices.presentFamily.value(), 0, &presentQueue);
+    if(!useHeadlessRendering) {
+        /* Retrieve queue handles for each present family*/
+        vkGetDeviceQueue(device, QFIndices.presentFamily.value(), 0, &presentQueue);
+    }
 }
 
 
@@ -719,6 +734,24 @@ void VulkanHelper::CreateSwapChain()
     vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr);
     swapChainImages.resize(imageCount);
     vkGetSwapchainImagesKHR(device, swapChain, &imageCount, swapChainImages.data());
+}
+
+
+
+void VulkanHelper::CreateHeadlessSwapChain(){
+
+    uint32_t imageCount = 3;
+
+    swapChainImages.resize(imageCount);
+    headlessImageMemory.resize(imageCount);
+    headlessImageMapped.resize(imageCount);
+
+    for(size_t i = 0; i < imageCount; i++){
+        CreateImage(windowWidth,windowHeight,1,VK_FORMAT_B8G8R8A8_SRGB,VK_IMAGE_TILING_OPTIMAL,VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,swapChainImages[i],headlessImageMemory[i]);
+    }
+
+    swapChainImageFormat = VK_FORMAT_B8G8R8A8_SRGB;
+    swapChainExtent = {windowWidth,windowHeight};
 }
 
 
@@ -993,6 +1026,9 @@ void VulkanHelper::CreateRenderPass()
     /* VKImage needs to be transitioned to specific layouts */
     colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;      // We don't care about the previous layout
     colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;  // We want the image to be ready for presentation using the swap chain after rendering
+    if(useHeadlessRendering) {
+        colorAttachment.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    }
 
     /* Create the attachment for the depth image */
     VkAttachmentDescription depthAttachment{};
@@ -1239,7 +1275,7 @@ void VulkanHelper::CreateVertexBuffers(){
 * @param[in] newMesh The mesh data which contains the vertices info.
 * @param[in] index The index of that mesh instance in the list.
 */
-void VulkanHelper::CreateVertexBuffer(const Mesh& newMeshInstance, size_t index)
+void VulkanHelper::CreateVertexBuffer(const S72Object::Mesh& newMeshInstance, size_t index)
 {
     //VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
     VkDeviceSize bufferSize = newMeshInstance.src.size();
@@ -1271,7 +1307,7 @@ void VulkanHelper::CreateVertexBuffer(const Mesh& newMeshInstance, size_t index)
  * @param newMeshInstance The mesh we are construct from.
  * @return newMeshInstance's binding description info.
  */
-VkVertexInputBindingDescription2EXT VulkanHelper::CreateBindingDescription(const Mesh& newMeshInstance){
+VkVertexInputBindingDescription2EXT VulkanHelper::CreateBindingDescription(const S72Object::Mesh& newMeshInstance){
     VkVertexInputBindingDescription2EXT bindingDescription{};
 
     bindingDescription.sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_BINDING_DESCRIPTION_2_EXT;
@@ -1289,7 +1325,7 @@ VkVertexInputBindingDescription2EXT VulkanHelper::CreateBindingDescription(const
  * @param newMeshInstance The mesh we are construct from.
  * @return newMeshInstance's attribute description info.
  */
-std::array<VkVertexInputAttributeDescription2EXT, 3> VulkanHelper::CreateAttributeDescription(const Mesh& newMeshInstance){
+std::array<VkVertexInputAttributeDescription2EXT, 3> VulkanHelper::CreateAttributeDescription(const S72Object::Mesh& newMeshInstance){
 
     std::array<VkVertexInputAttributeDescription2EXT, 3> attributeDescriptions{};
 
@@ -1366,7 +1402,7 @@ void VulkanHelper::CreateUniformBuffers()
 /**
 * @brief Update the uniform buffer on the current image with given ubo data.
 */
-void VulkanHelper::UpdateUniformBuffer(uint32_t currentImage, const Mesh& mesh, size_t instanceIndex, size_t totalIndex)
+void VulkanHelper::UpdateUniformBuffer(uint32_t currentImage, const S72Object::Mesh& mesh, size_t instanceIndex, size_t totalIndex)
 {
     //static auto startTime = std::chrono::high_resolution_clock::now();
 
@@ -1379,6 +1415,7 @@ void VulkanHelper::UpdateUniformBuffer(uint32_t currentImage, const Mesh& mesh, 
     ubo.model = mesh.instances.at(instanceIndex);
     ubo.view = currCamera->viewMatrix;
     ubo.proj = currCamera->projMatrix;
+    ubo.transposeModel = XZM::Transpose(ubo.model);
 
     /* Flip the Y-Dir */
     ubo.proj.data[1][1] *= -1;
@@ -2023,6 +2060,103 @@ void VulkanHelper::LoadModel()
 }
 
 
+void VulkanHelper::CopyImageToData(const VkImage& image, const VkDeviceMemory& imageMemory, void*& data){
+
+    VkMemoryRequirements oldMemoryRequirements;
+    vkGetImageMemoryRequirements(device, image, &oldMemoryRequirements);
+
+    // Allocate staging buffer
+    VkBufferCreateInfo bufferCreateInfo = {};
+    bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bufferCreateInfo.size = oldMemoryRequirements.size;
+    bufferCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    VkBuffer stagingBuffer;
+    vkCreateBuffer(device, &bufferCreateInfo, nullptr, &stagingBuffer);
+
+    // Allocate memory for staging buffer
+    VkMemoryRequirements memoryRequirements;
+    vkGetBufferMemoryRequirements(device, stagingBuffer, &memoryRequirements);
+
+    VkMemoryAllocateInfo allocateInfo = {};
+    allocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocateInfo.allocationSize = memoryRequirements.size;
+    allocateInfo.memoryTypeIndex = FindMemoryType(memoryRequirements.memoryTypeBits,VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+
+    VkDeviceMemory stagingBufferMemory;
+    vkAllocateMemory(device, &allocateInfo, nullptr, &stagingBufferMemory);
+    vkBindBufferMemory(device, stagingBuffer, stagingBufferMemory, 0);
+
+
+// Copy data from image to staging buffer
+    VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
+    VkBufferImageCopy copyRegion = {};
+    copyRegion.bufferOffset = 0;
+    copyRegion.bufferRowLength = 0;
+    copyRegion.bufferImageHeight = 0;
+    copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    copyRegion.imageSubresource.mipLevel = 0;
+    copyRegion.imageSubresource.baseArrayLayer = 0;
+    copyRegion.imageSubresource.layerCount = 1;
+    copyRegion.imageOffset = {0, 0, 0};
+    copyRegion.imageExtent = {
+            windowWidth,
+            windowHeight,
+            1
+    };
+
+    vkCmdCopyImageToBuffer(commandBuffer, image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, stagingBuffer, 1, &copyRegion);
+
+// Transition image layout back if needed
+    vkMapMemory(device, stagingBufferMemory, 0, VK_WHOLE_SIZE, 0, &data);
+
+    EndSingleTimeCommands(commandBuffer);
+
+// Read image data from staging buffer
+// Example: memcpy(/* destination */, mappedData, /* size of the data */);
+
+// Unmap staging buffer memory
+    vkUnmapMemory(device, stagingBufferMemory);
+
+// Clean up
+    vkFreeMemory(device, stagingBufferMemory, nullptr);
+    vkDestroyBuffer(device, stagingBuffer, nullptr);
+}
+
+void VulkanHelper::SaveImageToPPM(const VkImage& image, const VkDeviceMemory& imageMemory,  const std::string& filename){
+    // Map image memory
+    VkMemoryRequirements memoryRequirements;
+    void *mappedMemory;
+    vkGetImageMemoryRequirements(device, image, &memoryRequirements);
+    //vkBindImageMemory(device, image, imageMemory, 0);
+    //vkGetImageMemoryRequirements(device, image, &memoryRequirements);
+    VkDeviceSize imageSize = memoryRequirements.size;
+
+    // Read pixel data from image
+    std::vector<char> pixelData(imageSize);
+    CopyImageToData(image,imageMemory,mappedMemory);
+    memcpy(pixelData.data(), mappedMemory, imageSize);
+
+    // Write pixel data to PPM file
+    std::ofstream ppmFile(filename, std::ios::binary);
+    if (!ppmFile.is_open()) {
+        throw std::runtime_error("Failed to open PPM file for writing.");
+    }
+
+    // Write PPM header
+    ppmFile << "P6\n";
+    ppmFile << windowWidth << " " << windowHeight << "\n";
+    ppmFile << "255\n";
+
+    // Write pixel data
+    ppmFile.write(pixelData.data(), pixelData.size());
+
+    // Close file and unmap memory
+    ppmFile.close();
+}
+
+
 /**
 * @brief Clean up the swap chain and all the related resources.
 */
@@ -2040,7 +2174,15 @@ void VulkanHelper::CleanUpSwapChain()
         vkDestroyImageView(device, imageView, nullptr);
     }
 
-    vkDestroySwapchainKHR(device, swapChain, nullptr);
+    if(useHeadlessRendering){
+        for(size_t i = 0; i < swapChainImages.size(); i++){
+            vkDestroyImage(device,swapChainImages[i], nullptr);
+            vkFreeMemory(device, headlessImageMemory[i] ,nullptr);
+        }
+    }
+    else {
+        vkDestroySwapchainKHR(device, swapChain, nullptr);
+    }
 }
 
 
@@ -2198,10 +2340,17 @@ void VulkanHelper::InitVulkan()
 {
     CreateInstance();
     SetupDebugMessenger();
-    CreateSurface();
+    if(!useHeadlessRendering) {
+        CreateSurface();
+    }
     PickPhysicalDevice();
     CreateLogicalDevice();
-    CreateSwapChain();
+    if(!useHeadlessRendering) {
+        CreateSwapChain();
+    }
+    else{
+        CreateHeadlessSwapChain();
+    }
     CreateImageViews();
     CreateRenderPass();
     CreateDescriptorSetLayout();
@@ -2228,10 +2377,18 @@ void VulkanHelper::InitVulkan()
 */
 void VulkanHelper::MainLoop()
 {
-    while (!glfwWindowShouldClose(window)) {
-        glfwPollEvents();       // Check for inputs
-        s72Instance->UpdateObjects();
-        DrawFrame();
+    if(useHeadlessRendering){
+        for(int i = 0; i < 10; i++) {
+            s72Instance->UpdateObjects();
+            DrawFrame();
+        }
+    }
+    else {
+        while (!glfwWindowShouldClose(window)) {
+            glfwPollEvents();       // Check for inputs
+            s72Instance->UpdateObjects();
+            DrawFrame();
+        }
     }
 
     /* Wait for the logical device to finish operations before exiting mainLoop and destroying the window */
@@ -2290,7 +2447,9 @@ void VulkanHelper::InitializeData(const std::shared_ptr<S72Helper>& news72Instan
  * @param news72Instance The s72 helper which contains all the mesh data.
  */
 void VulkanHelper::Run(){
-    InitWindow();
+    if(!useHeadlessRendering) {
+        InitWindow();
+    }
     InitVulkan();
     MainLoop();
     CleanUp();
@@ -2369,13 +2528,21 @@ void VulkanHelper::DrawFrame()
 
     /* Acquire an image from the swap chain, may need to recreate the swap chain if the image is outdated */
     uint32_t imageIndex;
-    VkResult result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
-    if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-        RecreateSwapChain();
-        return;
+    VkResult result;
+
+    if(!useHeadlessRendering) {
+        result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame],
+                                                VK_NULL_HANDLE, &imageIndex);
+        if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+            RecreateSwapChain();
+            return;
+        } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+            throw std::runtime_error("failed to acquire swap chain image!");
+        }
     }
-    else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
-        throw std::runtime_error("failed to acquire swap chain image!");
+    else{
+        imageIndex = headlessImageIndex;
+        headlessImageIndex = (headlessImageIndex + 1) % headlessImageMemory.size();
     }
 
     /* Reset the fence after wait. Only reset the fence if we are submitting work */
@@ -2391,22 +2558,39 @@ void VulkanHelper::DrawFrame()
 
     VkSemaphore waitSemaphores[] = { imageAvailableSemaphores[currentFrame] };
     VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-    submitInfo.waitSemaphoreCount = 1;
-    submitInfo.pWaitSemaphores = waitSemaphores;
-    submitInfo.pWaitDstStageMask = waitStages;
+    if(!useHeadlessRendering) {
+        submitInfo.waitSemaphoreCount = 1;
+        submitInfo.pWaitSemaphores = waitSemaphores;
+        submitInfo.pWaitDstStageMask = waitStages;
+    }
+    else{
+        submitInfo.waitSemaphoreCount = 0;
+    }
 
     /* Submit a single command buffer */
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &commandBuffers[currentFrame];
 
-    /* Signal the semaphore */
-    VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame] };
-    submitInfo.signalSemaphoreCount = 1;
-    submitInfo.pSignalSemaphores = signalSemaphores;
+    VkSemaphore signalSemaphores[] = {renderFinishedSemaphores[currentFrame]};
+    if(!useHeadlessRendering) {
+        /* Signal the semaphore */
+        submitInfo.signalSemaphoreCount = 1;
+        submitInfo.pSignalSemaphores = signalSemaphores;
+    }
+    else {
+        submitInfo.signalSemaphoreCount = 0;
+    }
 
     /* Submit the command buffer */
     if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
         throw std::runtime_error("failed to submit draw command buffer!");
+    }
+
+    if(useHeadlessRendering){
+        /* Update the current frame to the next frame index */
+        SaveImageToPPM(swapChainImages[imageIndex], headlessImageMemory[imageIndex], "Hello.ppm");
+        currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+        return;
     }
 
     VkPresentInfoKHR presentInfo{};
@@ -2486,14 +2670,17 @@ void VulkanHelper::CleanUp()
     vkDestroyCommandPool(device, commandPool, nullptr);     // Command buffer will be freed when the pool is freed
 
     vkDestroyDevice(device, nullptr);       // Destroy the logical device
-    vkDestroySurfaceKHR(instance, surface, nullptr);    // Destroy the surface instance
+
+    if(!useHeadlessRendering) {
+        vkDestroySurfaceKHR(instance, surface, nullptr);    // Destroy the surface instance
+    }
     vkDestroyInstance(instance, nullptr);   // Destroy the vulkan instance
 
     if (USE_WSI) {
         DestroyWindow(hwnd);
         PostQuitMessage(0);
     }
-    else {
+    else if(!useHeadlessRendering) {
         glfwDestroyWindow(window);      // Close the window
         glfwTerminate();            // GLFW destruction
     }

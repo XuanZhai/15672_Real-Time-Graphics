@@ -22,6 +22,9 @@ static size_t windowHeight = 1080;
 /* The culling mode applied when render the scene. */
 static std::string cullingMode = "none";
 
+/* The file path and the name of the events. */
+static std::string eventFileName;
+
 /* A dynamic allocated instance of the VKHelper. */
 static std::shared_ptr<VulkanHelper> newVKHelper = std::make_shared<VulkanHelper>();
 
@@ -45,6 +48,9 @@ void ReadCMDArguments(int argc, char** argv){
         }
         else if(strcmp(argv[i],"--culling") == 0){
             cullingMode = argv[i+1];
+        }
+        else if(strcmp(argv[i],"--headless") == 0){
+            eventFileName = argv[i+1];
         }
     }
 }

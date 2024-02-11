@@ -9,8 +9,10 @@
 #include <limits>
 #include <memory>
 
-class Camera;
-class Mesh;
+namespace S72Object{
+    class Camera;
+    class Mesh;
+}
 
 /* Reference: https://bruop.github.io/improved_frustum_culling/ */
 
@@ -54,7 +56,7 @@ public:
 class FrustumCulling {
 public:
     /* Check if a mesh with a transform matrix will be culled by the camera. */
-    static bool IsCulled(const std::shared_ptr<Camera>& camera, const std::shared_ptr<Mesh>& mesh, XZM::mat4 modelMatrix);
+    static bool IsCulled(const std::shared_ptr<S72Object::Camera>& camera, const std::shared_ptr<S72Object::Mesh>& mesh, XZM::mat4 modelMatrix);
 };
 
 

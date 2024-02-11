@@ -16,120 +16,144 @@
 #include "XZMath.h"
 #include "FrustumCulling.h"
 
+namespace S72Object {
+    /**
+     * @brief A camera object listed in the s72 file.
+     */
+    class Camera {
+        private:
+            /* Node to the camera object in the s72 file. */
+            std::shared_ptr<ParserNode> data = nullptr;
+
+            XZM::vec3 cameraPos;
+            /* The normalized vector the camera is facing. */
+            XZM::vec3 cameraDir;
+
+            /* Fundamental data for a camera, use to build the projection matrix. */
+            float aspect;
+            float v_fov;
+            float near_z;
+            float far_z;
+        public:
+            XZM::mat4 viewMatrix;
+            XZM::mat4 projMatrix;
+
+            std::string name = "Camera";
+
+            /* If this camera can be controlled by the keyboard input. */
+            bool isMovable = false;
+
+            /* The frustum based on the camera's view angle and distance. */
+            Frustum frustum;
+
+            Camera();
+
+            /* Construct a camera based on the node and its name. */
+            explicit Camera(const std::shared_ptr<ParserNode>& node, const std::string &newName);
+
+            /* Set the data for the camera. */
+            void SetCameraData(float newAspect, float new_V_fov, float newNear, float newFar);
+
+            /* Compute and set the view matrix. */
+            void ComputeViewMatrix();
+
+            /* Compute and set the project matrix. */
+            void ComputeProjectionMatrix();
+
+            /* Given the transform matrix, find its view matrix and projection matrix. */
+            void ProcessCamera(const XZM::mat4 &transMatrix);
+
+            /* Move the camera position based along its facing direction. */
+            void MoveCameraForwardBackward(bool isForward);
+
+            /* Rotate the camera around the world right direction. */
+            void MoveCameraUpDown(bool isUp);
+
+            /* Rotate the camera around the world up direction. */
+            void MoveCameraLeftRight(bool isRight);
+
+            /* Let the camera loop toward the world center. */
+            void ReFocusToCenter();
+    };
+
+
+    /**
+     * @brief A mesh object listed in the s72 file.
+     */
+    class Mesh {
+        private:
+            /* Node to the mesh object in the s72 file. */
+            std::shared_ptr<ParserNode> data = nullptr;
+
+            /* Load the mesh data from a b72 file given its path. */
+            void SetSrc(const std::string &srcPath);
+
+            /* Given the position,normal,color channel, set its corresponding format. */
+            void SetFormat(size_t channel, const std::string &new_Format);
+
+            /* Find its corresponding topology and set it in the instance variable. */
+            void SetTopology(const std::string &new_topology);
+
+        public:
+            /* Name will be used as the identifier of the mesh object. */
+            std::string name;
+            std::string src;
+            uint32_t stride;
+            uint32_t count;
+            VkPrimitiveTopology topology;
+            /* Position, Normal, and Color Vulkan formats */
+            VkFormat pFormat;
+            VkFormat nFormat;
+            VkFormat cFormat;
+            /* Position, Normal, and Color Vulkan offsets */
+            uint32_t pOffset;
+            uint32_t nOffset;
+            uint32_t cOffset;
+            /* A list of mesh instance, they are represented by its unique model matrix. */
+            std::vector<XZM::mat4> instances;
+
+            /* An AABB bounding box for the mesh. */
+            AABB boundingBox;
+
+            /* Construct a mesh based on the node. */
+            explicit Mesh(std::shared_ptr<ParserNode> &node);
+
+            /* Set all the mesh's variable based on the data in the s72 file. */
+            void ProcessMesh();
+
+            /* Given a mesh's b72 data, read and set the mesh's bounding box. */
+            void ReadBoundingBox(std::stringstream &buffer);
+    };
+
+
+    /**
+     * @brief A drive object contains a node's animation info.
+     */
+    class Driver {
+        public:
+            /* The index of the node it corresponds to. */
+            int nodeIndex = 0;
+            /* The channel of the driver. Can be: translation, rotation, and scale. */
+            std::string channel;
+            /* The time and value data for the driver. */
+            std::vector<float> timers;
+            std::vector<std::variant<XZM::vec3, XZM::quat>> values;
+
+            /* Initialize the driver object from the parser node. */
+            void Initialization(const std::shared_ptr<ParserNode> &node);
+
+            /* Given the current, given the current value. */
+            std::variant<XZM::vec3, XZM::quat> GetCurrentData(float currTime);
+
+            /* Check If the given node uses the driver. If true, return the channel. */
+            std::string HasMatchNodeAndChannel(const std::shared_ptr<ParserNode> &node) const;
+        };
+}
+
 
 /**
- * @brief A camera object listed in the s72 file.
+ * @brief The S72 Helper that will process the data from the parser and forward the result to the Vulkan Helper.
  */
-class Camera{
-
-private:
-    /* Node to the camera object in the s72 file. */
-    std::shared_ptr<ParserNode> data = nullptr;
-
-    XZM::vec3 cameraPos;
-    /* The normalized vector the camera is facing. */
-    XZM::vec3 cameraDir;
-
-    /* Fundamental data for a camera, use to build the projection matrix. */
-    float aspect;
-    float v_fov;
-    float near_z;
-    float far_z;
-
-public:
-    XZM::mat4 viewMatrix;
-    XZM::mat4 projMatrix;
-
-    std::string name = "Camera";
-
-    /* If this camera can be controlled by the keyboard input. */
-    bool isMovable = false;
-
-    /* The frustum based on the camera's view angle and distance. */
-    Frustum frustum;
-
-    Camera();
-    /* Construct a camera based on the node and its name. */
-    explicit Camera(std::shared_ptr<ParserNode> node, const std::string& newName);
-    /* Set the data for the camera. */
-    void SetCameraData(float newAspect, float new_V_fov, float newNear, float newFar);
-    /* Compute and set the view matrix. */
-    void ComputeViewMatrix();
-    /* Compute and set the project matrix. */
-    void ComputeProjectionMatrix();
-    /* Given the transform matrix, find its view matrix and projection matrix. */
-    void ProcessCamera(const XZM::mat4& transMatrix);
-    /* Move the camera position based along its facing direction. */
-    void MoveCameraForwardBackward(bool isForward);
-    /* Rotate the camera around the world right direction. */
-    void MoveCameraUpDown(bool isUp);
-    /* Rotate the camera around the world up direction. */
-    void MoveCameraLeftRight(bool isRight);
-    /* Let the camera loop toward the world center. */
-    void ReFocusToCenter();
-};
-
-
-/**
- * @brief A mesh object listed in the s72 file.
- */
-class Mesh{
-
-private:
-    /* Node to the mesh object in the s72 file. */
-    std::shared_ptr<ParserNode> data = nullptr;
-
-    /* Load the mesh data from a b72 file given its path. */
-    void SetSrc(const std::string& srcPath);
-    /* Given the position,normal,color channel, set its corresponding format. */
-    void SetFormat(size_t channel, const std::string& new_Format);
-    /* Find its corresponding topology and set it in the instance variable. */
-    void SetTopology(const std::string& new_topology);
-
-public:
-    /* Name will be used as the identifier of the mesh object. */
-    std::string name;
-    std::string src;
-    uint32_t stride;
-    uint32_t count;
-    VkPrimitiveTopology topology;
-    /* Position, Normal, and Color Vulkan formats */
-    VkFormat pFormat;
-    VkFormat nFormat;
-    VkFormat cFormat;
-    /* Position, Normal, and Color Vulkan offsets */
-    uint32_t pOffset;
-    uint32_t nOffset;
-    uint32_t cOffset;
-    /* A list of mesh instance, they are represented by its unique model matrix. */
-    std::vector<XZM::mat4> instances;
-
-    /* An AABB bounding box for the mesh. */
-    AABB boundingBox;
-
-    /* Construct a mesh based on the node. */
-    explicit Mesh(std::shared_ptr<ParserNode>& node);
-    /* Set all the mesh's variable based on the data in the s72 file. */
-    void ProcessMesh();
-    /* Given a mesh's b72 data, read and set the mesh's bounding box. */
-    void ReadBoundingBox(std::stringstream& buffer);
-};
-
-
-class Driver{
-public:
-    int nodeIndex = 0;
-    std::string channel;
-    std::vector<float> timers;
-    std::vector<std::variant<XZM::vec3,XZM::quat>> values;
-
-    void Initialization(const std::shared_ptr<ParserNode>& node);
-    std::variant<XZM::vec3,XZM::quat> GetCurrentData(float currTime);
-    std::string HasMatchNodeAndChannel(const std::shared_ptr<ParserNode>& node);
-};
-
-
-
 class S72Helper {
 
 private:
@@ -139,17 +163,20 @@ private:
 public:
 
     /* The cameras in the scene */
-    std::map<std::string, std::shared_ptr<Camera>> cameras;
+    std::map<std::string, std::shared_ptr<S72Object::Camera>> cameras;
     /* The mesh object, they are identified by its unique name. */
-    std::map<std::string, std::shared_ptr<Mesh>> meshes;
+    std::map<std::string, std::shared_ptr<S72Object::Mesh>> meshes;
     /* The total number of mesh instance. */
     size_t instanceCount = 0;
 
-
+    /* The start time point when the animation plays. */
     std::chrono::steady_clock::time_point startTimePoint;
+
+    /* The current time from the start time point to the current time point. */
     float currTime = 0;
 
-    std::vector<std::shared_ptr<Driver>> movingNodes;
+    /* A list of Drivers. */
+    std::vector<std::shared_ptr<S72Object::Driver>> drivers;
 
     S72Helper();
     /* Read and parse a s72 file from a given path. */

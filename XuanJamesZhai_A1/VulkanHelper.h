@@ -77,6 +77,7 @@ struct UniformBufferObject {
     alignas(16) XZM::mat4 model;
     alignas(16) XZM::mat4 view;
     alignas(16) XZM::mat4 proj;
+    alignas(16) XZM::mat4 transposeModel;
 };
 
 
@@ -227,10 +228,20 @@ private:
     std::shared_ptr<S72Helper> s72Instance = nullptr;
 
     /* Refers to the camera instance that is using currently */
-    std::shared_ptr<Camera> currCamera = nullptr;
+    std::shared_ptr<S72Object::Camera> currCamera = nullptr;
 
     /* The culling mode used for rendering. Can be none or frustum. */
     std::string cullingMode;
+
+
+    bool useHeadlessRendering = false;
+
+
+    std::vector<VkDeviceMemory> headlessImageMemory;
+
+    std::vector<void*> headlessImageMapped;
+
+    uint32_t headlessImageIndex = 0;
 
 
     /* A struct of queue that will be submitted to Vulkan */
@@ -238,7 +249,8 @@ private:
         std::optional<uint32_t> graphicsFamily;        // Queue family index. Use optional to see if it has a value
         std::optional<uint32_t> presentFamily;      // Queue family that's used to present on the window
 
-        bool isComplete() const {
+        bool isComplete(bool isHeadless) const {
+            if(isHeadless) return graphicsFamily.has_value();
             return graphicsFamily.has_value() && presentFamily.has_value();
         }
     };
@@ -307,6 +319,9 @@ private:
     /* Create the swap chain that will be used for display the output. */
     void CreateSwapChain();
 
+
+    void CreateHeadlessSwapChain();
+
     /* Create an image view instance based on the image and its format. */
     VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels);
 
@@ -347,13 +362,13 @@ private:
     void CreateVertexBuffers();
 
     /* Create the vertex buffer to store the vertex data. */
-    void CreateVertexBuffer(const Mesh& newMesh, size_t index);
+    void CreateVertexBuffer(const S72Object::Mesh& newMesh, size_t index);
 
     /* For a binding description struct based on the info of a mesh instance. */
-    static VkVertexInputBindingDescription2EXT CreateBindingDescription(const Mesh& newMesh);
+    static VkVertexInputBindingDescription2EXT CreateBindingDescription(const S72Object::Mesh& newMesh);
 
     /* Form an attribute description struct based on the info of a mesh instance. */
-    static std::array<VkVertexInputAttributeDescription2EXT, 3> CreateAttributeDescription(const Mesh& newMesh);
+    static std::array<VkVertexInputAttributeDescription2EXT, 3> CreateAttributeDescription(const S72Object::Mesh& newMesh);
 
     /* Create the index buffer to store the index relations. */
     void CreateIndexBuffer();
@@ -362,7 +377,7 @@ private:
     void CreateUniformBuffers();
 
     /* Update the uniform buffer on the current image with given ubo data. */
-    void UpdateUniformBuffer(uint32_t currentImage, const Mesh& mesh, size_t instanceIndex, size_t totalIndex);
+    void UpdateUniformBuffer(uint32_t currentImage, const S72Object::Mesh& mesh, size_t instanceIndex, size_t totalIndex);
 
     /* Create a pool to allocate descriptor sets. */
     void CreateDescriptorPool();
@@ -414,6 +429,10 @@ private:
 
     /* Load an obj model from the given path. */
     void LoadModel();
+
+    void CopyImageToData(const VkImage& image, const VkDeviceMemory& imageMemory, void*& data);
+
+    void SaveImageToPPM(const VkImage& image, const VkDeviceMemory& imageMemory, const std::string&);
 
     /* Clean up the swap chain and all the related resources. */
     void CleanUpSwapChain();

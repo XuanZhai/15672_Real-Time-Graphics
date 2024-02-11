@@ -34,7 +34,7 @@ std::unordered_map<std::string,VkFormat> formatMap = {
 /**
  * @brief Default Constructor
  */
-Camera::Camera() {
+S72Object::Camera::Camera() {
     cameraPos = XZM::vec3(12.493,-3.00024,3.50548);
     cameraDir = XZM::Normalize(XZM::vec3(0,0,0)-cameraPos);
     aspect = 1.7778f;
@@ -49,7 +49,7 @@ Camera::Camera() {
  * @param node The node in the s72 structure.
  * @param newName The name of the camera.
  */
-Camera::Camera(std::shared_ptr<ParserNode> node, const std::string& newName){
+S72Object::Camera::Camera(const std::shared_ptr<ParserNode>& node, const std::string& newName){
     data = node;
     name = newName;
     projMatrix = XZM::mat4(1);
@@ -68,7 +68,7 @@ Camera::Camera(std::shared_ptr<ParserNode> node, const std::string& newName){
  * @param newNear new near plane z distance.
  * @param newFar nea far place z distance.
  */
-void Camera::SetCameraData(float newAspect, float new_V_fov, float newNear, float newFar){
+void S72Object::Camera::SetCameraData(float newAspect, float new_V_fov, float newNear, float newFar){
     aspect = newAspect;
     v_fov = new_V_fov;
     near_z = newNear;
@@ -86,7 +86,7 @@ void Camera::SetCameraData(float newAspect, float new_V_fov, float newNear, floa
 /**
  * @brief Compute and set the camera's view matrix based on its position and direction.
  */
-void Camera::ComputeViewMatrix(){
+void S72Object::Camera::ComputeViewMatrix(){
     viewMatrix = XZM::LookAt(cameraPos,cameraPos + cameraDir, XZM::vec3(0,0,1));
 }
 
@@ -94,7 +94,7 @@ void Camera::ComputeViewMatrix(){
 /**
  * @brief Compute and set the camera's projection matrix based on its value.
  */
-void Camera::ComputeProjectionMatrix(){
+void S72Object::Camera::ComputeProjectionMatrix(){
     projMatrix = XZM::Perspective(v_fov,aspect,near_z,far_z);
 }
 
@@ -103,9 +103,9 @@ void Camera::ComputeProjectionMatrix(){
  * @brief Reset the camera's matrices based on its transform matrix.
  * @param transMatrix The world transform matrix applied to the camera.
  */
-void Camera::ProcessCamera(const XZM::mat4& transMatrix){
+void S72Object::Camera::ProcessCamera(const XZM::mat4& transMatrix){
     cameraPos = XZM::ExtractTranslationFromMat(transMatrix);
-    cameraDir = XZM::Normalize(XZM::GetLookAtDir(cameraPos,transMatrix));
+    cameraDir = XZM::Normalize(XZM::GetLookAtDir(transMatrix));
 
     ComputeViewMatrix();
     ComputeProjectionMatrix();
@@ -116,7 +116,7 @@ void Camera::ProcessCamera(const XZM::mat4& transMatrix){
  * @brief Move the camera forward or backward.
  * @param isForward True if move forward, false move backward.
  */
-void Camera::MoveCameraForwardBackward(bool isForward){
+void S72Object::Camera::MoveCameraForwardBackward(bool isForward){
 
     if(cameraDir.IsEmpty() || !isMovable) return;
 
@@ -136,7 +136,7 @@ void Camera::MoveCameraForwardBackward(bool isForward){
  * @brief Rotate the camera up or down.
  * @param isUp True if rotate upward, false if backward.
  */
-void Camera::MoveCameraUpDown(bool isUp) {
+void S72Object::Camera::MoveCameraUpDown(bool isUp) {
 
     if(cameraDir.IsEmpty() || !isMovable) return;
 
@@ -156,7 +156,7 @@ void Camera::MoveCameraUpDown(bool isUp) {
  * @brief Rotate the camera left or right.
  * @param isUp True if rotate right, false if left.
  */
-void Camera::MoveCameraLeftRight(bool isRight) {
+void S72Object::Camera::MoveCameraLeftRight(bool isRight) {
     if(cameraDir.IsEmpty() || !isMovable) return;
 
     if(isRight){
@@ -174,7 +174,7 @@ void Camera::MoveCameraLeftRight(bool isRight) {
 /**
  * @brief Reset the camera direction to let the camera look toward the world center.
  */
-void Camera::ReFocusToCenter() {
+void S72Object::Camera::ReFocusToCenter() {
 
     cameraDir = XZM::Normalize(XZM::vec3(0,0,0) - cameraPos);
 
@@ -190,7 +190,7 @@ void Camera::ReFocusToCenter() {
  * @brief Create a mesh instance based on a node in the s72 structure.
  * @param node A Parser Node from the XZJ parser.
  */
-Mesh::Mesh(std::shared_ptr<ParserNode>& node){
+S72Object::Mesh::Mesh(std::shared_ptr<ParserNode>& node){
     this->data = node;
 
     stride = 0;
@@ -210,7 +210,7 @@ Mesh::Mesh(std::shared_ptr<ParserNode>& node){
 /**
  * @brief Process the parser node's data and set mesh's data.
  */
-void Mesh::ProcessMesh(){
+void S72Object::Mesh::ProcessMesh(){
     if(data == nullptr){
         throw std::runtime_error("Set Mesh Error: mesh instance is empty.");
     }
@@ -262,7 +262,7 @@ void Mesh::ProcessMesh(){
  * @brief Set the Mesh's data from a file based on a given path.
  * @param srcPath The path where the data file locate.
  */
-void Mesh::SetSrc(const std::string& srcPath){
+void S72Object::Mesh::SetSrc(const std::string& srcPath){
     // TODO: Replace models with the upper path of s72.
     std::ifstream input_file("Models/"+srcPath, std::ios::binary);
 
@@ -285,7 +285,7 @@ void Mesh::SetSrc(const std::string& srcPath){
  * @param channel Can be position, normal, or color.
  * @param format The format in string.
  */
-void Mesh::SetFormat(size_t channel, const std::string& format){
+void S72Object::Mesh::SetFormat(size_t channel, const std::string& format){
     /* Map the format from string to vkFormat, */
     if(!formatMap.count(format)){
         throw std::runtime_error("Set Mesh Error: Does not find a correspond format. ");
@@ -301,7 +301,7 @@ void Mesh::SetFormat(size_t channel, const std::string& format){
  * @brief Set the mesh's topology data.
  * @param new_topology The topology in string.
  */
-void Mesh::SetTopology(const std::string& new_topology){
+void S72Object::Mesh::SetTopology(const std::string& new_topology){
     /* Map the topology from string to vkTopology. */
     if(!topologyMap.count(new_topology)){
         throw std::runtime_error("Set Mesh Error: Does not find a correspond topology. ");
@@ -315,7 +315,7 @@ void Mesh::SetTopology(const std::string& new_topology){
  * @brief Read the b72 file. Loop through each vertex position and construct the bounding box.
  * @param buffer The b72 file stored in a string stream buffer.
  */
-void Mesh::ReadBoundingBox(std::stringstream& buffer){
+void S72Object::Mesh::ReadBoundingBox(std::stringstream& buffer){
 
     XZM::vec3 currPos,currNormal, currColor;
 
@@ -349,7 +349,7 @@ void Mesh::ReadBoundingBox(std::stringstream& buffer){
 }
 
 
-void Driver::Initialization(const std::shared_ptr<ParserNode>& node){
+void S72Object::Driver::Initialization(const std::shared_ptr<ParserNode>& node){
 
     if(node == nullptr) return;
 
@@ -374,7 +374,7 @@ void Driver::Initialization(const std::shared_ptr<ParserNode>& node){
 }
 
 
-std::variant<XZM::vec3,XZM::quat> Driver::GetCurrentData(float currTime){
+std::variant<XZM::vec3,XZM::quat> S72Object::Driver::GetCurrentData(float currTime){
     if(timers.empty()) return XZM::vec3();
 
     currTime = fmodf(currTime, timers.back());
@@ -407,7 +407,7 @@ std::variant<XZM::vec3,XZM::quat> Driver::GetCurrentData(float currTime){
 }
 
 
-std::string Driver::HasMatchNodeAndChannel(const std::shared_ptr<ParserNode>& node){
+std::string S72Object::Driver::HasMatchNodeAndChannel(const std::shared_ptr<ParserNode>& node) const{
     int newIndex = (int)std::get<float>(node->GetObjectValue("ListIndex")->data);
 
     if(newIndex == nodeIndex){
@@ -425,7 +425,7 @@ std::string Driver::HasMatchNodeAndChannel(const std::shared_ptr<ParserNode>& no
  */
 S72Helper::S72Helper(){
     /* Add the default user camera into the camera list. */
-    std::shared_ptr<Camera> newCamera = std::make_shared<Camera>();
+    std::shared_ptr<S72Object::Camera> newCamera = std::make_shared<S72Object::Camera>();
     newCamera->name = "User-Camera";
     /* The user camera is movable. */
     newCamera->isMovable = true;
@@ -484,10 +484,10 @@ void S72Helper::ReconstructRoot() {
             //std::string nodeName = std::get<std::string>(targetNode->GetObjectValue("name")->data);
             //std::string name = std::get<std::string>(node->GetObjectValue("name")->data);
 
-            std::shared_ptr<Driver> newDriver = std::make_shared<Driver>();
+            std::shared_ptr<S72Object::Driver> newDriver = std::make_shared<S72Object::Driver>();
             newDriver->Initialization(node);
 
-            movingNodes.emplace_back(newDriver);
+            drivers.emplace_back(newDriver);
         }
         index++;
     }
@@ -524,7 +524,7 @@ void S72Helper::ReconstructNode(std::shared_ptr<ParserNode> newNode, XZM::mat4 n
         XZM::quat rotation = S72Helper::FindRotation(*newNode);
         XZM::vec3 scale = S72Helper::FindScale(*newNode);
 
-        for(const auto& driver : movingNodes){
+        for(const auto& driver : drivers){
             std::string channel = driver->HasMatchNodeAndChannel(newNode);
             if(channel.empty()) continue;
             if(channel == "translation") translation = std::get<XZM::vec3>(driver->GetCurrentData(currTime));
@@ -542,7 +542,7 @@ void S72Helper::ReconstructNode(std::shared_ptr<ParserNode> newNode, XZM::mat4 n
             std::string meshName = std::get<std::string>(newNode->GetObjectValue("name")->data);
             /* Insert into the mesh list, use a red-black tree so that it is unique. */
             if(!meshes.count(meshName)){
-                meshes.insert(std::make_pair(meshName,std::make_shared<Mesh>(newNode)));
+                meshes.insert(std::make_pair(meshName,std::make_shared<S72Object::Mesh>(newNode)));
             }
             /* Add that instance to the mesh's instance list, also update the total instance count. */
             meshes[meshName]->instances.emplace_back(newMat);
@@ -552,7 +552,7 @@ void S72Helper::ReconstructNode(std::shared_ptr<ParserNode> newNode, XZM::mat4 n
             std::string cameraName = std::get<std::string>(newNode->GetObjectValue("name")->data);
             ParserNode::PNMap perspective = std::get<ParserNode::PNMap>(newNode->GetObjectValue("perspective")->data);
             /* Create a camera instance and set its data. */
-            std::shared_ptr<Camera> newCamera = std::make_shared<Camera>(newNode,cameraName);
+            std::shared_ptr<S72Object::Camera> newCamera = std::make_shared<S72Object::Camera>(newNode,cameraName);
 
             float aspect = std::get<float>(perspective["aspect"]->data);
             float v_fov = std::get<float>(perspective["vfov"]->data);
@@ -637,7 +637,7 @@ void S72Helper::UpdateObject(const std::shared_ptr<ParserNode>& newNode, XZM::ma
         XZM::quat rotation = S72Helper::FindRotation(*newNode);
         XZM::vec3 scale = S72Helper::FindScale(*newNode);
 
-        for(const auto& driver : movingNodes){
+        for(const auto& driver : drivers){
             std::string channel = driver->HasMatchNodeAndChannel(newNode);
             if(channel.empty()) continue;
             if(channel == "translation") translation = std::get<XZM::vec3>(driver->GetCurrentData(currTime));

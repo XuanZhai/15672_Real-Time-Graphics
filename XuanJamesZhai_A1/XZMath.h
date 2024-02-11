@@ -9,8 +9,12 @@
 #include <cmath>
 #include <string>
 
+
 namespace XZM {
 
+    /**
+     * @brief A custom vec3 class, each element is a float variable.
+     */
     class vec3{
         public:
             std::array<float,3> data{};
@@ -28,16 +32,21 @@ namespace XZM {
             vec3& operator+= (const vec3& nv);
             vec3& operator-= (const vec3& nv);
 
-            bool IsEmpty() const;
-            float Length() const;
+            /* Check if a vec3 is 0,0,0. */
+            [[nodiscard]] bool IsEmpty() const;
+            /* Get the length of the vec3. */
+            [[nodiscard]] float Length() const;
     };
 
+
+    /**
+     * @brief A custom mat4 class, each element is a float variable.
+     */
     class mat4{
         public:
             std::array<std::array<float,4>,4> data{};
 
             mat4();
-
             mat4(const mat4& nm);
             mat4& operator= (const mat4& nm);
             bool operator== (const mat4& nm) const;
@@ -47,7 +56,11 @@ namespace XZM {
             explicit mat4(float);
     };
 
-    /* x, y, z, w */
+
+    /**
+     * @brief A custom quaternion class, each element is a float variable.
+     * The four element is in the order of x, y, z, w.
+     */
     class quat{
         public:
             std::array<float,4> data{};
@@ -60,50 +73,52 @@ namespace XZM {
             quat operator* (const quat& nq);
     };
 
+    /* Convert a quat to a mat4 rotation matrix. */
     mat4 QuatToMat4(const quat&);
 
-    mat4 Perspective(float vfov, float aspect, float near, float far);
+    /* Find the perspective matrix. */
+    mat4 Perspective(float v_fov, float aspect, float near, float far);
 
+    /* Calculate the cross product of two vectors. */
     vec3 CrossProduct(const vec3& v1, const vec3& v2);
 
+    /* Calculate the dot product of two vectors. */
     float DotProduct(const vec3& v1, const vec3& v2);
 
+    /* Calculate the dot product of two quaternions. */
     float DotProduct(const quat& q1, const quat& q2);
 
+    /* Normalize a vec3. */
     vec3 Normalize(const vec3& nv);
 
+    /* Find the view matrix. */
     mat4 LookAt(const vec3& eyePos, const vec3& target, const vec3& up);
 
-    vec3 GetLookAtDir(const vec3& eyePos,const mat4& rotationMatrix);
+    /* Find the 'forward' direction given the rotation matrix. */
+    vec3 GetLookAtDir(const mat4& rotationMatrix);
 
-    mat4 Scaling(const mat4& nm, const vec3& factor);
-
+    /* Given a scale vec3, convert it to a scale matrix. */
     mat4 Scaling(const vec3& factor);
 
-    mat4 Translation(const mat4& nm, const vec3& factor);
-
+    /* Given a translation vec3, convert it to a translation matrix. */
     mat4 Translation(const vec3& nv);
 
-    quat Normalize(const quat& nq);
-
-    vec3 GetTranslationFromMat(const mat4& nm);
-
+    /* Convert a vec3 to a string, used for output debug. */
     std::string ToString(const vec3&);
 
+    /* Transpose a mat4. */
     mat4 Transpose(const mat4&);
 
-    quat ExtractQuatFromMat(const mat4&);
-
+    /* Given a transform matrix, extract the translation factor within. */
     vec3 ExtractTranslationFromMat(const mat4&);
 
-    vec3 FindForwardDirection(const quat& quaternion);
-
-    vec3 ConvertQuatToVec3(const quat& quaternion);
-
+    /* Rotate a vec3 along an axis for a given radians. */
     vec3 RotateVec3(const vec3& vector, const vec3& axis, float radians);
 
+    /* Linear interpolate two vec3 with a given factor t. */
     vec3 Lerp(const vec3& low, const vec3& high, float t);
 
+    /* Linear interpolate two quaternion with a given factor t. */
     quat Lerp(const quat& low, const quat& high, float t);
 }
 

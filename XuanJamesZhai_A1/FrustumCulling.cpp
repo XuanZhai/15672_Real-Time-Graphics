@@ -34,7 +34,7 @@ AABB::AABB() {
  * @param modelMatrix The model transform matrix for the mesh.
  * @return
  */
-bool FrustumCulling::IsCulled(const std::shared_ptr<Camera>& camera, const std::shared_ptr<Mesh>& mesh, XZM::mat4 modelMatrix){
+bool FrustumCulling::IsCulled(const std::shared_ptr<S72Object::Camera>& camera, const std::shared_ptr<S72Object::Mesh>& mesh, XZM::mat4 modelMatrix){
 
     float z_near = camera->frustum.near_plane;
     float z_far = camera->frustum.far_plane;
@@ -240,10 +240,14 @@ bool FrustumCulling::IsCulled(const std::shared_ptr<Camera>& camera, const std::
     {
         for (size_t obb_edge_idx = 0; obb_edge_idx < 3; obb_edge_idx++) {
             const std::array<XZM::vec3,4> M_Edge = {
-                    XZM::CrossProduct({-x_near, 0.0f, z_near}, obb.axes[obb_edge_idx]), // Left Plane
-                    XZM::CrossProduct({ x_near, 0.0f, z_near }, obb.axes[obb_edge_idx]), // Right plane
-                    XZM::CrossProduct({ 0.0f, y_near, z_near }, obb.axes[obb_edge_idx]), // Top plane
-                    XZM::CrossProduct({ 0.0, -y_near, z_near }, obb.axes[obb_edge_idx]) // Bottom plane
+                    /* Left plane */
+                    XZM::CrossProduct({-x_near, 0.0f, z_near}, obb.axes[obb_edge_idx]),
+                    /* Right plane */
+                    XZM::CrossProduct({ x_near, 0.0f, z_near }, obb.axes[obb_edge_idx]),
+                    /* Top plane */
+                    XZM::CrossProduct({ 0.0f, y_near, z_near }, obb.axes[obb_edge_idx]),
+                    /* Bottom plane */
+                    XZM::CrossProduct({ 0.0, -y_near, z_near }, obb.axes[obb_edge_idx])
             };
 
             for (size_t m = 0; m < 4; m++) {
