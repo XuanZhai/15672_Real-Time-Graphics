@@ -28,6 +28,9 @@ std::unordered_map<std::string,VkFormat> formatMap = {
 };
 
 
+std::string S72Helper::s72fileName;
+
+
 /* ================================================ Camera ========================================================== */
 
 
@@ -263,8 +266,9 @@ void S72Object::Mesh::ProcessMesh(){
  * @param srcPath The path where the data file locate.
  */
 void S72Object::Mesh::SetSrc(const std::string& srcPath){
-    // TODO: Replace models with the upper path of s72.
-    std::ifstream input_file("Models/"+srcPath, std::ios::binary);
+    /* We want to locate the b72 file next to the s72 file. */
+    std::string b72FileName = S72Helper::s72fileName + "/../" + srcPath;
+    std::ifstream input_file(b72FileName, std::ios::binary);
 
     if(!input_file){
         std::cout << name + " Cannot open b72 file " << std::endl;
@@ -272,6 +276,8 @@ void S72Object::Mesh::SetSrc(const std::string& srcPath){
     /* Read the file into the src string. */
     std::stringstream buffer;
     buffer << input_file.rdbuf();
+
+    input_file.close();
 
     /* Set the bounding box while reading the b72 file. */
     ReadBoundingBox(buffer);
@@ -425,15 +431,24 @@ std::string S72Object::Driver::HasMatchNodeAndChannel(const std::shared_ptr<Pars
  */
 S72Helper::S72Helper(){
     /* Add the default user camera into the camera list. */
-    std::shared_ptr<S72Object::Camera> newCamera = std::make_shared<S72Object::Camera>();
-    newCamera->name = "User-Camera";
+    std::shared_ptr<S72Object::Camera> defaultCamera = std::make_shared<S72Object::Camera>();
+    defaultCamera->name = "User-Camera";
     /* The user camera is movable. */
-    newCamera->isMovable = true;
-    newCamera->ComputeViewMatrix();
-    newCamera->ComputeProjectionMatrix();
-    newCamera->SetCameraData(1.7778f,0.287167f,0.1f,1000);
+    defaultCamera->isMovable = true;
+    defaultCamera->ComputeViewMatrix();
+    defaultCamera->ComputeProjectionMatrix();
+    defaultCamera->SetCameraData(1.7778f,0.287167f,0.1f,1000);
+    cameras.insert(std::make_pair(defaultCamera->name,defaultCamera));
 
-    cameras.insert(std::make_pair(newCamera->name,newCamera));
+    std::shared_ptr<S72Object::Camera> debugCamera = std::make_shared<S72Object::Camera>();
+    debugCamera->name = "Debug-Camera";
+    /* The user camera is movable. */
+    debugCamera->isMovable = true;
+    debugCamera->ComputeViewMatrix();
+    debugCamera->ComputeProjectionMatrix();
+    debugCamera->SetCameraData(1.7778f,0.287167f,0.1f,1000);
+
+    cameras.insert(std::make_pair(debugCamera->name,debugCamera));
 }
 
 
@@ -443,12 +458,13 @@ S72Helper::S72Helper(){
  */
 void S72Helper::ReadS72(const std::string &filename) {
 
+    s72fileName = filename;
     XZJParser parser;
     root = parser.Parse(filename);
     /* Reconstruct the parser data to form a tree structure. */
     ReconstructRoot();
 
-    startTimePoint = std::chrono::high_resolution_clock::now();
+    animStartTimePoint = std::chrono::system_clock::now();
 }
 
 
@@ -479,11 +495,6 @@ void S72Helper::ReconstructRoot() {
             newRoot = node;
         }
         else if(std::get<std::string>(node->GetObjectValue("type")->data) == "DRIVER"){
-            //size_t nodeIdx = (size_t)std::get<float>(node->GetObjectValue("node")->data);
-            //std::shared_ptr<ParserNode> targetNode = std::get<ParserNode::PNVector>(root->data)[nodeIdx];
-            //std::string nodeName = std::get<std::string>(targetNode->GetObjectValue("name")->data);
-            //std::string name = std::get<std::string>(node->GetObjectValue("name")->data);
-
             std::shared_ptr<S72Object::Driver> newDriver = std::make_shared<S72Object::Driver>();
             newDriver->Initialization(node);
 
@@ -527,9 +538,9 @@ void S72Helper::ReconstructNode(std::shared_ptr<ParserNode> newNode, XZM::mat4 n
         for(const auto& driver : drivers){
             std::string channel = driver->HasMatchNodeAndChannel(newNode);
             if(channel.empty()) continue;
-            if(channel == "translation") translation = std::get<XZM::vec3>(driver->GetCurrentData(currTime));
-            else if(channel == "rotation") rotation = std::get<XZM::quat>(driver->GetCurrentData(currTime));
-            else if(channel == "scale") scale = std::get<XZM::vec3>(driver->GetCurrentData(currTime));
+            if(channel == "translation") translation = std::get<XZM::vec3>(driver->GetCurrentData(currDuration));
+            else if(channel == "rotation") rotation = std::get<XZM::quat>(driver->GetCurrentData(currDuration));
+            else if(channel == "scale") scale = std::get<XZM::vec3>(driver->GetCurrentData(currDuration));
         }
 
         XZM::mat4 translationMatrix = XZM::Translation(translation);
@@ -566,9 +577,15 @@ void S72Helper::ReconstructNode(std::shared_ptr<ParserNode> newNode, XZM::mat4 n
 
     /* If it has a mesh key. Recursively visit its children. */
     if(newMap.count("mesh")){
-        size_t idx = (size_t)std::get<float>(newMap["mesh"]->data);
-        newMap["mesh"] = std::get<ParserNode::PNVector>(root->data)[idx];
-        ReconstructNode(newMap["mesh"],newMat);
+        float* temp_idx = std::get_if<float>(&newMap["mesh"]->data);
+        if(temp_idx != nullptr){
+            auto idx = (size_t)(*temp_idx);
+            newMap["mesh"] = std::get<ParserNode::PNVector>(root->data)[idx];
+            ReconstructNode(newMap["mesh"],newMat);
+        }
+        else{
+            ReconstructNode(newMap["mesh"],newMat);
+        }
     }
     /* If it has a camera key. Recursively visit its children. */
     if(newMap.count("camera")){
@@ -589,9 +606,15 @@ void S72Helper::ReconstructNode(std::shared_ptr<ParserNode> newNode, XZM::mat4 n
     if(newMap.count("children")){
         /* Loop through nodes in the vector and replace it with the real reference. */
         for(std::shared_ptr<ParserNode>& node : std::get<ParserNode::PNVector>(newMap["children"]->data) ){
-            auto idx = (size_t)std::get<float>(node ->data);
-            node = std::get<ParserNode::PNVector>(root->data)[idx];
-            ReconstructNode(node,newMat);
+            float* temp_idx = std::get_if<float>(&node ->data);
+            if(temp_idx != nullptr){
+                auto idx = (size_t)(*temp_idx);
+                node = std::get<ParserNode::PNVector>(root->data)[idx];
+                ReconstructNode(node,newMat);
+            }
+            else{
+                ReconstructNode(node,newMat);
+            }
         }
     }
     /* Update the node with the new object. */
@@ -608,9 +631,11 @@ void S72Helper::UpdateObjects(){
         mesh.second->instances.clear();
     }
 
-    auto currentTimePoint = std::chrono::high_resolution_clock::now();
-    float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTimePoint - startTimePoint).count();
-    currTime = std::fmodf(time,120);
+    if(isPlayingAnimation) {
+        auto currentTimePoint = std::chrono::system_clock::now();
+        float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTimePoint - animStartTimePoint).count();
+        currDuration = std::fmodf(time, 120);
+    }
 
     UpdateObject(root,XZM::mat4());
 }
@@ -640,11 +665,11 @@ void S72Helper::UpdateObject(const std::shared_ptr<ParserNode>& newNode, XZM::ma
         for(const auto& driver : drivers){
             std::string channel = driver->HasMatchNodeAndChannel(newNode);
             if(channel.empty()) continue;
-            if(channel == "translation") translation = std::get<XZM::vec3>(driver->GetCurrentData(currTime));
+            if(channel == "translation") translation = std::get<XZM::vec3>(driver->GetCurrentData(currDuration));
             else if(channel == "rotation") {
-                rotation = std::get<XZM::quat>(driver->GetCurrentData(currTime));
+                rotation = std::get<XZM::quat>(driver->GetCurrentData(currDuration));
             }
-            else if(channel == "scale") scale = std::get<XZM::vec3>(driver->GetCurrentData(currTime));
+            else if(channel == "scale") scale = std::get<XZM::vec3>(driver->GetCurrentData(currDuration));
         }
 
         XZM::mat4 translationMatrix = XZM::Translation(translation);
@@ -686,6 +711,20 @@ void S72Helper::UpdateObject(const std::shared_ptr<ParserNode>& newNode, XZM::ma
             UpdateObject(node,newMat);
         }
     }
+}
+
+
+void S72Helper::StartAnimation(){
+    isPlayingAnimation = true;
+
+// Convert float duration to steady_clock duration
+    auto durationInSecondsSteady = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::duration<float>(currDuration));
+    animStartTimePoint = std::chrono::system_clock::now() - durationInSecondsSteady;
+}
+
+
+void S72Helper::StopAnimation(){
+    isPlayingAnimation = false;
 }
 
 

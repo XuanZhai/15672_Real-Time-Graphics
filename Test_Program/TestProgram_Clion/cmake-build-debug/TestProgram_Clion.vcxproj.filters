@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="16.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="F:\Code\15672_Real-Time-Graphics\Test_Program\TestProgram_Clion\main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="F:\Code\15672_Real-Time-Graphics\Test_Program\TestProgram_Clion\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{3609F960-36D7-34A6-9AED-2D99777927E6}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

@@ -31,9 +31,9 @@ std::shared_ptr<ParserNode> ParserNode::GetObjectValue(const std::string& key){
  * Store the result in the root node in XZJParser.
  * @param filename The name of the s72 file, also could add path to it.
  */
-std::shared_ptr<ParserNode> XZJParser::Parse(const std::string &filename) {
+std::shared_ptr<ParserNode> XZJParser::Parse(const std::string &fileName) {
 
-    std::ifstream input = std::ifstream(filename, std::ios::binary);
+    std::ifstream input = std::ifstream(fileName, std::ios::binary);
 
     if(!input){
         throw std::runtime_error("Parse Error: Unable to open the input file.");
@@ -49,6 +49,8 @@ std::shared_ptr<ParserNode> XZJParser::Parse(const std::string &filename) {
     /* Recursively parse s72Data into ParseNodes */
     std::shared_ptr<ParserNode> root = ParseInput(0,s72Data.length()-1);
     s72Data = "";
+
+    input.close();
 
     return root;
 }

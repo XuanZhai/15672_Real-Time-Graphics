@@ -30,6 +30,7 @@
 
 #include "S72Helper.h"
 #include "FrustumCulling.h"
+#include "EventHelper.h"
 
 
 
@@ -58,18 +59,6 @@ const bool enableValidationLayers = false;
 #else
 const bool enableValidationLayers = true;
 #endif // NDEBUG
-
-/* Structure of a Vertex which is a position and a color */
-struct Vertex {
-    XZM::vec3 pos;
-    XZM::vec3 color;
-    XZM::vec3 normal;
-
-    /* Override the == operator for comparison */
-    bool operator==(const Vertex& other) const {
-        return pos == other.pos && color == other.color && normal == other.normal;
-    }
-};
 
 
 /* MVP data for the vertices */
@@ -236,12 +225,19 @@ private:
 
     bool useHeadlessRendering = false;
 
-
     std::vector<VkDeviceMemory> headlessImageMemory;
 
     std::vector<void*> headlessImageMapped;
 
     uint32_t headlessImageIndex = 0;
+
+    std::string eventFileName;
+
+    EventHelper eventHelper;
+
+    std::chrono::system_clock::time_point eventStartTimePoint;
+
+    std::string ppmFileName;
 
 
     /* A struct of queue that will be submitted to Vulkan */
@@ -455,7 +451,7 @@ private:
 public:
 
     /* Initialization the vulkan with s72 and the data passed from the command line. */
-    void InitializeData(const std::shared_ptr<S72Helper>& news72Instance, uint32_t width, uint32_t height, const std::string& newDeviceName, const std::string& cameraName, const std::string& newCullingMode);
+    void InitializeData(const std::shared_ptr<S72Helper>& news72Instance, uint32_t width, uint32_t height, const std::string& newDeviceName, const std::string& cameraName, const std::string& newCullingMode, const std::string& newEventFileName);
 
     /* Run the vulkan api with the s72 helper instance. */
     void Run();

@@ -67,7 +67,7 @@ int main(int argc, char** argv) {
     try
     {
         /* Initialize the vulkan helper and pass data from the command line arguments. */
-        newVKHelper->InitializeData(newS72Helper,windowWidth,windowHeight,deviceName,cameraName,cullingMode);
+        newVKHelper->InitializeData(newS72Helper,windowWidth,windowHeight,deviceName,cameraName,cullingMode, eventFileName);
         newVKHelper->Run();
     }
     catch (const std::exception& e)

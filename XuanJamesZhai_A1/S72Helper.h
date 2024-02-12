@@ -162,6 +162,8 @@ private:
 
 public:
 
+    static std::string s72fileName;
+
     /* The cameras in the scene */
     std::map<std::string, std::shared_ptr<S72Object::Camera>> cameras;
     /* The mesh object, they are identified by its unique name. */
@@ -169,11 +171,12 @@ public:
     /* The total number of mesh instance. */
     size_t instanceCount = 0;
 
+    bool isPlayingAnimation = false;
     /* The start time point when the animation plays. */
-    std::chrono::steady_clock::time_point startTimePoint;
+    std::chrono::system_clock::time_point animStartTimePoint;
 
     /* The current time from the start time point to the current time point. */
-    float currTime = 0;
+    float currDuration = 0;
 
     /* A list of Drivers. */
     std::vector<std::shared_ptr<S72Object::Driver>> drivers;
@@ -189,6 +192,12 @@ public:
     void UpdateObjects();
     /* Update an object's transform data and visit its children. */
     void UpdateObject(const std::shared_ptr<ParserNode>&, XZM::mat4 newMat);
+
+    void StartAnimation();
+
+    void StopAnimation();
+
+
     /* Extract the translation data as a vec3 from a ParserNode. */
     static XZM::vec3 FindTranslation(const ParserNode&);
     /* Extract the rotation data as a quaternion from a ParserNode. */

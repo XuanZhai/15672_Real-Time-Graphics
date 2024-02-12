@@ -112,6 +112,9 @@ void GLFW_Key_Callback(GLFWwindow* window, int key, int scancode, int action, in
     else if (key == GLFW_KEY_T && action == GLFW_PRESS){
         instance->ProcessGLFWInputCallBack('T');
     }
+    else if (key == GLFW_KEY_Y && action == GLFW_PRESS){
+        instance->ProcessGLFWInputCallBack('Y');
+    }
 }
 
 
@@ -1621,8 +1624,11 @@ void VulkanHelper::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t i
         /* Loop through each instance of that mesh. */
         for(size_t i = 0; i < mesh.second->instances.size(); i++){
 
-            if(FrustumCulling::IsCulled(currCamera,mesh.second,mesh.second->instances[i]) && cullingMode == "frustum"){
-                //std::cout << mesh.first << " is Culled." << std::endl;
+            if(currCamera->name == "Debug-Camera" && FrustumCulling::IsCulled(s72Instance->cameras["User-Camera"],mesh.second,mesh.second->instances[i]) && cullingMode == "frustum"){
+                i_index++;
+                continue;
+            }
+            else if(FrustumCulling::IsCulled(currCamera,mesh.second,mesh.second->instances[i]) && cullingMode == "frustum"){
                 i_index++;
                 continue;
             }
@@ -2093,8 +2099,8 @@ void VulkanHelper::CopyImageToData(const VkImage& image, const VkDeviceMemory& i
     VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
     VkBufferImageCopy copyRegion = {};
     copyRegion.bufferOffset = 0;
-    copyRegion.bufferRowLength = 0;
-    copyRegion.bufferImageHeight = 0;
+    copyRegion.bufferRowLength = windowWidth;
+    copyRegion.bufferImageHeight = windowHeight;
     copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     copyRegion.imageSubresource.mipLevel = 0;
     copyRegion.imageSubresource.baseArrayLayer = 0;
@@ -2134,9 +2140,7 @@ void VulkanHelper::SaveImageToPPM(const VkImage& image, const VkDeviceMemory& im
     VkDeviceSize imageSize = memoryRequirements.size;
 
     // Read pixel data from image
-    std::vector<char> pixelData(imageSize);
     CopyImageToData(image,imageMemory,mappedMemory);
-    memcpy(pixelData.data(), mappedMemory, imageSize);
 
     // Write pixel data to PPM file
     std::ofstream ppmFile(filename, std::ios::binary);
@@ -2150,7 +2154,19 @@ void VulkanHelper::SaveImageToPPM(const VkImage& image, const VkDeviceMemory& im
     ppmFile << "255\n";
 
     // Write pixel data
-    ppmFile.write(pixelData.data(), pixelData.size());
+    //ppmFile.write(pixelData.data(), pixelData.size());
+    auto *row = reinterpret_cast<unsigned int*>(mappedMemory);
+    uint32_t y = 0;
+    uint32_t x = 0;
+
+    for (; y < windowHeight; y++){
+        for (x = 0; x < windowWidth; x++){
+            ppmFile.write((char*)row+2, 1);
+            ppmFile.write((char*)row+1, 1);
+            ppmFile.write((char*)row, 1);
+            row++;
+        }
+    }
 
     // Close file and unmap memory
     ppmFile.close();
@@ -2378,10 +2394,45 @@ void VulkanHelper::InitVulkan()
 void VulkanHelper::MainLoop()
 {
     if(useHeadlessRendering){
-        for(int i = 0; i < 10; i++) {
-            s72Instance->UpdateObjects();
-            DrawFrame();
+        eventStartTimePoint = std::chrono::system_clock::now();
+        while(true){
+
+            if(eventHelper.EventAllFinished()){
+                break;
+            }
+            float duration = std::chrono::duration<float, std::chrono::microseconds::period>(std::chrono::system_clock::now() - eventStartTimePoint).count();
+            eventHelper.GetMatchedNode(duration);
+
+            for(size_t i = eventHelper.startIndex; i < eventHelper.endIndex; i++){
+                if(eventHelper.events[i].eventType == EventType::AVAILABLE){
+                    s72Instance->UpdateObjects();
+                    DrawFrame();
+                }
+                else if(eventHelper.events[i].eventType == EventType::PLAY){
+                    s72Instance->StopAnimation();
+                    s72Instance->currDuration = 0;
+                    s72Instance->StartAnimation();
+                    s72Instance->UpdateObjects();
+                    DrawFrame();
+                }
+                else if(eventHelper.events[i].eventType == EventType::SAVE){
+                    ppmFileName = std::get<std::string>(eventHelper.events[i].data);
+                    s72Instance->UpdateObjects();
+                    DrawFrame();
+                    ppmFileName = "";
+                }
+                else if(eventHelper.events[i].eventType == EventType::MARK){
+                    std::cout << std::get<std::string>(eventHelper.events[i].data) << std::endl;
+                }
+            }
+            eventHelper.startIndex = eventHelper.endIndex;
         }
+
+
+        //for(int i = 0; i < 10; i++) {
+        //    s72Instance->UpdateObjects();
+        //    DrawFrame();
+        //}
     }
     else {
         while (!glfwWindowShouldClose(window)) {
@@ -2419,11 +2470,16 @@ void VulkanHelper::MainLoopWIN()
  * @param cameraName The camera name.
  * @param newCullingMode The new culling mode.
  */
-void VulkanHelper::InitializeData(const std::shared_ptr<S72Helper>& news72Instance, uint32_t width, uint32_t height, const std::string& newDeviceName, const std::string& cameraName, const std::string& newCullingMode){
+void VulkanHelper::InitializeData(const std::shared_ptr<S72Helper>& news72Instance, uint32_t width, uint32_t height, const std::string& newDeviceName, const std::string& cameraName, const std::string& newCullingMode, const std::string& newEventFileName){
     windowWidth = width;
     windowHeight = height;
     deviceName = newDeviceName;
     cullingMode = newCullingMode;
+
+    if(!newEventFileName.empty()){
+        eventFileName = newEventFileName;
+        useHeadlessRendering = true;
+    }
 
     s72Instance = news72Instance;
     currCamera = s72Instance->cameras["User-Camera"];
@@ -2449,6 +2505,9 @@ void VulkanHelper::InitializeData(const std::shared_ptr<S72Helper>& news72Instan
 void VulkanHelper::Run(){
     if(!useHeadlessRendering) {
         InitWindow();
+    }
+    else{
+        eventHelper.ReadEventFile(eventFileName);
     }
     InitVulkan();
     MainLoop();
@@ -2506,6 +2565,15 @@ void VulkanHelper::ProcessGLFWInputCallBack(char key){
                 Camera_iterator = s72Instance->cameras.begin();
             }
             currCamera = Camera_iterator->second;
+            break;
+        }
+        case 'Y': {
+            if(!s72Instance->isPlayingAnimation){
+                s72Instance->StartAnimation();
+            }
+            else{
+                s72Instance->StopAnimation();
+            }
             break;
         }
         default:
@@ -2587,8 +2655,10 @@ void VulkanHelper::DrawFrame()
     }
 
     if(useHeadlessRendering){
+        if(!ppmFileName.empty()) {
+            SaveImageToPPM(swapChainImages[imageIndex], headlessImageMemory[imageIndex], ppmFileName);
+        }
         /* Update the current frame to the next frame index */
-        SaveImageToPPM(swapChainImages[imageIndex], headlessImageMemory[imageIndex], "Hello.ppm");
         currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
         return;
     }
