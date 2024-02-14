@@ -333,12 +333,22 @@ XZM::quat& XZM::quat::operator= (const quat& nq){
 
 
 /**
- * @brief A overload equality comparison operator.
+ * @brief Overload equality comparison operator.
  * @param nq A copied quaternion.
  * @return A self reference.
  */
 bool XZM::quat::operator== (const quat& nq) const{
     return data == nq.data;
+}
+
+
+/**
+ * @brief Overload addition operator.
+ * @param nq A target quat want to add with.
+ * @return A result quat.
+ */
+XZM::quat XZM::quat::operator+ (const quat& nq) const{
+    return {data[0]+nq.data[0],data[1]+nq.data[1],data[2]+nq.data[2],data[3]+nq.data[3]};
 }
 
 
@@ -356,6 +366,16 @@ XZM::quat XZM::quat::operator * (const XZM::quat &nq) {
     result.data[3] = data[3] * nq.data[3] - data[0] * nq.data[0] - data[1] * nq.data[1] - data[2] * nq.data[2];
 
     return result;
+}
+
+
+/**
+ * @brief Overload multiplication operator.
+ * @param f A multiplication factor.
+ * @return A result quat.
+ */
+XZM::quat XZM::quat::operator*(float f) const {
+    return {data[0]*f,data[1]*f,data[2]*f,data[3]*f};
 }
 
 
@@ -469,7 +489,7 @@ float XZM::DotProduct(const XZM::vec3 &v1, const XZM::vec3 &v2) {
 
 
 /**
- * @brief Do the cross product between two quaternions.
+ * @brief Do the dot product between two quaternions.
  * @param v1 The first quat.
  * @param v2 The second quat.
  * @return The result quat.
@@ -708,4 +728,54 @@ XZM::quat XZM::Lerp(const quat& low, const quat& high, float t){
         result.data[3] = low.data[3] * factor_1 + high_adj.data[3] * factor_2;
     }
     return result;
+}
+
+
+/**
+ * @brief Find the Spherical Linear interpolate two vec3 with a given factor t.
+ * @param low The lower bound.
+ * @param high The upper bound.
+ * @param t The alpha factor between 0 and 1.
+ * @return The linear interpolated vec3.
+ */
+XZM::vec3 XZM::SLerp(const vec3& low, const vec3& high, float t){
+    float theta = acosf(XZM::DotProduct(low,high));
+
+    /* If theta is close to 0, change to lerp to avoid zero divide. */
+    if(abs(theta) < 0.005f){
+        return Lerp(low,high,t);
+    }
+
+    return low * (sin((1-t)*theta)/ sin(theta)) + high * (sin(t*theta)/sin(theta));
+}
+
+
+/**
+ * @brief Find the Spherical Linear interpolate two quat with a given factor t.
+ * @param low The lower bound.
+ * @param high The upper bound.
+ * @param t The alpha factor between 0 and 1.
+ * @return The linear interpolated quat.
+ */
+/* Spherical Linear interpolate two quaternion with a given factor t. */
+XZM::quat XZM::SLerp(const quat& low, const quat& high, float t){
+    float dot = DotProduct(low,high);
+    /* If the dot product is negative, invert one of the quaternions to take the shortest path. */
+    quat high_adj = high;
+    if (dot < 0.0f) {
+        high_adj.data[0] = -high.data[0];
+        high_adj.data[1] = -high.data[1];
+        high_adj.data[2] = -high.data[2];
+        high_adj.data[3] = -high.data[3];
+        dot = -dot;
+    }
+
+    float theta = acosf(dot);
+
+    /* If theta is close to 0, change to lerp to avoid zero divide. */
+    if(abs(theta) < 0.005f){
+        return Lerp(low,high_adj,t);
+    }
+
+    return low * (sin((1-t)*theta)/ sin(theta)) + high_adj * (sin(t*theta)/sin(theta));
 }

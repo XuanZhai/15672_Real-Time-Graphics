@@ -355,12 +355,17 @@ void S72Object::Mesh::ReadBoundingBox(std::stringstream& buffer){
 }
 
 
+/**
+ * @brief Initialize a driver instance with the data from the parser node.
+ * @param node A parser node which contains all the data to build a driver.
+ */
 void S72Object::Driver::Initialization(const std::shared_ptr<ParserNode>& node){
 
     if(node == nullptr) return;
 
     nodeIndex = (int)std::get<float>(node->GetObjectValue("node")->data);
     channel = std::get<std::string>(node->GetObjectValue("channel")->data);
+    interpolation = std::get<std::string>(node->GetObjectValue("interpolation")->data);
     ParserNode::PNVector timerNode = std::get<ParserNode::PNVector>(node->GetObjectValue("times")->data);
     ParserNode::PNVector valueNode = std::get<ParserNode::PNVector>(node->GetObjectValue("values")->data);
 
@@ -380,39 +385,57 @@ void S72Object::Driver::Initialization(const std::shared_ptr<ParserNode>& node){
 }
 
 
-std::variant<XZM::vec3,XZM::quat> S72Object::Driver::GetCurrentData(float currTime){
+/**
+ * @brief Given the current time, return the current value in the driver.
+ * @param currTime The current time of the animation.
+ * @return The value of the animation, can be a vec3 for translation and scale, or a quat for rotation.
+ */
+std::variant<XZM::vec3,XZM::quat> S72Object::Driver::GetCurrentValue(float currTime){
     if(timers.empty()) return XZM::vec3();
 
     currTime = fmodf(currTime, timers.back());
 
-    if(currTime <= timers.at(0)){
-        return values.at(0);
-    }
-
+    /* Get the lower bound and the higher bound iterator. */
     auto low = std::lower_bound(timers.begin(),timers.end(), currTime);
-    if(*low == timers.back()){
-        return values.back();
+    auto high = std::next(low);
+
+    /* If it is between the last time and the first time. */
+    if(high == timers.end() || currTime <= timers.at(0)){
+        low = std::prev(timers.end());
+        high = timers.begin();
     }
 
-    auto high = std::next(low);
     float range = *high - *low;
-    float t = 0;
+    float t = (currTime - *low)/range;
     size_t lowIndex = low - timers.begin();
     size_t highIndex = high - timers.begin();
 
-    if(range != 0){
-        t = (currTime - *low)/range;
+    if(interpolation == "LINEAR") {
+        if (channel == "translation" || channel == "scale") {
+            return XZM::Lerp(std::get<XZM::vec3>(values.at(lowIndex)), std::get<XZM::vec3>(values.at(highIndex)), t);
+        } else {
+            return XZM::Lerp(std::get<XZM::quat>(values.at(lowIndex)), std::get<XZM::quat>(values.at(highIndex)), t);
+        }
     }
-
-    if(channel == "translation" || channel == "scale"){
-        return XZM::Lerp(std::get<XZM::vec3>(values.at(lowIndex)), std::get<XZM::vec3>(values.at(highIndex)), t);
+    else if(interpolation == "STEP"){
+        return values.at(lowIndex);
     }
-    else{
-        return XZM::Lerp(std::get<XZM::quat>(values.at(lowIndex)), std::get<XZM::quat>(values.at(highIndex)), t);
+    else if(interpolation == "SLERP"){
+        if (channel == "translation" || channel == "scale") {
+            return XZM::SLerp(std::get<XZM::vec3>(values.at(lowIndex)), std::get<XZM::vec3>(values.at(highIndex)), t);
+        } else {
+            return XZM::SLerp(std::get<XZM::quat>(values.at(lowIndex)), std::get<XZM::quat>(values.at(highIndex)), t);
+        }
     }
+    throw std::runtime_error("Undefined Interpolation type");
 }
 
 
+/**
+ * @brief Check if the driver instance is affiliated to the input node object.
+ * @param node The node object we want to test.
+ * @return The channel of the animation it applies to the node, or an empty string if a mismatch.
+ */
 std::string S72Object::Driver::HasMatchNodeAndChannel(const std::shared_ptr<ParserNode>& node) const{
     int newIndex = (int)std::get<float>(node->GetObjectValue("ListIndex")->data);
 
@@ -538,9 +561,9 @@ void S72Helper::ReconstructNode(std::shared_ptr<ParserNode> newNode, XZM::mat4 n
         for(const auto& driver : drivers){
             std::string channel = driver->HasMatchNodeAndChannel(newNode);
             if(channel.empty()) continue;
-            if(channel == "translation") translation = std::get<XZM::vec3>(driver->GetCurrentData(currDuration));
-            else if(channel == "rotation") rotation = std::get<XZM::quat>(driver->GetCurrentData(currDuration));
-            else if(channel == "scale") scale = std::get<XZM::vec3>(driver->GetCurrentData(currDuration));
+            if(channel == "translation") translation = std::get<XZM::vec3>(driver->GetCurrentValue(currDuration));
+            else if(channel == "rotation") rotation = std::get<XZM::quat>(driver->GetCurrentValue(currDuration));
+            else if(channel == "scale") scale = std::get<XZM::vec3>(driver->GetCurrentValue(currDuration));
         }
 
         XZM::mat4 translationMatrix = XZM::Translation(translation);
@@ -665,11 +688,11 @@ void S72Helper::UpdateObject(const std::shared_ptr<ParserNode>& newNode, XZM::ma
         for(const auto& driver : drivers){
             std::string channel = driver->HasMatchNodeAndChannel(newNode);
             if(channel.empty()) continue;
-            if(channel == "translation") translation = std::get<XZM::vec3>(driver->GetCurrentData(currDuration));
+            if(channel == "translation") translation = std::get<XZM::vec3>(driver->GetCurrentValue(currDuration));
             else if(channel == "rotation") {
-                rotation = std::get<XZM::quat>(driver->GetCurrentData(currDuration));
+                rotation = std::get<XZM::quat>(driver->GetCurrentValue(currDuration));
             }
-            else if(channel == "scale") scale = std::get<XZM::vec3>(driver->GetCurrentData(currDuration));
+            else if(channel == "scale") scale = std::get<XZM::vec3>(driver->GetCurrentValue(currDuration));
         }
 
         XZM::mat4 translationMatrix = XZM::Translation(translation);

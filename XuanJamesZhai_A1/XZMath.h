@@ -70,7 +70,9 @@ namespace XZM {
             quat(const quat&);
             quat& operator= (const quat& nq);
             bool operator== (const quat& nq) const;
+            quat operator+ (const quat& nq) const;
             quat operator* (const quat& nq);
+            quat operator* (float f) const;
     };
 
     /* Convert a quat to a mat4 rotation matrix. */
@@ -120,6 +122,12 @@ namespace XZM {
 
     /* Linear interpolate two quaternion with a given factor t. */
     quat Lerp(const quat& low, const quat& high, float t);
+
+    /* Spherical Linear interpolate two vec3 with a given factor t. */
+    vec3 SLerp(const vec3& low, const vec3& high, float t);
+
+    /* Spherical Linear interpolate two quaternion with a given factor t. */
+    quat SLerp(const quat& low, const quat& high, float t);
 }
 
 

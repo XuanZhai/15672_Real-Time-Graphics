@@ -135,6 +135,8 @@ namespace S72Object {
             int nodeIndex = 0;
             /* The channel of the driver. Can be: translation, rotation, and scale. */
             std::string channel;
+            /* The type of interpolation. Can be: STEP, LERP, and SLERP. */
+            std::string interpolation = "LINEAR";
             /* The time and value data for the driver. */
             std::vector<float> timers;
             std::vector<std::variant<XZM::vec3, XZM::quat>> values;
@@ -143,7 +145,7 @@ namespace S72Object {
             void Initialization(const std::shared_ptr<ParserNode> &node);
 
             /* Given the current, given the current value. */
-            std::variant<XZM::vec3, XZM::quat> GetCurrentData(float currTime);
+            std::variant<XZM::vec3, XZM::quat> GetCurrentValue(float currTime);
 
             /* Check If the given node uses the driver. If true, return the channel. */
             std::string HasMatchNodeAndChannel(const std::shared_ptr<ParserNode> &node) const;
