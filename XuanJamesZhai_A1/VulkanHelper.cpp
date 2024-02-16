@@ -5,9 +5,6 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
-//#define TINYOBJLOADER_IMPLEMENTATION
-//#include <tiny_obj_loader.h>
-
 #include <utility>
 
 
@@ -83,6 +80,14 @@ static std::vector<char> ReadFile(const std::string& filename) {
 }
 
 
+/**
+ * @brief React with a key event.
+ * @param window The glfw window that it's interacting with.
+ * @param key The key is pressed.
+ * @param scancode
+ * @param action If it is pressed or held down.
+ * @param mods
+ */
 void GLFW_Key_Callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
     auto* instance = reinterpret_cast<VulkanHelper*>(glfwGetWindowUserPointer(window));
@@ -138,6 +143,11 @@ void VulkanHelper::FramebufferResizeCallback(GLFWwindow* window, int width, int 
 */
 void VulkanHelper::InitWindow()
 {
+    /* Not create a window if doing the headless rendering. */
+    if(useHeadlessRendering){
+        return;
+    }
+
     glfwInit();      // Initialize GLFW
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);       // Tell it to not create an OpenGL context
@@ -206,7 +216,7 @@ VkSurfaceFormatKHR VulkanHelper::ChooseSwapSurfaceFormat(const std::vector<VkSur
 
     /* Set the format (the color channels and types) and the color space (if the SRGB color space is supported or not) */
     for (const auto& availableFormat : availableFormats) {
-        if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+        if (availableFormat.format == VK_FORMAT_R8G8B8A8_UNORM) {
             return availableFormat;
         }
     }
@@ -740,20 +750,21 @@ void VulkanHelper::CreateSwapChain()
 }
 
 
-
+/**
+ * @brief Create the swap chain (a list of images) used for the headless rendering mode.
+ */
 void VulkanHelper::CreateHeadlessSwapChain(){
 
-    uint32_t imageCount = 3;
+    uint32_t imageCount = MAX_FRAMES_IN_FLIGHT;
 
     swapChainImages.resize(imageCount);
     headlessImageMemory.resize(imageCount);
-    headlessImageMapped.resize(imageCount);
 
     for(size_t i = 0; i < imageCount; i++){
-        CreateImage(windowWidth,windowHeight,1,VK_FORMAT_B8G8R8A8_SRGB,VK_IMAGE_TILING_OPTIMAL,VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,swapChainImages[i],headlessImageMemory[i]);
+        CreateImage(windowWidth,windowHeight,1,VK_FORMAT_R8G8B8A8_UNORM,VK_IMAGE_TILING_OPTIMAL,VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,swapChainImages[i],headlessImageMemory[i]);
     }
 
-    swapChainImageFormat = VK_FORMAT_B8G8R8A8_SRGB;
+    swapChainImageFormat = VK_FORMAT_R8G8B8A8_UNORM;
     swapChainExtent = {windowWidth,windowHeight};
 }
 
@@ -1358,6 +1369,7 @@ std::array<VkVertexInputAttributeDescription2EXT, 3> VulkanHelper::CreateAttribu
 
 /**
 * @brief Create the index buffer to store the index relations.
+ * NOT USE FOR A1, BUT MAY FOR A2.
 */
 void VulkanHelper::CreateIndexBuffer()
 {
@@ -1407,11 +1419,6 @@ void VulkanHelper::CreateUniformBuffers()
 */
 void VulkanHelper::UpdateUniformBuffer(uint32_t currentImage, const S72Object::Mesh& mesh, size_t instanceIndex, size_t totalIndex)
 {
-    //static auto startTime = std::chrono::high_resolution_clock::now();
-
-    //auto currentTime = std::chrono::high_resolution_clock::now();
-    //float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
     /* Define the model, view and projection transformations in the uniform buffer object.*/
     UniformBufferObject ubo{};
 
@@ -2017,61 +2024,17 @@ void VulkanHelper::CreateDepthResources()
 
 
 /**
-* @brief Load an obj model from the given path.
-*/
-void VulkanHelper::LoadModel()
-{
-    /* Holds all the positions, normals and texture coordinates */
-    //tinyobj::attrib_t attrib;
-    //std::vector<tinyobj::shape_t> shapes;
-    //std::vector<tinyobj::material_t> materials;
-    //std::string err;
-
-    //if (!tinyobj::LoadObj(&attrib, &shapes, &materials,  &err, MODEL_PATH.c_str())) {
-    //    throw std::runtime_error(err);
-    //}
-
-    /* A map of Vertices and Indices to make sure there are no duplicate vertex */
-    //std::unordered_map<Vertex, uint32_t> uniqueVertices{};
-
-    /* Loop through the shapes */
-    //for (const auto& shape : shapes) {
-    //    for (const auto& index : shape.mesh.indices) {
-   //         Vertex vertex{};
-
-            /* Fill the triangle data */
-   //         vertex.pos = {
-//                    attrib.vertices[3 * index.vertex_index + 0],
-//                    attrib.vertices[3 * index.vertex_index + 1],
-//                    attrib.vertices[3 * index.vertex_index + 2]
-//            };
-
-            //vertex.texCoord = {
-            //        attrib.texcoords[2 * index.texcoord_index + 0],
-                    /* We need to flip the v so that it can become a top to bottom orientation */
-            //        1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
-            //};
-
-            //vertex.color = { 1.0f, 1.0f, 1.0f };
-
-            /* Check if there's a duplicate vertex */
-            //if (uniqueVertices.count(vertex) == 0) {
-                //uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
-                //vertices.push_back(vertex);
-            //}
-
-            //indices.push_back(uniqueVertices[vertex]);
-//        }
-//    }
-}
-
-
+ * @brief Copy a VKImage to data through a staging buffer.
+ * @param image The image we want to copy.
+ * @param imageMemory The memory allocated for the image.
+ * @param data The data we copied to.
+ */
 void VulkanHelper::CopyImageToData(const VkImage& image, const VkDeviceMemory& imageMemory, void*& data){
 
     VkMemoryRequirements oldMemoryRequirements;
     vkGetImageMemoryRequirements(device, image, &oldMemoryRequirements);
 
-    // Allocate staging buffer
+    /* Allocate staging buffer */
     VkBufferCreateInfo bufferCreateInfo = {};
     bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bufferCreateInfo.size = oldMemoryRequirements.size;
@@ -2081,7 +2044,7 @@ void VulkanHelper::CopyImageToData(const VkImage& image, const VkDeviceMemory& i
     VkBuffer stagingBuffer;
     vkCreateBuffer(device, &bufferCreateInfo, nullptr, &stagingBuffer);
 
-    // Allocate memory for staging buffer
+    /* Allocate memory for staging buffer. */
     VkMemoryRequirements memoryRequirements;
     vkGetBufferMemoryRequirements(device, stagingBuffer, &memoryRequirements);
 
@@ -2094,8 +2057,7 @@ void VulkanHelper::CopyImageToData(const VkImage& image, const VkDeviceMemory& i
     vkAllocateMemory(device, &allocateInfo, nullptr, &stagingBufferMemory);
     vkBindBufferMemory(device, stagingBuffer, stagingBufferMemory, 0);
 
-
-// Copy data from image to staging buffer
+    /* Copy data from image to staging buffer */
     VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
     VkBufferImageCopy copyRegion = {};
     copyRegion.bufferOffset = 0;
@@ -2114,61 +2076,55 @@ void VulkanHelper::CopyImageToData(const VkImage& image, const VkDeviceMemory& i
 
     vkCmdCopyImageToBuffer(commandBuffer, image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, stagingBuffer, 1, &copyRegion);
 
-// Transition image layout back if needed
+    /* Transition image layout back if needed */
     vkMapMemory(device, stagingBufferMemory, 0, VK_WHOLE_SIZE, 0, &data);
 
     EndSingleTimeCommands(commandBuffer);
 
-// Read image data from staging buffer
-// Example: memcpy(/* destination */, mappedData, /* size of the data */);
-
-// Unmap staging buffer memory
     vkUnmapMemory(device, stagingBufferMemory);
 
-// Clean up
+    /* Clean up */
     vkFreeMemory(device, stagingBufferMemory, nullptr);
     vkDestroyBuffer(device, stagingBuffer, nullptr);
 }
 
-void VulkanHelper::SaveImageToPPM(const VkImage& image, const VkDeviceMemory& imageMemory,  const std::string& filename){
-    // Map image memory
-    VkMemoryRequirements memoryRequirements;
-    void *mappedMemory;
-    vkGetImageMemoryRequirements(device, image, &memoryRequirements);
-    //vkBindImageMemory(device, image, imageMemory, 0);
-    //vkGetImageMemoryRequirements(device, image, &memoryRequirements);
-    VkDeviceSize imageSize = memoryRequirements.size;
 
-    // Read pixel data from image
+/**
+ * @brief Save an image to a PPM file.
+ * @param image The image we want to save.
+ * @param imageMemory The memory allocated for the image.
+ * @param filename The target PPM file name.
+ */
+void VulkanHelper::SaveImageToPPM(const VkImage& image, const VkDeviceMemory& imageMemory,  const std::string& filename){
+    /* Map image memory */
+    void *mappedMemory;
+    /* Read pixel data from image */
     CopyImageToData(image,imageMemory,mappedMemory);
 
-    // Write pixel data to PPM file
+    /* Write pixel data to PPM file */
     std::ofstream ppmFile(filename, std::ios::binary);
     if (!ppmFile.is_open()) {
         throw std::runtime_error("Failed to open PPM file for writing.");
     }
 
-    // Write PPM header
+    /* Write PPM header */
     ppmFile << "P6\n";
     ppmFile << windowWidth << " " << windowHeight << "\n";
     ppmFile << "255\n";
 
-    // Write pixel data
-    //ppmFile.write(pixelData.data(), pixelData.size());
+    /* Write pixel data */
     auto *row = reinterpret_cast<unsigned int*>(mappedMemory);
     uint32_t y = 0;
     uint32_t x = 0;
 
     for (; y < windowHeight; y++){
         for (x = 0; x < windowWidth; x++){
-            ppmFile.write((char*)row+2, 1);
-            ppmFile.write((char*)row+1, 1);
-            ppmFile.write((char*)row, 1);
+            /* We want to avoid writing the alpha data. */
+            ppmFile.write((char*)row,3);
             row++;
         }
     }
-
-    // Close file and unmap memory
+    /* Close file and unmap memory */
     ppmFile.close();
 }
 
@@ -2356,17 +2312,21 @@ void VulkanHelper::InitVulkan()
 {
     CreateInstance();
     SetupDebugMessenger();
+
     if(!useHeadlessRendering) {
         CreateSurface();
     }
+
     PickPhysicalDevice();
     CreateLogicalDevice();
+
     if(!useHeadlessRendering) {
         CreateSwapChain();
     }
     else{
         CreateHeadlessSwapChain();
     }
+
     CreateImageViews();
     CreateRenderPass();
     CreateDescriptorSetLayout();
@@ -2377,7 +2337,6 @@ void VulkanHelper::InitVulkan()
     CreateTextureImage();
     CreateTextureImageView();
     CreateTextureSampler();
-    //LoadModel();
     CreateVertexBuffers();
     //CreateIndexBuffer();
     CreateUniformBuffers();
@@ -2385,65 +2344,6 @@ void VulkanHelper::InitVulkan()
     CreateDescriptorSets();
     CreateCommandBuffers();
     CreateSyncObjects();
-}
-
-
-/**
-* @brief Create a main loop to let the window keep opening.
-*/
-void VulkanHelper::MainLoop()
-{
-    if(useHeadlessRendering){
-        eventStartTimePoint = std::chrono::system_clock::now();
-        while(true){
-
-            if(eventHelper.EventAllFinished()){
-                break;
-            }
-            float duration = std::chrono::duration<float, std::chrono::microseconds::period>(std::chrono::system_clock::now() - eventStartTimePoint).count();
-            eventHelper.GetMatchedNode(duration);
-
-            for(size_t i = eventHelper.startIndex; i < eventHelper.endIndex; i++){
-                if(eventHelper.events[i].eventType == EventType::AVAILABLE){
-                    s72Instance->UpdateObjects();
-                    DrawFrame();
-                }
-                else if(eventHelper.events[i].eventType == EventType::PLAY){
-                    s72Instance->StopAnimation();
-                    s72Instance->currDuration = 0;
-                    s72Instance->StartAnimation();
-                    s72Instance->UpdateObjects();
-                    DrawFrame();
-                }
-                else if(eventHelper.events[i].eventType == EventType::SAVE){
-                    ppmFileName = std::get<std::string>(eventHelper.events[i].data);
-                    s72Instance->UpdateObjects();
-                    DrawFrame();
-                    ppmFileName = "";
-                }
-                else if(eventHelper.events[i].eventType == EventType::MARK){
-                    std::cout << std::get<std::string>(eventHelper.events[i].data) << std::endl;
-                }
-            }
-            eventHelper.startIndex = eventHelper.endIndex;
-        }
-
-
-        //for(int i = 0; i < 10; i++) {
-        //    s72Instance->UpdateObjects();
-        //    DrawFrame();
-        //}
-    }
-    else {
-        while (!glfwWindowShouldClose(window)) {
-            glfwPollEvents();       // Check for inputs
-            s72Instance->UpdateObjects();
-            DrawFrame();
-        }
-    }
-
-    /* Wait for the logical device to finish operations before exiting mainLoop and destroying the window */
-    vkDeviceWaitIdle(device);
 }
 
 
@@ -2462,56 +2362,87 @@ void VulkanHelper::MainLoopWIN()
 
 
 /**
- * @brief Initialization the vulkan with s72 and the data passed from the command line.
- * @param news72Instance The s72 helper which contains all the mesh data.
- * @param width The display window width.
- * @param height The display window height
- * @param newDeviceName The physical device name.
- * @param cameraName The camera name.
+ * @brief Set the s72Instance with the new one.
+ * @param newS72Instance
+ */
+void VulkanHelper::SetS72Instance(const std::shared_ptr<S72Helper>& newS72Instance){
+    this->s72Instance = newS72Instance;
+}
+
+
+/**
+ * @brief Set the window size.
+ * @param width New width.
+ * @param height New height.
+ */
+void VulkanHelper::SetWindowSize(size_t width, size_t height){
+    this->windowWidth = width;
+    this->windowHeight = height;
+}
+
+
+/**
+ * @brief Set the selected physical device name.
+ * @param newDeviceName The selected physical device name.
+ */
+void VulkanHelper::SetDeviceName(const std::string& newDeviceName){
+    this->deviceName = newDeviceName;
+}
+
+
+/**
+ * @brief Select the culling mode, can be 'none' or 'frustum'.
  * @param newCullingMode The new culling mode.
  */
-void VulkanHelper::InitializeData(const std::shared_ptr<S72Helper>& news72Instance, uint32_t width, uint32_t height, const std::string& newDeviceName, const std::string& cameraName, const std::string& newCullingMode, const std::string& newEventFileName){
-    windowWidth = width;
-    windowHeight = height;
-    deviceName = newDeviceName;
-    cullingMode = newCullingMode;
+void VulkanHelper::SetCullingMode(const std::string& newCullingMode){
+    this->cullingMode = newCullingMode;
+}
 
-    if(!newEventFileName.empty()){
-        eventFileName = newEventFileName;
-        useHeadlessRendering = true;
+
+/**
+ * @brief Set the first camera we want to use.
+ * @param cameraName The target camera.
+ */
+void VulkanHelper::SetCameraName(const std::string& cameraName){
+
+    if(s72Instance == nullptr){
+        throw std::runtime_error("Vulkan initialization error: s72Instance is null");
     }
-
-    s72Instance = news72Instance;
-    currCamera = s72Instance->cameras["User-Camera"];
-
-    if(s72Instance->cameras.empty()){
-        throw std::runtime_error("Vulkan initialization error: No camera in s72.");
-    }
-
-    /* If not specify the camera name. */
-    if(cameraName.empty()) return;
 
     /* Find if there's a camera with the target name. */
     if(s72Instance->cameras.count(cameraName)){
         currCamera = s72Instance->cameras[cameraName];
     }
+    else{
+        std::cout << "Could not find the selected camera" << std::endl;
+    }
 }
 
 
 /**
- * @brief Run the vulkan api with the s72 helper instance.
- * @param news72Instance The s72 helper which contains all the mesh data.
+ * @brief Select if we want to use the headless mode.
+ * @param isUseHeadless True if we want to use the headless mode.
  */
-void VulkanHelper::Run(){
-    if(!useHeadlessRendering) {
-        InitWindow();
+void VulkanHelper::SetHeadlessMode(bool isUseHeadless){
+    this->useHeadlessRendering = isUseHeadless;
+}
+
+
+/**
+ * @brief Save the rendered result to a PPM file.
+ * @param filename The target PPM's file name.
+ */
+void VulkanHelper::SaveRenderResult(const std::string& filename){
+    if(!useHeadlessRendering){
+        std::cout << "Cannot save a render image in a on window mode" << std::endl;
     }
-    else{
-        eventHelper.ReadEventFile(eventFileName);
+
+    size_t imageIndex = headlessImageIndex - 1;
+    if(headlessImageIndex == 0){
+        imageIndex = headlessImageMemory.size()-1;
     }
-    InitVulkan();
-    MainLoop();
-    CleanUp();
+
+    SaveImageToPPM(swapChainImages[imageIndex], headlessImageMemory[imageIndex], filename);
 }
 
 
@@ -2655,9 +2586,6 @@ void VulkanHelper::DrawFrame()
     }
 
     if(useHeadlessRendering){
-        if(!ppmFileName.empty()) {
-            SaveImageToPPM(swapChainImages[imageIndex], headlessImageMemory[imageIndex], ppmFileName);
-        }
         /* Update the current frame to the next frame index */
         currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
         return;
@@ -2697,11 +2625,8 @@ void VulkanHelper::DrawFrame()
 */
 void VulkanHelper::CleanUp()
 {
-    if (USE_WSI) {
-        /* Wait for the logical device to finish operations before exiting mainLoop and destroying the window */
-        vkDeviceWaitIdle(device);
-    }
-
+    /* Wait for the logical device to finish operations before exiting mainLoop and destroying the window */
+    vkDeviceWaitIdle(device);
 
     if (enableValidationLayers) {
         DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);

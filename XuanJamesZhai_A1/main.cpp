@@ -2,7 +2,7 @@
 #include <iostream>
 #include <string>
 #include <memory>
-#include "VulkanHelper.h"
+#include "RenderHelper.h"
 
 /* The s72 scene file name passed from the command line. */
 static std::string sceneName;
@@ -26,7 +26,7 @@ static std::string cullingMode = "none";
 static std::string eventFileName;
 
 /* A dynamic allocated instance of the VKHelper. */
-static std::shared_ptr<VulkanHelper> newVKHelper = std::make_shared<VulkanHelper>();
+static std::shared_ptr<RenderHelper> renderHelper = std::make_shared<RenderHelper>();
 
 
 /**
@@ -60,15 +60,16 @@ int main(int argc, char** argv) {
 
     ReadCMDArguments(argc,argv);
 
-    /* Parse the s72 file. */
-    std::shared_ptr<S72Helper> newS72Helper(new S72Helper());
-    newS72Helper->ReadS72(sceneName);
-
     try
     {
-        /* Initialize the vulkan helper and pass data from the command line arguments. */
-        newVKHelper->InitializeData(newS72Helper,windowWidth,windowHeight,deviceName,cameraName,cullingMode, eventFileName);
-        newVKHelper->Run();
+        renderHelper->ReadS72(sceneName);
+        renderHelper->AttachS72ToVulkan();
+        renderHelper->SetEventFile(eventFileName);
+        //renderHelper->SetRenderMode(RenderMode::PerformanceTest);
+        renderHelper->SetVulkanData(windowWidth,windowHeight,deviceName,cameraName,cullingMode);
+        renderHelper->InitVulkan();
+        renderHelper->RunVulkan();
+        renderHelper->ClearVulkan();
     }
     catch (const std::exception& e)
     {

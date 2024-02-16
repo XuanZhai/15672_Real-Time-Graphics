@@ -484,7 +484,10 @@ XZM::vec3 XZM::CrossProduct(const vec3& v1, const vec3& v2){
  * @return The result in float.
  */
 float XZM::DotProduct(const XZM::vec3 &v1, const XZM::vec3 &v2) {
-        return v1.data[0] * v2.data[0] + v1.data[1] * v2.data[1] + v1.data[2] * v2.data[2];
+
+    float ans = v1.data[0] * v2.data[0] + v1.data[1] * v2.data[1] + v1.data[2] * v2.data[2];
+
+    return ans;
 }
 
 
@@ -495,7 +498,17 @@ float XZM::DotProduct(const XZM::vec3 &v1, const XZM::vec3 &v2) {
  * @return The result quat.
  */
 float XZM::DotProduct(const quat& q1, const quat& q2){
-    return q1.data[0] * q2.data[0] + q1.data[1] * q2.data[1] + q1.data[2] * q2.data[2] + q1.data[3] * q2.data[3];
+
+    float ans = q1.data[0] * q2.data[0] + q1.data[1] * q2.data[1] + q1.data[2] * q2.data[2] + q1.data[3] * q2.data[3];
+
+    if(ans > 1.0f){
+        ans = 1.0f;
+    }
+    else if(ans < -1.0f){
+        ans = -1.0f;
+    }
+
+    return ans;
 }
 
 
@@ -770,12 +783,12 @@ XZM::quat XZM::SLerp(const quat& low, const quat& high, float t){
         dot = -dot;
     }
 
-    float theta = acosf(dot);
+    float theta = acos(dot);
 
     /* If theta is close to 0, change to lerp to avoid zero divide. */
-    if(abs(theta) < 0.005f){
+    if(abs(sin(theta)) <= 1.0f){
         return Lerp(low,high_adj,t);
     }
-
+    printf("Here %f and %f\n", dot, theta);
     return low * (sin((1-t)*theta)/ sin(theta)) + high_adj * (sin(t*theta)/sin(theta));
 }

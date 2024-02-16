@@ -400,13 +400,14 @@ std::variant<XZM::vec3,XZM::quat> S72Object::Driver::GetCurrentValue(float currT
     auto high = std::next(low);
 
     /* If it is between the last time and the first time. */
-    if(high == timers.end() || currTime <= timers.at(0)){
+    if(high == timers.end() || currTime < timers.at(0)){
         low = std::prev(timers.end());
         high = timers.begin();
     }
 
     float range = *high - *low;
     float t = (currTime - *low)/range;
+
     size_t lowIndex = low - timers.begin();
     size_t highIndex = high - timers.begin();
 

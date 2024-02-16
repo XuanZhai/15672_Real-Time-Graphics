@@ -41,7 +41,7 @@ const std::string MODEL_PATH = "models/viking_room.obj";
 const std::string TEXTURE_PATH = "Textures/viking_room.png";
 
 /* How many frames should be processed concurrently */
-const int MAX_FRAMES_IN_FLIGHT = 2;
+const int MAX_FRAMES_IN_FLIGHT = 3;
 
 /* Type of the validation layer we used */
 const std::vector<const char*> validationLayers = { "VK_LAYER_KHRONOS_validation" };
@@ -222,22 +222,17 @@ private:
     /* The culling mode used for rendering. Can be none or frustum. */
     std::string cullingMode;
 
-
+    /* Set if we are doing the off-screen rendering. */
     bool useHeadlessRendering = false;
 
+    /* Memory allocated for the off-screen image. */
     std::vector<VkDeviceMemory> headlessImageMemory;
 
+    /* data mapped to the headless memory. */
     std::vector<void*> headlessImageMapped;
 
+    /* The current rendered image into headless list. */
     uint32_t headlessImageIndex = 0;
-
-    std::string eventFileName;
-
-    EventHelper eventHelper;
-
-    std::chrono::system_clock::time_point eventStartTimePoint;
-
-    std::string ppmFileName;
 
 
     /* A struct of queue that will be submitted to Vulkan */
@@ -260,9 +255,6 @@ private:
 
     /* A callback function use to detect if a window is resized. */
     static void FramebufferResizeCallback(GLFWwindow* window, int width, int height);
-
-    /* Initialize the GLFW window used for the Vulkan Display. */
-    void InitWindow();
 
     /* Initialize the window without GLFW. Assign the HWND instance and the HINSTANCE to the member variable. */
     void InitWindowWIN(HINSTANCE new_hInstance, HWND new_hwnd);
@@ -315,7 +307,7 @@ private:
     /* Create the swap chain that will be used for display the output. */
     void CreateSwapChain();
 
-
+    /* Create the swap chain as a list of images for the headless mode. */
     void CreateHeadlessSwapChain();
 
     /* Create an image view instance based on the image and its format. */
@@ -423,11 +415,10 @@ private:
     /* Create the depth image and the image view. */
     void CreateDepthResources();
 
-    /* Load an obj model from the given path. */
-    void LoadModel();
-
+    /* Copy a VkImage to a mapped array through a staging buffer. */
     void CopyImageToData(const VkImage& image, const VkDeviceMemory& imageMemory, void*& data);
 
+    /* Same a VKImage to a PPM file with a given name. */
     void SaveImageToPPM(const VkImage& image, const VkDeviceMemory& imageMemory, const std::string&);
 
     /* Clean up the swap chain and all the related resources. */
@@ -439,28 +430,14 @@ private:
     /* Generate the mipmaps through the command buffer. */
     void GenerateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t newMipLevels);
 
-    /* Initialize the Vulkan application and setup. */
-    void InitVulkan();
-
-    /* Create a main loop to let the window keep opening. */
-    void MainLoop();
-
     /* Create a main loop to let the window keep opening (Looping using the MSG mechanism). */
     static void MainLoopWIN();
 
-public:
+    /* Initialize the GLFW window used for the Vulkan Display. */
+    void InitWindow();
 
-    /* Initialization the vulkan with s72 and the data passed from the command line. */
-    void InitializeData(const std::shared_ptr<S72Helper>& news72Instance, uint32_t width, uint32_t height, const std::string& newDeviceName, const std::string& cameraName, const std::string& newCullingMode, const std::string& newEventFileName);
-
-    /* Run the vulkan api with the s72 helper instance. */
-    void Run();
-
-    /* Run the Vulkan application using the WSI. */
-    void RunWIN(HINSTANCE new_Instance, HWND new_hwnd);
-
-    /* Handle the GLFW input based on the key the user typed. */
-    void ProcessGLFWInputCallBack(char key);
+    /* Initialize the Vulkan application and setup. */
+    void InitVulkan();
 
     /* Draw the frame and submit the command buffer. */
     void DrawFrame();
@@ -468,6 +445,37 @@ public:
     /* CleanUp used for destroy the instance and related destruction. */
     void CleanUp();
 
+public:
+
+    /* Make the render helper can access the vulkan helper's private properties. */
+    friend class RenderHelper;
+
+    /* Set the s72helper with a new instance. */
+    void SetS72Instance(const std::shared_ptr<S72Helper>& s72Instance);
+
+    /* Set the vulkan's window size. */
+    void SetWindowSize(size_t width, size_t height);
+
+    /* Set a specific physical device name. */
+    void SetDeviceName(const std::string& deviceName);
+
+    /* Set a specific camera name. */
+    void SetCameraName(const std::string& cameraName);
+
+    /* Set a specific culling mode. */
+    void SetCullingMode(const std::string& cullingMode);
+
+    /* Set if we use the off-screen rendering. */
+    void SetHeadlessMode(bool);
+
+    /* Save the rendered image to a ppm file. Only work if it's the off-screen rendering. */
+    void SaveRenderResult(const std::string& filename);
+
+    /* Run the Vulkan application using the WSI. */
+    void RunWIN(HINSTANCE new_Instance, HWND new_hwnd);
+
+    /* Handle the GLFW input based on the key the user typed. */
+    void ProcessGLFWInputCallBack(char key);
 };
 
 

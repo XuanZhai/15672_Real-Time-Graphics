@@ -5,7 +5,10 @@
 #include "EventHelper.h"
 
 
-
+/**
+ * @brief Read and parse an event file.
+ * @param fileName The event file's path and name.
+ */
 void EventHelper::ReadEventFile(const std::string& fileName){
     std::ifstream input = std::ifstream(fileName, std::ios::binary);
 
@@ -51,6 +54,10 @@ void EventHelper::ReadEventFile(const std::string& fileName){
 }
 
 
+/**
+ * @brief Given the current time step, set the sliding window to refers to the current events to act.
+ * @param time The current time step.
+ */
 void EventHelper::GetMatchedNode(float time){
 
     auto iter = std::lower_bound(events.begin(),events.end(),time, EventNode::compare);
@@ -58,6 +65,11 @@ void EventHelper::GetMatchedNode(float time){
     endIndex = iter-events.begin();
 }
 
+
+/**
+ * @brief Check if all the events are done.
+ * @return True if all are done.
+ */
 bool EventHelper::EventAllFinished() const {
     return startIndex == events.size();
 }
