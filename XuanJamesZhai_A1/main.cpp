@@ -25,6 +25,9 @@ static std::string cullingMode = "none";
 /* The file path and the name of the events. */
 static std::string eventFileName;
 
+/* The number of iterations when doing the performance test. */
+static size_t performanceTestCount = 0;
+
 /* A dynamic allocated instance of the VKHelper. */
 static std::shared_ptr<RenderHelper> renderHelper = std::make_shared<RenderHelper>();
 
@@ -52,6 +55,9 @@ void ReadCMDArguments(int argc, char** argv){
         else if(strcmp(argv[i],"--headless") == 0){
             eventFileName = argv[i+1];
         }
+        else if(strcmp(argv[i],"--performance-test") == 0){
+            performanceTestCount = strtoul(argv[i+1],nullptr,0);
+        }
     }
 }
 
@@ -65,7 +71,7 @@ int main(int argc, char** argv) {
         renderHelper->ReadS72(sceneName);
         renderHelper->AttachS72ToVulkan();
         renderHelper->SetEventFile(eventFileName);
-        //renderHelper->SetRenderMode(RenderMode::PerformanceTest);
+        renderHelper->SetPerformanceTest(performanceTestCount);
         renderHelper->SetVulkanData(windowWidth,windowHeight,deviceName,cameraName,cullingMode);
         renderHelper->InitVulkan();
         renderHelper->RunVulkan();

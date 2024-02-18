@@ -1,3 +1,0 @@
-F:/Code/15672_Real-Time-Graphics/XuanJamesZhai_A1/cmake-build-release/CMakeFiles/XuanJamesZhai_A1.dir
-F:/Code/15672_Real-Time-Graphics/XuanJamesZhai_A1/cmake-build-release/CMakeFiles/edit_cache.dir
-F:/Code/15672_Real-Time-Graphics/XuanJamesZhai_A1/cmake-build-release/CMakeFiles/rebuild_cache.dir

@@ -36,6 +36,9 @@ private:
     /* A start time for the headless rendering. */
     std::chrono::system_clock::time_point eventStartTimePoint;
 
+    /* The iteration count to do the performance test. */
+    size_t performanceTestCount = 0;
+
 public:
     RenderHelper();
 
@@ -47,6 +50,9 @@ public:
 
     /* Process the event file. */
     void SetEventFile(const std::string& eventFileName);
+
+    /* Set the performance test iteration count to decide if we do the performance test. */
+    void SetPerformanceTest(size_t count);
 
     /* Set the render mode. */
     void SetRenderMode(RenderMode newRenderMode);
@@ -61,7 +67,7 @@ public:
     /* Run the vulkan renderer. */
     void RunVulkan();
 
-    /* Clean the vulkan data when stoppped. */
+    /* Clean the vulkan data when stopped. */
     void ClearVulkan();
 };
 

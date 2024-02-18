@@ -48,6 +48,19 @@ void RenderHelper::SetEventFile(const std::string& eventFileName){
 
 
 /**
+ * @brief Update the performance test count and mode;
+ * @param count
+ */
+void RenderHelper::SetPerformanceTest(size_t count){
+    performanceTestCount = count;
+
+    if(performanceTestCount != 0){
+        renderMode = RenderMode::PerformanceTest;
+    }
+}
+
+
+/**
  * @brief Set the render mode.
  * @param newRenderMode The new render mode.
  */
@@ -132,22 +145,29 @@ void RenderHelper::RunVulkan(){
     }
     /* If it is the performance test mode. */
     else if(renderMode == RenderMode::PerformanceTest){
-        float total = 0;
-        for(int i = 0; i < 50; i++) {
+        float totalUpdate = 0;
+        float totalRender = 0;
+        for(size_t i = 0; i < performanceTestCount; i++) {
+            auto beforeUpdate = std::chrono::system_clock::now();
             s72Helper->UpdateObjects();
-            auto before = std::chrono::system_clock::now();
+            auto beforeRender = std::chrono::system_clock::now();
             vulkanHelper->DrawFrame();
-            auto after = std::chrono::system_clock::now();
-            total += std::chrono::duration<float, std::chrono::microseconds::period>(after - before).count();
+            auto afterRender = std::chrono::system_clock::now();
+            totalUpdate += std::chrono::duration<float, std::chrono::milliseconds::period>(beforeRender - beforeUpdate).count();
+            totalRender += std::chrono::duration<float, std::chrono::milliseconds::period>(afterRender - beforeRender).count();
             std::cout << "Finish " << i << std::endl;
         }
-        std::cout << total/50 << std::endl;
+        std::cout << "The average time to update the scene graph is: " << totalUpdate/(float)performanceTestCount << "ms" << std::endl;
+        std::cout << "The average time to draw the scene is: " << totalRender/(float)performanceTestCount << "ms" << std::endl;
     }
-    /* If it is the on winodw mode. */
+    /* If it is the on window mode. */
     else {
         while (!glfwWindowShouldClose(vulkanHelper->window)) {
             glfwPollEvents();       // Check for inputs
-            s72Helper->UpdateObjects();
+            /* Conditions for updating the scene graph. */
+            if(s72Helper->isPlayingAnimation) {
+                s72Helper->UpdateObjects();
+            }
             vulkanHelper->DrawFrame();
         }
     }

@@ -120,6 +120,9 @@ void GLFW_Key_Callback(GLFWwindow* window, int key, int scancode, int action, in
     else if (key == GLFW_KEY_Y && action == GLFW_PRESS){
         instance->ProcessGLFWInputCallBack('Y');
     }
+    else if (key == GLFW_KEY_C && action == GLFW_PRESS){
+        instance->ProcessGLFWInputCallBack('C');
+    }
 }
 
 
@@ -2505,6 +2508,11 @@ void VulkanHelper::ProcessGLFWInputCallBack(char key){
             else{
                 s72Instance->StopAnimation();
             }
+            break;
+        }
+        case 'C': {
+            if(cullingMode == "none") cullingMode = "frustum";
+            else cullingMode = "none";
             break;
         }
         default:
