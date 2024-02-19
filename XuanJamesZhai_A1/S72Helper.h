@@ -78,6 +78,18 @@ namespace S72Object {
 
 
     /**
+     * @brief A data structure which contained the Per-Instance data.
+     */
+    struct MeshInstance{
+        /* The data is the model matrix. */
+        alignas(16) XZM::mat4 model;
+        explicit MeshInstance(const XZM::mat4& newModel){
+            model = newModel;
+        }
+    };
+
+
+    /**
      * @brief A mesh object listed in the s72 file.
      */
     class Mesh {
@@ -87,6 +99,9 @@ namespace S72Object {
 
             /* Load the mesh data from a b72 file given its path. */
             void SetSrc(const std::string &srcPath);
+
+            /* Load the indices data from a b72 file given its path. */
+            void SetIndicesSrc(const std::string &srcPath);
 
             /* Given the position,normal,color channel, set its corresponding format. */
             void SetFormat(size_t channel, const std::string &new_Format);
@@ -98,19 +113,28 @@ namespace S72Object {
             /* Name will be used as the identifier of the mesh object. */
             std::string name;
             std::string src;
-            uint32_t stride;
-            uint32_t count;
+            uint32_t stride = 0;
+            uint32_t count = 0;
             VkPrimitiveTopology topology;
             /* Position, Normal, and Color Vulkan formats */
             VkFormat pFormat;
             VkFormat nFormat;
             VkFormat cFormat;
             /* Position, Normal, and Color Vulkan offsets */
-            uint32_t pOffset;
-            uint32_t nOffset;
-            uint32_t cOffset;
-            /* A list of mesh instance, they are represented by its unique model matrix. */
-            std::vector<XZM::mat4> instances;
+            uint32_t pOffset = 0;
+            uint32_t nOffset = 0;
+            uint32_t cOffset = 0;
+
+            /* If we use indexed drawing and its index data. */
+            bool useIndices = false;
+            std::string indicesSrc;
+            uint32_t indicesCount = 0;
+
+            /* A list of mesh instances, they are represented by its unique model matrix. */
+            std::vector<MeshInstance> instances;
+
+            /* A list of mesh instances that will be rendered. */
+            std::vector<MeshInstance> visibleInstances;
 
             /* An AABB bounding box for the mesh. */
             AABB boundingBox;
@@ -123,6 +147,9 @@ namespace S72Object {
 
             /* Given a mesh's b72 data, read and set the mesh's bounding box. */
             void ReadBoundingBox(std::stringstream &buffer);
+
+            /* For a given camera instance, update if the instances are culled. */
+            void UpdateInstanceWithCulling(const std::shared_ptr<S72Object::Camera>& camera, const std::string& cullingMode);
     };
 
 
@@ -186,24 +213,31 @@ public:
     S72Helper();
     /* Read and parse a s72 file from a given path. */
     void ReadS72(const std::string &filename);
+
     /* Reconstruct all the nodes to form a tree structure and let the scene object to be the root */
     void ReconstructRoot();
+
     /* Reconstruct a node and reset all its children */
     void ReconstructNode(std::shared_ptr<ParserNode>, XZM::mat4 newMat);
+
     /* Recursively update all object's transform data. */
     void UpdateObjects();
+
     /* Update an object's transform data and visit its children. */
     void UpdateObject(const std::shared_ptr<ParserNode>&, XZM::mat4 newMat);
 
+    /* Start playing the animation if paused. */
     void StartAnimation();
 
+    /* Pause the animation if it is playing. */
     void StopAnimation();
-
 
     /* Extract the translation data as a vec3 from a ParserNode. */
     static XZM::vec3 FindTranslation(const ParserNode&);
+
     /* Extract the rotation data as a quaternion from a ParserNode. */
     static XZM::quat FindRotation(const ParserNode&);
+
     /* Extract the scale data as a vec3 from a ParserNode. */
     static XZM::vec3 FindScale(const ParserNode&);
 };

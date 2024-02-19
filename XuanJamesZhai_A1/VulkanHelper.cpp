@@ -3,7 +3,7 @@
 //
 #include "VulkanHelper.h"
 #define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
+#include "stb_image.h"
 
 #include <utility>
 
@@ -1324,14 +1324,22 @@ void VulkanHelper::CreateVertexBuffer(const S72Object::Mesh& newMeshInstance, si
  * @param newMeshInstance The mesh we are construct from.
  * @return newMeshInstance's binding description info.
  */
-VkVertexInputBindingDescription2EXT VulkanHelper::CreateBindingDescription(const S72Object::Mesh& newMeshInstance){
-    VkVertexInputBindingDescription2EXT bindingDescription{};
+std::array<VkVertexInputBindingDescription2EXT,2> VulkanHelper::CreateBindingDescription(const S72Object::Mesh& newMeshInstance){
+    std::array<VkVertexInputBindingDescription2EXT,2> bindingDescription{};
 
-    bindingDescription.sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_BINDING_DESCRIPTION_2_EXT;
-    bindingDescription.binding = 0;         // Specifies the index of the binding in the array of bindings.
-    bindingDescription.stride = newMeshInstance.stride;     // Specifies the number of bytes from one entry to the next.
-    bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;  // Move to the next data entry after each vertex.
-    bindingDescription.divisor = 1;
+    /* Vertex binding info. */
+    bindingDescription[0].sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_BINDING_DESCRIPTION_2_EXT;
+    bindingDescription[0].binding = 0;         // Specifies the index of the binding in the array of bindings.
+    bindingDescription[0].stride = newMeshInstance.stride;     // Specifies the number of bytes from one entry to the next.
+    bindingDescription[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;  // Move to the next data entry after each vertex.
+    bindingDescription[0].divisor = 1;
+
+    /* Instance binding info. */
+    bindingDescription[1].sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_BINDING_DESCRIPTION_2_EXT;
+    bindingDescription[1].binding = 1;         // Specifies the index of the binding in the array of bindings.
+    bindingDescription[1].stride = sizeof(S72Object::MeshInstance);     // Specifies the number of bytes from one entry to the next.
+    bindingDescription[1].inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
+    bindingDescription[1].divisor = 1;
 
     return bindingDescription;
 }
@@ -1342,9 +1350,9 @@ VkVertexInputBindingDescription2EXT VulkanHelper::CreateBindingDescription(const
  * @param newMeshInstance The mesh we are construct from.
  * @return newMeshInstance's attribute description info.
  */
-std::array<VkVertexInputAttributeDescription2EXT, 3> VulkanHelper::CreateAttributeDescription(const S72Object::Mesh& newMeshInstance){
+std::array<VkVertexInputAttributeDescription2EXT, 7> VulkanHelper::CreateAttributeDescription(const S72Object::Mesh& newMeshInstance){
 
-    std::array<VkVertexInputAttributeDescription2EXT, 3> attributeDescriptions{};
+    std::array<VkVertexInputAttributeDescription2EXT, 7> attributeDescriptions{};
 
     /* Attribute for the vertex data */
     attributeDescriptions[0].binding = 0;
@@ -1360,40 +1368,142 @@ std::array<VkVertexInputAttributeDescription2EXT, 3> VulkanHelper::CreateAttribu
     attributeDescriptions[1].offset = newMeshInstance.nOffset;
     attributeDescriptions[1].sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT;
 
+    /* Attribute for the color data */
     attributeDescriptions[2].binding = 0;
     attributeDescriptions[2].location = 2;
     attributeDescriptions[2].format = newMeshInstance.cFormat;
     attributeDescriptions[2].offset = newMeshInstance.cOffset;
     attributeDescriptions[2].sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT;
 
+    /* Per instance data. */
+    attributeDescriptions[3].binding = 1;
+    attributeDescriptions[3].location = 3;
+    attributeDescriptions[3].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    attributeDescriptions[3].offset = offsetof(S72Object::MeshInstance, model);
+    attributeDescriptions[3].sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT;
+
+    attributeDescriptions[4].binding = 1;
+    attributeDescriptions[4].location = 4;
+    attributeDescriptions[4].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    attributeDescriptions[4].offset = offsetof(S72Object::MeshInstance, model) + sizeof(float)*4;
+    attributeDescriptions[4].sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT;
+
+    attributeDescriptions[5].binding = 1;
+    attributeDescriptions[5].location = 5;
+    attributeDescriptions[5].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    attributeDescriptions[5].offset = offsetof(S72Object::MeshInstance, model) + sizeof(float)*8;
+    attributeDescriptions[5].sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT;
+
+    attributeDescriptions[6].binding = 1;
+    attributeDescriptions[6].location = 6;
+    attributeDescriptions[6].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    attributeDescriptions[6].offset = offsetof(S72Object::MeshInstance, model) + sizeof(float)*12;
+    attributeDescriptions[6].sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT;
+
     return attributeDescriptions;
 }
 
 
 /**
-* @brief Create the index buffer to store the index relations.
- * NOT USE FOR A1, BUT MAY FOR A2.
-*/
-void VulkanHelper::CreateIndexBuffer()
+ * @brief Create a list of index buffers. One for each mesh that uses the indices to draw.
+ */
+void VulkanHelper::CreateIndexBuffers() {
+    if(s72Instance == nullptr){
+        throw std::runtime_error("Index Buffer Error: s72Instance is null.");
+    }
+
+    indexBufferMemories.resize(s72Instance->meshes.size());
+    indexBuffers.resize(s72Instance->meshes.size());
+    isUseIndices.resize(s72Instance->meshes.size());
+
+    size_t index = 0;
+    for(const auto& mesh : s72Instance->meshes){
+        if(mesh.second->useIndices) {
+            CreateIndexBuffer(*mesh.second, index);
+            isUseIndices[index] = true;
+        }
+        else{
+            isUseIndices[index] = false;
+        }
+        index++;
+    }
+}
+
+
+/**
+ * @brief Create the index buffer to store the index relations.
+ * @param newMesh The mesh object.
+ * @param index The index of the mesh in the array.
+ */
+void VulkanHelper::CreateIndexBuffer(const S72Object::Mesh& newMesh, size_t index)
 {
-    //VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+    VkDeviceSize bufferSize = newMesh.indicesSrc.size();
 
-    //VkBuffer stagingBuffer;
-    //VkDeviceMemory stagingBufferMemory;
-    //CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
 
-    //void* data;
-    //vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
-    //memcpy(data, indices.data(), (size_t)bufferSize);
-    //vkUnmapMemory(device, stagingBufferMemory);
+    void* data;
+    vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
+    memcpy(data, newMesh.indicesSrc.data(), (size_t)bufferSize);
+    vkUnmapMemory(device, stagingBufferMemory);
 
     /* One difference is set its usage to INDEX_BUFFER */
-    //CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
+    CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffers[index], indexBufferMemories[index]);
 
-    //CopyBuffer(stagingBuffer, indexBuffer, bufferSize);
+    CopyBuffer(stagingBuffer, indexBuffers[index], bufferSize);
 
-    //vkDestroyBuffer(device, stagingBuffer, nullptr);
-    //vkFreeMemory(device, stagingBufferMemory, nullptr);
+    vkDestroyBuffer(device, stagingBuffer, nullptr);
+    vkFreeMemory(device, stagingBufferMemory, nullptr);
+}
+
+
+/**
+ * @brief Create a list of dynamic instance buffers. One has the instance info like the model matrix.
+ */
+void VulkanHelper::CreateInstanceBuffers(){
+    if(s72Instance == nullptr){
+        throw std::runtime_error("Index Buffer Error: s72Instance is null.");
+    }
+
+    instanceBuffers.resize(s72Instance->meshes.size());
+    instanceBufferMemories.resize(s72Instance->meshes.size());
+
+    size_t index = 0;
+    for(const auto& mesh : s72Instance->meshes){
+        CreateInstanceBuffer(index);
+        index++;
+    }
+}
+
+
+/**
+ * @brief Create a single dynamic instance buffer for a mesh.
+ * @param index The index of the instance in the array.
+ */
+void VulkanHelper::CreateInstanceBuffer(size_t index){
+    VkDeviceSize bufferSize = s72Instance->instanceCount * sizeof(S72Object::MeshInstance);
+    CreateBuffer(bufferSize,VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, instanceBuffers[index],instanceBufferMemories[index]);
+}
+
+
+/**
+ * @brief Update an instance buffer with the new instance data.
+ * @param newMesh The mesh object which has the instance data.
+ * @param index The index of the instance in the array.
+ */
+void VulkanHelper::UpdateInstanceBuffer(const S72Object::Mesh& newMesh, size_t index){
+    // Map dynamic instance buffer memory
+    void* mappedData;
+    VkDeviceSize bufferSize = s72Instance->instanceCount * sizeof(S72Object::MeshInstance);
+
+    vkMapMemory(device, instanceBufferMemories[index], 0, bufferSize, 0, &mappedData);
+
+    // Copy visible instance data to the mapped memory
+    memcpy(mappedData, newMesh.visibleInstances.data(), newMesh.visibleInstances.size() * sizeof(S72Object::MeshInstance));
+
+    // Unmap dynamic instance buffer memory
+    vkUnmapMemory(device, instanceBufferMemories[index]);
 }
 
 
@@ -1403,7 +1513,7 @@ void VulkanHelper::CreateIndexBuffer()
 void VulkanHelper::CreateUniformBuffers()
 {
     /* We use a large uniform buffer to store all mesh instance's ubo data */
-    VkDeviceSize bufferSize = sizeof(UniformBufferObject) * s72Instance->instanceCount;
+    VkDeviceSize bufferSize = sizeof(UniformBufferObject) * s72Instance->meshes.size();
 
     uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
     uniformBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
@@ -1425,10 +1535,9 @@ void VulkanHelper::UpdateUniformBuffer(uint32_t currentImage, const S72Object::M
     /* Define the model, view and projection transformations in the uniform buffer object.*/
     UniformBufferObject ubo{};
 
-    ubo.model = mesh.instances.at(instanceIndex);
+    //ubo = mesh.instances.at(instanceIndex);
     ubo.view = currCamera->viewMatrix;
-    ubo.proj = currCamera->projMatrix;
-    ubo.transposeModel = XZM::Transpose(ubo.model);
+    ubo.proj = currCamera->projMatrix;;
 
     /* Flip the Y-Dir */
     ubo.proj.data[1][1] *= -1;
@@ -1611,52 +1720,53 @@ void VulkanHelper::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t i
     scissor.extent = swapChainExtent;
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-    VkVertexInputBindingDescription2EXT newBindingDescription{};
-    std::array<VkVertexInputAttributeDescription2EXT, 3> newAttributeDescription{};
+    std::array<VkVertexInputBindingDescription2EXT,2> newBindingDescription{};
+    std::array<VkVertexInputAttributeDescription2EXT, 7> newAttributeDescription{};
     auto vkCmdSetVertexInputExt = (PFN_vkCmdSetVertexInputEXT)vkGetDeviceProcAddr(device, "vkCmdSetVertexInputEXT");
     auto vkCmdSetPrimitiveTopologyEXT = (PFN_vkCmdSetPrimitiveTopologyEXT)( vkGetDeviceProcAddr( device, "vkCmdSetPrimitiveTopologyEXT" ) );
 
     size_t m_index = 0;
-    size_t i_index = 0;
     /* Loop through each mesh in the list. */
-    for(const auto& mesh : s72Instance->meshes){
+    for(auto& mesh : s72Instance->meshes){
+
+        /* Update the visible instance list. */
+        if(currCamera->name == "Debug-Camera"){
+            mesh.second->UpdateInstanceWithCulling(s72Instance->cameras["User-Camera"], cullingMode);
+        }
+        else{
+            mesh.second->UpdateInstanceWithCulling(currCamera, cullingMode);
+        }
+
+        /* If no instance will be drawn, go to the next mesh. */
+        if(mesh.second->visibleInstances.empty()){
+            m_index++;
+            continue;
+        }
+
+        /* Update the instance buffer with the new instance data. */
+        UpdateInstanceBuffer(*mesh.second,m_index);
+
         /* Bind its vertex buffer and set its info. */
-        VkBuffer newVertexBuffers[] = { vertexBuffers[m_index] };
-        VkDeviceSize offsets[] = { 0 };
-        vkCmdBindVertexBuffers(commandBuffer, 0, 1, newVertexBuffers, offsets);
+        VkBuffer newVertexBuffers[] = { vertexBuffers[m_index] , instanceBuffers[m_index]};
+        VkDeviceSize offsets[] = { 0, 0 };
+        vkCmdBindVertexBuffers(commandBuffer, 0, 2, newVertexBuffers, offsets);
 
         newBindingDescription = CreateBindingDescription(*mesh.second);
         newAttributeDescription = CreateAttributeDescription(*mesh.second);
 
-        vkCmdSetVertexInputExt(commandBuffer,static_cast<uint32_t>(1),&newBindingDescription,static_cast<uint32_t>(newAttributeDescription.size()),newAttributeDescription.data());
+        vkCmdSetVertexInputExt(commandBuffer,static_cast<uint32_t>(newBindingDescription.size()),newBindingDescription.data(),static_cast<uint32_t>(newAttributeDescription.size()),newAttributeDescription.data());
         vkCmdSetPrimitiveTopologyEXT(commandBuffer,mesh.second->topology);
 
-        /* Loop through each instance of that mesh. */
-        for(size_t i = 0; i < mesh.second->instances.size(); i++){
+        /* Bind the descriptor sets */
+        uint32_t dynamicOffset = m_index * sizeof(UniformBufferObject);
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 1, &dynamicOffset);
+        UpdateUniformBuffer(currentFrame, *mesh.second, 0, m_index);
 
-            if(currCamera->name == "Debug-Camera" && FrustumCulling::IsCulled(s72Instance->cameras["User-Camera"],mesh.second,mesh.second->instances[i]) && cullingMode == "frustum"){
-                i_index++;
-                continue;
-            }
-            else if(FrustumCulling::IsCulled(currCamera,mesh.second,mesh.second->instances[i]) && cullingMode == "frustum"){
-                i_index++;
-                continue;
-            }
-
-            /* Bind the descriptor sets */
-            uint32_t dynamicOffset = i_index * sizeof(UniformBufferObject);
-            vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 1, &dynamicOffset);
-
-            UpdateUniformBuffer(currentFrame, *mesh.second, i, i_index);
-
-            /* Issue the drawing command */
-            /* Second param: vertexCount */
-            /* Third param: instanceCount (Used for instanced rendering) */
-            /* Fourth param: firstVertex (An offset into the vertex buffer) */
-            /* Fifth param: firstInstance (An offset for instanced rendering) */
-            // Draw Command without index buffer: vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
-            vkCmdDraw(commandBuffer, mesh.second->count, 1, 0, 0);
-            i_index++;
+        if(mesh.second->useIndices){
+            vkCmdDrawIndexed(commandBuffer,mesh.second->indicesCount,mesh.second->visibleInstances.size(),0,0,0);
+         }
+        else{
+            vkCmdDraw(commandBuffer, mesh.second->count, mesh.second->visibleInstances.size(), 0, 0);
         }
         m_index++;
     }
@@ -2341,7 +2451,8 @@ void VulkanHelper::InitVulkan()
     CreateTextureImageView();
     CreateTextureSampler();
     CreateVertexBuffers();
-    //CreateIndexBuffer();
+    CreateIndexBuffers();
+    CreateInstanceBuffers();
     CreateUniformBuffers();
     CreateDescriptorPool();
     CreateDescriptorSets();
@@ -2652,12 +2763,21 @@ void VulkanHelper::CleanUp()
         vkDestroyBuffer(device, uniformBuffers[i], nullptr);
         vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
     }
-    //vkDestroyBuffer(device, indexBuffer, nullptr);
-    //vkFreeMemory(device, indexBufferMemory, nullptr);
 
     for(size_t i = 0; i < vertexBuffers.size(); i++){
         vkDestroyBuffer(device, vertexBuffers[i], nullptr);
         vkFreeMemory(device, vertexBufferMemories[i], nullptr);
+    }
+
+    for(size_t i = 0; i < indexBuffers.size(); i++){
+        if(!isUseIndices[i]) continue;
+        vkDestroyBuffer(device, indexBuffers[i], nullptr);
+        vkFreeMemory(device, indexBufferMemories[i], nullptr);
+    }
+
+    for(size_t i = 0; i < instanceBuffers.size(); i++){
+        vkDestroyBuffer(device, instanceBuffers[i], nullptr);
+        vkFreeMemory(device, instanceBufferMemories[i], nullptr);
     }
 
     vkDestroySampler(device, textureSampler, nullptr);

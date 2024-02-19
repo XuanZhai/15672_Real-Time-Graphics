@@ -29,7 +29,6 @@
 #include <cmath>
 
 #include "S72Helper.h"
-#include "FrustumCulling.h"
 #include "EventHelper.h"
 
 
@@ -37,6 +36,7 @@
 /* A macro to select if we want to create a window using WSI. If false it will be created with GLFW. */
 #define USE_WSI false
 
+/* Placeholders, won't be used in AI. */
 const std::string MODEL_PATH = "models/viking_room.obj";
 const std::string TEXTURE_PATH = "Textures/viking_room.png";
 
@@ -61,12 +61,11 @@ const bool enableValidationLayers = true;
 #endif // NDEBUG
 
 
+
 /* MVP data for the vertices */
 struct UniformBufferObject {
-    alignas(16) XZM::mat4 model;
     alignas(16) XZM::mat4 view;
     alignas(16) XZM::mat4 proj;
-    alignas(16) XZM::mat4 transposeModel;
 };
 
 
@@ -165,11 +164,20 @@ private:
     /* Handle to the memory of the vertex buffers */
     std::vector<VkDeviceMemory> vertexBufferMemories;
 
+    /* Mapped with the index buffers, indicated which one we want to use index rendering. */
+    std::vector<bool> isUseIndices;
+
     /* The index buffer used to store the indices */
-    //VkBuffer indexBuffer = VK_NULL_HANDLE;
+    std::vector<VkBuffer> indexBuffers;
 
     /* Handle to the memory of the index buffer */
-    //VkDeviceMemory indexBufferMemory = VK_NULL_HANDLE;
+    std::vector<VkDeviceMemory> indexBufferMemories;
+
+    /* The instance buffer used to store the instance data. */
+    std::vector<VkBuffer> instanceBuffers;
+
+    /* Handle to the memory of the instance buffer. */
+    std::vector<VkDeviceMemory> instanceBufferMemories;
 
     /* Specifies the types of resources that are going to be accessed by the pipeline like the MVP matrix */
     VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
@@ -346,20 +354,32 @@ private:
     /* Copy a vulkan buffer from source to destination. */
     void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
-    /* Create a list of vertex buffers. One for each mesh instance in the s72. */
+    /* Create a list of vertex buffers. One for each mesh in the s72. */
     void CreateVertexBuffers();
 
     /* Create the vertex buffer to store the vertex data. */
     void CreateVertexBuffer(const S72Object::Mesh& newMesh, size_t index);
 
     /* For a binding description struct based on the info of a mesh instance. */
-    static VkVertexInputBindingDescription2EXT CreateBindingDescription(const S72Object::Mesh& newMesh);
+    static std::array<VkVertexInputBindingDescription2EXT,2> CreateBindingDescription(const S72Object::Mesh& newMesh);
 
     /* Form an attribute description struct based on the info of a mesh instance. */
-    static std::array<VkVertexInputAttributeDescription2EXT, 3> CreateAttributeDescription(const S72Object::Mesh& newMesh);
+    static std::array<VkVertexInputAttributeDescription2EXT, 7> CreateAttributeDescription(const S72Object::Mesh& newMesh);
+
+    /* Create a list of index buffers. One for each mesh that uses the indices to draw. */
+    void CreateIndexBuffers();
 
     /* Create the index buffer to store the index relations. */
-    void CreateIndexBuffer();
+    void CreateIndexBuffer(const S72Object::Mesh& newMesh, size_t index);
+
+    /* Create a list of dynamic instance buffers. One has the instance info like the model matrix. */
+    void CreateInstanceBuffers();
+
+    /* Create a single dynamic instance buffer for a mesh. */
+    void CreateInstanceBuffer(size_t index);
+
+    /* Update an instance buffer with the new instance data. */
+    void UpdateInstanceBuffer(const S72Object::Mesh& newMesh, size_t index);
 
     /* Create the uniform buffer to store the uniform data. */
     void CreateUniformBuffers();

@@ -56,7 +56,7 @@ public:
 class FrustumCulling {
 public:
     /* Check if a mesh with a transform matrix will be culled by the camera. */
-    static bool IsCulled(const std::shared_ptr<S72Object::Camera>& camera, const std::shared_ptr<S72Object::Mesh>& mesh, XZM::mat4 modelMatrix);
+    static bool IsCulled(const std::shared_ptr<S72Object::Camera>& camera, const AABB& mesh, XZM::mat4 modelMatrix);
 };
 
 

@@ -54,9 +54,6 @@ public:
     /* Set the performance test iteration count to decide if we do the performance test. */
     void SetPerformanceTest(size_t count);
 
-    /* Set the render mode. */
-    void SetRenderMode(RenderMode newRenderMode);
-
     /* Set the vulkan data from the command line arguments. */
     void SetVulkanData(size_t width,size_t height, const std::string& deviceName, const std::string& cameraName,
                         const std::string& cullingMode);

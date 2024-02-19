@@ -34,7 +34,7 @@ AABB::AABB() {
  * @param modelMatrix The model transform matrix for the mesh.
  * @return
  */
-bool FrustumCulling::IsCulled(const std::shared_ptr<S72Object::Camera>& camera, const std::shared_ptr<S72Object::Mesh>& mesh, XZM::mat4 modelMatrix){
+bool FrustumCulling::IsCulled(const std::shared_ptr<S72Object::Camera>& camera, const AABB& boundingBox, XZM::mat4 modelMatrix){
 
     float z_near = camera->frustum.near_plane;
     float z_far = camera->frustum.far_plane;
@@ -43,10 +43,10 @@ bool FrustumCulling::IsCulled(const std::shared_ptr<S72Object::Camera>& camera, 
 
     /* Corner of the AABB bounding box */
     XZM::vec3 corners[] = {
-            {mesh->boundingBox.b_min.data[0], mesh->boundingBox.b_min.data[1], mesh->boundingBox.b_min.data[2]},
-            {mesh->boundingBox.b_max.data[0], mesh->boundingBox.b_min.data[1], mesh->boundingBox.b_min.data[2]},
-            {mesh->boundingBox.b_min.data[0], mesh->boundingBox.b_max.data[1], mesh->boundingBox.b_min.data[2]},
-            {mesh->boundingBox.b_min.data[0], mesh->boundingBox.b_min.data[1], mesh->boundingBox.b_max.data[2]},
+            {boundingBox.b_min.data[0], boundingBox.b_min.data[1], boundingBox.b_min.data[2]},
+            {boundingBox.b_max.data[0], boundingBox.b_min.data[1], boundingBox.b_min.data[2]},
+            {boundingBox.b_min.data[0], boundingBox.b_max.data[1], boundingBox.b_min.data[2]},
+            {boundingBox.b_min.data[0], boundingBox.b_min.data[1], boundingBox.b_max.data[2]},
     };
 
     /* Need to combine the model matrix and the view matrix to let the AABB go to the view space. */

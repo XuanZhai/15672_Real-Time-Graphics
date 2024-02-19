@@ -258,6 +258,17 @@ void S72Object::Mesh::ProcessMesh(){
     SetFormat(0,std::get<std::string>(new_pFormat->data));
     SetFormat(1,std::get<std::string>(new_nFormat->data));
     SetFormat(2,std::get<std::string>(new_cFormat->data));
+
+    if((*pnMap).count("indices")){
+        std::shared_ptr<ParserNode> indices = data->GetObjectValue("indices");
+
+        std::shared_ptr<ParserNode> new_indicesSrc = indices->GetObjectValue("src");
+        std::shared_ptr<ParserNode> indicesOffsets = indices->GetObjectValue("offset");
+
+        indicesCount = (uint32_t) std::get<float>(indicesOffsets->data);
+        SetIndicesSrc(std::get<std::string>(new_indicesSrc->data));
+        useIndices = true;
+    }
 }
 
 
@@ -283,6 +294,28 @@ void S72Object::Mesh::SetSrc(const std::string& srcPath){
     ReadBoundingBox(buffer);
 
     src = buffer.str();
+}
+
+
+/**
+ * @brief Read a index b72 file from a given file.
+ * @param srcPath The file path and name.
+ */
+void S72Object::Mesh::SetIndicesSrc(const std::string &srcPath){
+    /* We want to locate the b72 file next to the s72 file. */
+    std::string b72FileName = S72Helper::s72fileName + "/../" + srcPath;
+    std::ifstream input_file(b72FileName, std::ios::binary);
+
+    if(!input_file){
+        std::cout << name + " Cannot open b72 file " << std::endl;
+    }
+    /* Read the file into the src string. */
+    std::stringstream buffer;
+    buffer << input_file.rdbuf();
+
+    input_file.close();
+
+    indicesSrc = buffer.str();
 }
 
 
@@ -351,6 +384,28 @@ void S72Object::Mesh::ReadBoundingBox(std::stringstream& buffer){
         boundingBox.b_max.data[0] = std::max(currPos.data[0], boundingBox.b_max.data[0]);
         boundingBox.b_max.data[1] = std::max(currPos.data[1], boundingBox.b_max.data[1]);
         boundingBox.b_max.data[2] = std::max(currPos.data[2], boundingBox.b_max.data[2]);
+    }
+}
+
+
+/**
+ * @brief Update a mesh's visible instances from a given camera.
+ * @param camera The camera we want to render about.
+ * @param cullingMode The culling mode we use, can be none or frustum.
+ */
+void S72Object::Mesh::UpdateInstanceWithCulling(const std::shared_ptr<S72Object::Camera>& camera, const std::string& cullingMode){
+
+    if(cullingMode == "none"){
+        visibleInstances = instances;
+        return;
+    }
+
+    visibleInstances.clear();
+    /* Loop through the list and check which are visible. */
+    for(const auto& instance : instances){
+        if(!FrustumCulling::IsCulled(camera,boundingBox,instance.model)){
+            visibleInstances.emplace_back(instance);
+        }
     }
 }
 

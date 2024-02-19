@@ -61,15 +61,6 @@ void RenderHelper::SetPerformanceTest(size_t count){
 
 
 /**
- * @brief Set the render mode.
- * @param newRenderMode The new render mode.
- */
-void RenderHelper::SetRenderMode(RenderMode newRenderMode){
-    renderMode = newRenderMode;
-}
-
-
-/**
  * @brief Set the vulkan instance with the data from the command line arguments.
  * @param width new window width.
  * @param height new window height.
