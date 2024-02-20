@@ -1,0 +1,30 @@
+4f1d66e - Xuan(James) Zhai, 25 hours ago : Changed to the instanced rendering. Will Work on the maek file
+c1a0e8b - Xuan(James) Zhai, 2 days ago : Need to try with the instanced rendering
+4c2e6df - Xuan(James) Zhai, 4 days ago : Reconstruct the project structure by add the render helper class
+621d152 - Xuan(James) Zhai, 6 days ago : Add STEP and SLERP for the animation interpolation. Will start on the basic performance analysis.
+ebd9be0 - Xuan(James) Zhai, 8 days ago : Finish the headless part, need to fix some bug and start doing the performance analysis
+78e857e - Xuan(James) Zhai, 9 days ago : Add the headless mode, Need to Add the animation control and the headless control.
+247ba46 - Xuan(James) Zhai, 10 days ago : Add the animation, need to do the optimization and add the headless feature
+6c18c3b - Xuan(James) Zhai, 11 days ago : Update the shader code to let the channel get matched.
+f19337a - Xuan(James) Zhai, 11 days ago : Add the frustum culling, need to work on the animation.
+0b60217 - Xuan(James) Zhai, 12 days ago : Finish Load and Show, need to add the frustum culling
+53ccecf - Xuan(James) Zhai, 13 days ago : Need to add camera movements and input detection. maybe also resize function
+505fa66 - Xuan(James) Zhai, 13 days ago : Start to change the mesh & mesh instance structure
+d823e87 - Xuan(James) Zhai, 2 weeks ago : Add Camera Positions, but still need to do the optimization
+d3ae9ca - Xuan(James) Zhai, 2 weeks ago : The scene now can be rendered correctly, but need to optimized
+e0c8d52 - Xuan(James) Zhai, 2 weeks ago : Update
+7d812ba - Xuan(James) Zhai, 2 weeks ago : Make the uniform buffer dynamic. The render image is incorrect, may need to modify the transformation matrix
+1516b79 - Xuan(James) Zhai, 2 weeks ago : Modify the Vulkan helper to let the pipeline accept multiple meshes, need to change the uniform buffer to accept different MVP matrices
+dd134d2 - Xuan(James) Zhai, 2 weeks ago : Add functions to process the parsed data. The result will be forwarded to the pipline
+806055e - Xuan(James) Zhai, 3 weeks ago : Finish the Parser, need to integrate with Vulkan
+d824a0e - Xuan(James) Zhai, 3 weeks ago : Finish A1 JSON Parser, need to refine it and fix some bugs.
+c41feda - Xuan(James) Zhai, 3 weeks ago : First Update of A1, Start working on the JSON Parser
+c460721 - Xuan(James) Zhai, 3 weeks ago : Update main.cpp
+a77049f - Xuan(James) Zhai, 3 weeks ago : Add Depth test and model
+3e926eb - Xuan(James) Zhai, 4 weeks ago : Combine Image Texture with the Sampler
+fc480f3 - Xuan(James) Zhai, 4 weeks ago : Add the texture image and the sampler. Need to combine them to represent the texture
+41efaa1 - Xuan(James) Zhai, 4 weeks ago : Add the Uniform Buffer
+0fa8b8f - Xuan(James) Zhai, 4 weeks ago : Add vertex buffer and the index buffer
+304116b - Xuan(James) Zhai, 5 weeks ago : Add creating window through the Windows framework
+9d0eb36 - Xuan(James) Zhai, 5 weeks ago : Add the GLFW version of the Hello Program
+c6b3918 - Xuan(James) Zhai, 5 weeks ago : Initial commit

@@ -1,0 +1,769 @@
+commit 4f1d66ec96e87af1d56a0fc93f59052eea11ab63
+Author: Xuan(James) Zhai <46932284+XuanZhai@users.noreply.github.com>
+Date:   Sun Feb 18 23:38:47 2024 -0500
+
+    Changed to the instanced rendering. Will Work on the maek file
+
+ XuanJamesZhai_A1/FrustumCulling.cpp                |   10 +-
+ XuanJamesZhai_A1/FrustumCulling.h                  |    2 +-
+ XuanJamesZhai_A1/RenderHelper.cpp                  |    9 -
+ XuanJamesZhai_A1/RenderHelper.h                    |    3 -
+ XuanJamesZhai_A1/S72Helper.cpp                     |   55 +
+ XuanJamesZhai_A1/S72Helper.h                       |   50 +-
+ XuanJamesZhai_A1/VulkanHelper.cpp                  |  254 +-
+ XuanJamesZhai_A1/VulkanHelper.h                    |   38 +-
+ XuanJamesZhai_A1/cmake-build-debug/.ninja_deps     |  Bin 42000 -> 89016 bytes
+ XuanJamesZhai_A1/cmake-build-debug/.ninja_log      |  122 +-
+ .../cmake-build-debug/Shaders/shader.vert          |    9 +-
+ .../cmake-build-debug/Shaders/vert.spv             |  Bin 2220 -> 2088 bytes
+ XuanJamesZhai_A1/stb_image.h                       | 7985 ++++++++++++++++++++
+ 13 files changed, 8373 insertions(+), 164 deletions(-)
+
+commit c1a0e8bc2a0a0bd9cd550e621c3b01be7761a2ff
+Author: Xuan(James) Zhai <46932284+XuanZhai@users.noreply.github.com>
+Date:   Sun Feb 18 03:20:03 2024 -0500
+
+    Need to try with the instanced rendering
+
+ XuanJamesZhai_A1/RenderHelper.cpp                  |   36 +-
+ XuanJamesZhai_A1/RenderHelper.h                    |    8 +-
+ XuanJamesZhai_A1/VulkanHelper.cpp                  |    8 +
+ XuanJamesZhai_A1/cmake-build-debug/.ninja_deps     |  Bin 31068 -> 42000 bytes
+ XuanJamesZhai_A1/cmake-build-debug/.ninja_log      |   24 +
+ .../RotatingSuzanne.Cylinder.002.b72               |  Bin 0 -> 10416 bytes
+ .../RotatingSuzanne/RotatingSuzanne.Cylinder.b72   |  Bin 0 -> 10416 bytes
+ .../RotatingSuzanne/RotatingSuzanne.Icosphere.b72  |  Bin 0 -> 6720 bytes
+ .../RotatingSuzanne/RotatingSuzanne.Roof.b72       |  Bin 0 -> 31920 bytes
+ .../RotatingSuzanne/RotatingSuzanne.Sphere.b72     |  Bin 0 -> 80640 bytes
+ .../RotatingSuzanne/RotatingSuzanne.Suzanne.b72    |  Bin 0 -> 81312 bytes
+ .../RotatingSuzanne/RotatingSuzanne.s72            |  348 ++++++
+ XuanJamesZhai_A1/cmake-build-debug/mid-frame-1.ppm |  Bin 6220817 -> 6220817 bytes
+ XuanJamesZhai_A1/cmake-build-debug/mid-frame-2.ppm |  Bin 6220817 -> 6220817 bytes
+ XuanJamesZhai_A1/cmake-build-debug/mid-frame-3.ppm |  Bin 6220817 -> 2940928 bytes
+ .../.cmake/api/v1/query/cache-v2                   |    0
+ .../.cmake/api/v1/query/cmakeFiles-v1              |    0
+ .../.cmake/api/v1/query/codemodel-v2               |    0
+ .../.cmake/api/v1/query/toolchains-v1              |    0
+ .../v1/reply/cache-v2-184f6f660799c2dce49d.json    | 1199 --------------------
+ .../reply/cmakeFiles-v1-3045cfddab7ce4330722.json  |  783 -------------
+ .../reply/codemodel-v2-22b86a16834dca0bbada.json   |   60 -
+ .../directory-.-Release-d0094a50bb2071803777.json  |   14 -
+ .../v1/reply/index-2024-02-16T07-50-48-0861.json   |  108 --
+ ...nJamesZhai_A1-Release-d0620c37071fe6821e7a.json |  265 -----
+ .../reply/toolchains-v1-bd6535751b7f12f8bc28.json  |   75 --
+ XuanJamesZhai_A1/cmake-build-release/.ninja_deps   |  Bin 15912 -> 0 bytes
+ XuanJamesZhai_A1/cmake-build-release/.ninja_log    |   10 -
+ .../cmake-build-release/CMakeCache.txt             |  370 ------
+ .../CMakeFiles/3.25.2/CMakeCCompiler.cmake         |   72 --
+ .../CMakeFiles/3.25.2/CMakeCXXCompiler.cmake       |   83 --
+ .../3.25.2/CMakeDetermineCompilerABI_C.bin         |  Bin 51200 -> 0 bytes
+ .../3.25.2/CMakeDetermineCompilerABI_CXX.bin       |  Bin 51200 -> 0 bytes
+ .../CMakeFiles/3.25.2/CMakeRCCompiler.cmake        |    6 -
+ .../CMakeFiles/3.25.2/CMakeSystem.cmake            |   15 -
+ .../3.25.2/CompilerIdC/CMakeCCompilerId.c          |  868 --------------
+ .../3.25.2/CompilerIdCXX/CMakeCXXCompilerId.cpp    |  857 --------------
+ .../CMakeFiles/ShowIncludes/foo.h                  |    1 -
+ .../CMakeFiles/ShowIncludes/main.c                 |    2 -
+ .../CMakeFiles/TargetDirectories.txt               |    3 -
+ .../CMakeFiles/clion-Release-log.txt               |   17 -
+ .../CMakeFiles/clion-environment.txt               |    4 -
+ .../CMakeFiles/cmake.check_cache                   |    1 -
+ .../cmake-build-release/CMakeFiles/rules.ninja     |   69 --
+ .../XuanJamesZhai_A1.exe.manifest                  |   10 -
+ XuanJamesZhai_A1/cmake-build-release/build.ninja   |  207 ----
+ .../cmake-build-release/cmake_install.cmake        |   44 -
+ XuanJamesZhai_A1/main.cpp                          |    8 +-
+ 48 files changed, 422 insertions(+), 5153 deletions(-)
+
+commit 4c2e6df1fe02eced54abe7d9941651d17e7bae79
+Author: Xuan(James) Zhai <46932284+XuanZhai@users.noreply.github.com>
+Date:   Fri Feb 16 04:17:05 2024 -0500
+
+    Reconstruct the project structure by add the render helper class
+
+ XuanJamesZhai_A1/CMakeLists.txt                    |    2 +-
+ XuanJamesZhai_A1/EventHelper.cpp                   |   14 +-
+ XuanJamesZhai_A1/EventHelper.h                     |   18 +
+ XuanJamesZhai_A1/RenderHelper.cpp                  |  171 +++
+ XuanJamesZhai_A1/RenderHelper.h                    |   69 ++
+ XuanJamesZhai_A1/S72Helper.cpp                     |    3 +-
+ XuanJamesZhai_A1/VulkanHelper.cpp                  |  305 ++---
+ XuanJamesZhai_A1/VulkanHelper.h                    |   72 +-
+ XuanJamesZhai_A1/XZMath.cpp                        |   23 +-
+ ...json => codemodel-v2-4b4369ec16fe35f4176c.json} |    2 +-
+ ...91.json => index-2024-02-16T07-50-44-0831.json} |    4 +-
+ ...anJamesZhai_A1-Debug-24fe5077da85a279ed7e.json} |   20 +-
+ XuanJamesZhai_A1/cmake-build-debug/.ninja_deps     |  Bin 40048 -> 31068 bytes
+ XuanJamesZhai_A1/cmake-build-debug/.ninja_log      |   64 +-
+ XuanJamesZhai_A1/cmake-build-debug/build.ninja     |   10 +-
+ XuanJamesZhai_A1/cmake-build-debug/mid-frame-1.ppm |  Bin 6220817 -> 6220817 bytes
+ .../cmake-build-debug/mid-frame-10.ppm             |  Bin 6220817 -> 6220817 bytes
+ .../cmake-build-debug/mid-frame-11.ppm             |  Bin 0 -> 6220817 bytes
+ XuanJamesZhai_A1/cmake-build-debug/mid-frame-2.ppm |  Bin 6220817 -> 6220817 bytes
+ XuanJamesZhai_A1/cmake-build-debug/mid-frame-3.ppm |  Bin 6220817 -> 6220817 bytes
+ XuanJamesZhai_A1/cmake-build-debug/mid-frame-4.ppm |  Bin 6220817 -> 6220817 bytes
+ XuanJamesZhai_A1/cmake-build-debug/mid-frame-5.ppm |  Bin 6220817 -> 6220817 bytes
+ XuanJamesZhai_A1/cmake-build-debug/mid-frame-6.ppm |  Bin 6220817 -> 6220817 bytes
+ XuanJamesZhai_A1/cmake-build-debug/mid-frame-7.ppm |  Bin 6220817 -> 6220817 bytes
+ XuanJamesZhai_A1/cmake-build-debug/mid-frame-8.ppm |  Bin 6220817 -> 6220817 bytes
+ XuanJamesZhai_A1/cmake-build-debug/mid-frame-9.ppm |  Bin 6220817 -> 6220817 bytes
+ .../.cmake/api/v1/query/cache-v2                   |    0
+ .../.cmake/api/v1/query/cmakeFiles-v1              |    0
+ .../.cmake/api/v1/query/codemodel-v2               |    0
+ .../.cmake/api/v1/query/toolchains-v1              |    0
+ .../v1/reply/cache-v2-184f6f660799c2dce49d.json    | 1199 ++++++++++++++++++++
+ .../reply/cmakeFiles-v1-3045cfddab7ce4330722.json  |  783 +++++++++++++
+ .../reply/codemodel-v2-22b86a16834dca0bbada.json   |   60 +
+ .../directory-.-Release-d0094a50bb2071803777.json  |   14 +
+ .../v1/reply/index-2024-02-16T07-50-48-0861.json   |  108 ++
+ ...nJamesZhai_A1-Release-d0620c37071fe6821e7a.json |  265 +++++
+ .../reply/toolchains-v1-bd6535751b7f12f8bc28.json  |   75 ++
+ XuanJamesZhai_A1/cmake-build-release/.ninja_deps   |  Bin 0 -> 15912 bytes
+ XuanJamesZhai_A1/cmake-build-release/.ninja_log    |   10 +
+ .../cmake-build-release/CMakeCache.txt             |  370 ++++++
+ .../CMakeFiles/3.25.2/CMakeCCompiler.cmake         |   72 ++
+ .../CMakeFiles/3.25.2/CMakeCXXCompiler.cmake       |   83 ++
+ .../3.25.2/CMakeDetermineCompilerABI_C.bin         |  Bin 0 -> 51200 bytes
+ .../3.25.2/CMakeDetermineCompilerABI_CXX.bin       |  Bin 0 -> 51200 bytes
+ .../CMakeFiles/3.25.2/CMakeRCCompiler.cmake        |    6 +
+ .../CMakeFiles/3.25.2/CMakeSystem.cmake            |   15 +
+ .../3.25.2/CompilerIdC/CMakeCCompilerId.c          |  868 ++++++++++++++
+ .../3.25.2/CompilerIdCXX/CMakeCXXCompilerId.cpp    |  857 ++++++++++++++
+ .../CMakeFiles/ShowIncludes/foo.h                  |    1 +
+ .../CMakeFiles/ShowIncludes/main.c                 |    2 +
+ .../CMakeFiles/TargetDirectories.txt               |    3 +
+ .../CMakeFiles/clion-Release-log.txt               |   17 +
+ .../CMakeFiles/clion-environment.txt               |    4 +
+ .../CMakeFiles/cmake.check_cache                   |    1 +
+ .../cmake-build-release/CMakeFiles/rules.ninja     |   69 ++
+ .../XuanJamesZhai_A1.exe.manifest                  |   10 +
+ XuanJamesZhai_A1/cmake-build-release/build.ninja   |  207 ++++
+ .../cmake-build-release/cmake_install.cmake        |   44 +
+ XuanJamesZhai_A1/main.cpp                          |   19 +-
+ 59 files changed, 5665 insertions(+), 274 deletions(-)
+
+commit 621d15212fc74675cfd59f5547bec54bfd37d365
+Author: Xuan(James) Zhai <46932284+XuanZhai@users.noreply.github.com>
+Date:   Wed Feb 14 03:40:30 2024 -0500
+
+    Add STEP and SLERP for the animation interpolation. Will start on the basic performance analysis.
+
+ XuanJamesZhai_A1/S72Helper.cpp                     |  67 ++++++++----
+ XuanJamesZhai_A1/S72Helper.h                       |   4 +-
+ XuanJamesZhai_A1/XZMath.cpp                        |  74 ++++++++++++-
+ XuanJamesZhai_A1/XZMath.h                          |   8 ++
+ XuanJamesZhai_A1/cmake-build-debug/.ninja_deps     | Bin 28736 -> 40048 bytes
+ XuanJamesZhai_A1/cmake-build-debug/.ninja_log      |  74 +++++--------
+ .../rotation/rotation.AroundX.b72                  | Bin 0 -> 22176 bytes
+ .../rotation/rotation.AroundY.b72                  | Bin 0 -> 22176 bytes
+ .../rotation/rotation.AroundZ.b72                  | Bin 0 -> 22176 bytes
+ .../cmake-build-debug/rotation/rotation.s72        | 116 +++++++++++++++++++++
+ 10 files changed, 272 insertions(+), 71 deletions(-)
+
+commit ebd9be0a08c704de7dae7bc66fc0ea576aca64f0
+Author: Xuan(James) Zhai <46932284+XuanZhai@users.noreply.github.com>
+Date:   Mon Feb 12 02:15:43 2024 -0500
+
+    Finish the headless part, need to fix some bug and start doing the performance analysis
+
+ Test_Program/TestProgram/Shaders/frag.spv          |  Bin 864 -> 796 bytes
+ Test_Program/TestProgram/Shaders/vert.spv          |  Bin 1840 -> 1840 bytes
+ Test_Program/TestProgram_Clion/.idea/.gitignore    |    8 +
+ .../TestProgram_Clion/.idea/TestProgram_Clion.iml  |    2 +
+ .../TestProgram_Clion/.idea/deployment.xml         |   63 +
+ Test_Program/TestProgram_Clion/.idea/encodings.xml |    6 +
+ Test_Program/TestProgram_Clion/.idea/misc.xml      |    4 +
+ Test_Program/TestProgram_Clion/.idea/modules.xml   |    8 +
+ Test_Program/TestProgram_Clion/.idea/vcs.xml       |    6 +
+ Test_Program/TestProgram_Clion/CMakeLists.txt      |   23 +
+ Test_Program/TestProgram_Clion/XZMath.cpp          |  481 ++++
+ Test_Program/TestProgram_Clion/XZMath.h            |   95 +
+ .../cmake-build-debug/.cmake/api/v1/query/cache-v2 |    0
+ .../.cmake/api/v1/query/cmakeFiles-v1              |    0
+ .../.cmake/api/v1/query/codemodel-v2               |    0
+ .../.cmake/api/v1/query/toolchains-v1              |    0
+ .../v1/reply/cache-v2-5d3f13b71bc91d934353.json    | 1215 +++++++++
+ .../reply/cmakeFiles-v1-1ea0edfd0111a29c3e73.json  |  171 ++
+ .../reply/codemodel-v2-86e0b60cb57068d399a3.json   |   60 +
+ .../directory-.-Debug-d0094a50bb2071803777.json    |   14 +
+ .../v1/reply/index-2024-02-06T01-12-08-0164.json   |   36 +-
+ ...stProgram_Clion-Debug-cd599fe4ba6a68bde8d5.json |   87 +-
+ .../reply/toolchains-v1-bd6535751b7f12f8bc28.json  |   15 +-
+ .../cmake-build-debug/.ninja_deps                  |  Bin 0 -> 41460 bytes
+ .../TestProgram_Clion/cmake-build-debug/.ninja_log |   31 +
+ .../cmake-build-debug/ALL_BUILD.vcxproj            |  184 ++
+ .../cmake-build-debug/ALL_BUILD.vcxproj.filters    |    8 +
+ .../cmake-build-debug/CMakeCache.txt               |  370 +++
+ .../CMakeFiles/3.25.2}/CMakeCCompiler.cmake        |   16 +-
+ .../CMakeFiles/3.25.2}/CMakeCXXCompiler.cmake      |   18 +-
+ .../3.25.2/CMakeDetermineCompilerABI_C.bin         |  Bin 0 -> 51200 bytes
+ .../3.25.2/CMakeDetermineCompilerABI_CXX.bin       |  Bin 0 -> 51200 bytes
+ .../CMakeFiles/3.25.2}/CMakeRCCompiler.cmake       |    2 +-
+ .../CMakeFiles/3.25.2}/CMakeSystem.cmake           |    0
+ .../3.25.2}/CompilerIdC/CMakeCCompilerId.c         |    8 +-
+ .../3.25.2}/CompilerIdCXX/CMakeCXXCompilerId.cpp   |    8 +-
+ .../CMakeFiles/ShowIncludes/foo.h                  |    1 +
+ .../CMakeFiles/ShowIncludes/main.c                 |    2 +
+ .../CMakeFiles/TargetDirectories.txt               |    3 +
+ .../TestProgram_Clion.dir/embed.manifest           |   10 +
+ .../TestProgram_Clion.dir/intermediate.manifest    |   10 +
+ .../CMakeFiles/TestProgram_Clion.dir/manifest.rc   |    2 +
+ .../CMakeFiles/TestProgram_Clion.dir/manifest.res  |  Bin 0 -> 472 bytes
+ .../CMakeFiles/clion-Debug-log.txt                 |    4 +
+ .../CMakeFiles/clion-environment.txt               |    4 +
+ .../cmake-build-debug/CMakeFiles/cmake.check_cache |    1 +
+ .../cmake-build-debug/CMakeFiles/rules.ninja       |   69 +
+ .../Models/sg-Articulation.Foot.b72                |  Bin 0 -> 150360 bytes
+ .../Models/sg-Articulation.Servo.b72               |  Bin 0 -> 14112 bytes
+ .../cmake-build-debug/Shaders/compile.bat          |    3 +
+ .../cmake-build-debug/Shaders/frag.spv             |  Bin 0 -> 796 bytes
+ .../cmake-build-debug/Shaders/shader.frag          |   11 +
+ .../cmake-build-debug/Shaders/shader.vert          |   22 +
+ .../cmake-build-debug/Shaders/vert.spv             |  Bin 0 -> 1840 bytes
+ .../cmake-build-debug/TestProgram_Clion.sln        |   53 +
+ .../cmake-build-debug/TestProgram_Clion.vcxproj    |  329 +++
+ .../TestProgram_Clion.vcxproj.filters              |   16 +
+ .../cmake-build-debug/Textures/texture.jpg         |  Bin 0 -> 66649 bytes
+ .../cmake-build-debug/Textures/viking_room.png     |  Bin 0 -> 962052 bytes
+ .../cmake-build-debug/ZERO_CHECK.vcxproj           |  174 ++
+ .../cmake-build-debug/ZERO_CHECK.vcxproj.filters   |   13 +
+ .../cmake-build-debug/build.ninja                  |  158 ++
+ .../cmake-build-debug/cmake_install.cmake          |   44 +
+ Test_Program/TestProgram_Clion/main.cpp            | 2736 ++++++++++++++++++++
+ XuanJamesZhai_A1/CMakeLists.txt                    |    2 +-
+ XuanJamesZhai_A1/EventHelper.cpp                   |   63 +
+ XuanJamesZhai_A1/EventHelper.h                     |   49 +
+ XuanJamesZhai_A1/S72Helper.cpp                     |   99 +-
+ XuanJamesZhai_A1/S72Helper.h                       |   13 +-
+ XuanJamesZhai_A1/VulkanHelper.cpp                  |   94 +-
+ XuanJamesZhai_A1/VulkanHelper.h                    |   24 +-
+ XuanJamesZhai_A1/XZJParser.cpp                     |    6 +-
+ ...4ef.json => cache-v2-870c13aecf17c2d5d279.json} |  198 +-
+ .../reply/cmakeFiles-v1-211d553979c56cd1c840.json  |  165 ++
+ .../reply/cmakeFiles-v1-d959718cde046a9ad867.json  |  793 ------
+ ...json => codemodel-v2-e18a1ff2d4cb9b1ee5ab.json} |    8 +-
+ .../v1/reply/index-2024-02-12T03-08-01-0391.json   |  108 +
+ ...uanJamesZhai_A1-Debug-0023b5b6cb88739dfd88.json |  251 ++
+ .../reply/toolchains-v1-bd6535751b7f12f8bc28.json  |   75 +
+ XuanJamesZhai_A1/cmake-build-debug/.ninja_deps     |  Bin 4600 -> 28736 bytes
+ XuanJamesZhai_A1/cmake-build-debug/.ninja_log      |   72 +-
+ XuanJamesZhai_A1/cmake-build-debug/CMakeCache.txt  |   93 +-
+ .../CMakeFiles/3.25.2/CMakeCCompiler.cmake         |   72 +
+ .../CMakeFiles/3.25.2/CMakeCXXCompiler.cmake       |   83 +
+ .../CMakeDetermineCompilerABI_C.bin}               |  Bin 51200 -> 51200 bytes
+ .../CMakeDetermineCompilerABI_CXX.bin}             |  Bin 51200 -> 51200 bytes
+ .../CMakeFiles/3.25.2/CMakeRCCompiler.cmake        |    6 +
+ .../CMakeFiles/3.25.2/CMakeSystem.cmake            |   15 +
+ .../3.25.2/CompilerIdC/CMakeCCompilerId.c          |  868 +++++++
+ .../3.25.2/CompilerIdCXX/CMakeCXXCompilerId.cpp    |  857 ++++++
+ .../CMakeFiles/CMakeConfigureLog.yaml              |  189 --
+ .../CMakeFiles/CMakeDirectoryInformation.cmake     |   13 -
+ .../cmake-build-debug/CMakeFiles/Makefile.cmake    |  136 -
+ .../cmake-build-debug/CMakeFiles/Makefile2         |  101 -
+ .../CMakeFiles/TargetDirectories.txt               |    6 +-
+ .../XuanJamesZhai_A1.dir/DependInfo.cmake          |   20 -
+ .../CMakeFiles/XuanJamesZhai_A1.dir/build.make     |  129 -
+ .../XuanJamesZhai_A1.dir/cmake_clean.cmake         |   15 -
+ .../XuanJamesZhai_A1.dir/compiler_depend.internal  |  241 --
+ .../XuanJamesZhai_A1.dir/compiler_depend.make      |  477 ----
+ .../XuanJamesZhai_A1.dir/compiler_depend.ts        |    2 -
+ .../CMakeFiles/XuanJamesZhai_A1.dir/depend.make    |    2 -
+ .../CMakeFiles/XuanJamesZhai_A1.dir/flags.make     |   10 -
+ .../CMakeFiles/XuanJamesZhai_A1.dir/manifest.rc    |    2 +-
+ .../CMakeFiles/XuanJamesZhai_A1.dir/progress.make  |    4 -
+ .../CMakeFiles/clion-Debug-log.txt                 |   29 +-
+ .../CMakeFiles/clion-environment.txt               |    6 +-
+ .../cmake-build-debug/CMakeFiles/progress.marks    |    1 -
+ .../cmake-build-debug/CMakeFiles/rules.ninja       |   69 +
+ XuanJamesZhai_A1/cmake-build-debug/Makefile        |  149 +-
+ .../Models/sg-Articulation.Bracket.b72             |  Bin 0 -> 8736 bytes
+ .../Models/sg-Articulation.Foot.b72                |  Bin 0 -> 150360 bytes
+ .../Models/sg-Articulation.Link.b72                |  Bin 0 -> 24192 bytes
+ .../Models/sg-Articulation.Plane.002.b72           |  Bin 0 -> 1008 bytes
+ .../Models/sg-Articulation.Rounded-Cube.b72        |  Bin 0 -> 39984 bytes
+ .../Models/sg-Articulation.Servo.b72               |  Bin 0 -> 14112 bytes
+ .../Models/sg-Articulation.Turntable-Inner.b72     |  Bin 0 -> 13104 bytes
+ .../Models/sg-Articulation.Turntable.b72           |  Bin 0 -> 26544 bytes
+ .../cmake-build-debug/Models/sg-Articulation.s72   |  307 +++
+ .../cmake-build-debug/Textures/texture.jpg         |  Bin 0 -> 66649 bytes
+ .../cmake-build-debug/Textures/viking_room.png     |  Bin 0 -> 962052 bytes
+ .../cmake-build-debug/XuanJamesZhai_A1             |  Bin 0 -> 937312 bytes
+ .../cmake-build-debug/XuanJamesZhai_A1.cbp         |  118 +-
+ .../articulation/sg-Articulation.Bracket.b72       |  Bin 0 -> 8736 bytes
+ .../articulation/sg-Articulation.Foot.b72          |  Bin 0 -> 150360 bytes
+ .../articulation/sg-Articulation.Link.b72          |  Bin 0 -> 24192 bytes
+ .../articulation/sg-Articulation.Plane.002.b72     |  Bin 0 -> 1008 bytes
+ .../articulation/sg-Articulation.Rounded-Cube.b72  |  Bin 0 -> 39984 bytes
+ .../articulation/sg-Articulation.Servo.b72         |  Bin 0 -> 14112 bytes
+ .../sg-Articulation.Turntable-Inner.b72            |  Bin 0 -> 13104 bytes
+ .../articulation/sg-Articulation.Turntable.b72     |  Bin 0 -> 26544 bytes
+ .../articulation/sg-Articulation.s72               |  307 +++
+ XuanJamesZhai_A1/cmake-build-debug/build.ninja     |   51 +-
+ .../cmake-build-debug/cmake_install.cmake          |    4 +-
+ .../containment/sg-Containment.Beam.b72            |  Bin 0 -> 1008 bytes
+ .../containment/sg-Containment.Box.b72             |  Bin 0 -> 4368 bytes
+ .../containment/sg-Containment.Carton.b72          |  Bin 0 -> 10752 bytes
+ .../containment/sg-Containment.Room.b72            |  Bin 0 -> 8064 bytes
+ .../containment/sg-Containment.Table.b72           |  Bin 0 -> 268128 bytes
+ .../containment/sg-Containment.s72                 |  178 ++
+ .../grouping/sg-Grouping.Blobby-Ground.b72         |  Bin 0 -> 19824 bytes
+ .../grouping/sg-Grouping.Green-Carton.b72          |  Bin 0 -> 10752 bytes
+ .../grouping/sg-Grouping.Purple-Carton.b72         |  Bin 0 -> 10752 bytes
+ .../grouping/sg-Grouping.Purple-Torus.b72          |  Bin 0 -> 322560 bytes
+ .../cmake-build-debug/grouping/sg-Grouping.s72     |  288 +++
+ XuanJamesZhai_A1/cmake-build-debug/mid-frame-1.ppm |  Bin 0 -> 6220817 bytes
+ .../cmake-build-debug/mid-frame-10.ppm             |  Bin 0 -> 6220817 bytes
+ XuanJamesZhai_A1/cmake-build-debug/mid-frame-2.ppm |  Bin 0 -> 6220817 bytes
+ XuanJamesZhai_A1/cmake-build-debug/mid-frame-3.ppm |  Bin 0 -> 6220817 bytes
+ XuanJamesZhai_A1/cmake-build-debug/mid-frame-4.ppm |  Bin 0 -> 6220817 bytes
+ XuanJamesZhai_A1/cmake-build-debug/mid-frame-5.ppm |  Bin 0 -> 6220817 bytes
+ XuanJamesZhai_A1/cmake-build-debug/mid-frame-6.ppm |  Bin 0 -> 6220817 bytes
+ XuanJamesZhai_A1/cmake-build-debug/mid-frame-7.ppm |  Bin 0 -> 6220817 bytes
+ XuanJamesZhai_A1/cmake-build-debug/mid-frame-8.ppm |  Bin 0 -> 6220817 bytes
+ XuanJamesZhai_A1/cmake-build-debug/mid-frame-9.ppm |  Bin 0 -> 6220817 bytes
+ .../cmake-build-debug/sg-Articulation.s72          |  193 --
+ .../sphereflake/sphereflake.Sphere-1.b72           |  Bin 0 -> 26880 bytes
+ .../sphereflake/sphereflake.Sphere-2.b72           |  Bin 0 -> 26880 bytes
+ .../sphereflake/sphereflake.Sphere-3.b72           |  Bin 0 -> 26880 bytes
+ .../sphereflake/sphereflake.Sphere-4.b72           |  Bin 0 -> 26880 bytes
+ .../sphereflake/sphereflake.Sphere-5.b72           |  Bin 0 -> 26880 bytes
+ .../sphereflake/sphereflake.Sphere-6.b72           |  Bin 0 -> 26880 bytes
+ .../sphereflake/sphereflake.Sphere-7.b72           |  Bin 0 -> 26880 bytes
+ .../sphereflake/sphereflake.Sphere.b72             |  Bin 0 -> 26880 bytes
+ .../cmake-build-debug/sphereflake/sphereflake.s72  |  447 ++++
+ .../support/sg-Support.Cylinder.b72                |  Bin 0 -> 13104 bytes
+ .../support/sg-Support.Ground.b72                  |  Bin 0 -> 1008 bytes
+ .../support/sg-Support.Rounded-Cube.b72            |  Bin 0 -> 39984 bytes
+ .../cmake-build-debug/support/sg-Support.Torus.b72 |  Bin 0 -> 322560 bytes
+ .../cmake-build-debug/support/sg-Support.s72       |  103 +
+ XuanJamesZhai_A1/main.cpp                          |    2 +-
+ 171 files changed, 11445 insertions(+), 2772 deletions(-)
+
+commit 78e857efb0b6372c30ea3ba796c42ac3e02a61ac
+Author: Xuan(James) Zhai <46932284+XuanZhai@users.noreply.github.com>
+Date:   Sun Feb 11 03:23:31 2024 -0500
+
+    Add the headless mode, Need to Add the animation control and the headless control.
+
+ XuanJamesZhai_A1/FrustumCulling.cpp                |   14 +-
+ XuanJamesZhai_A1/FrustumCulling.h                  |    8 +-
+ XuanJamesZhai_A1/S72Helper.cpp                     |   54 +-
+ XuanJamesZhai_A1/S72Helper.h                       |  245 ++--
+ XuanJamesZhai_A1/VulkanHelper.cpp                  |  263 ++++-
+ XuanJamesZhai_A1/VulkanHelper.h                    |   31 +-
+ XuanJamesZhai_A1/XZMath.cpp                        |  531 +++++----
+ XuanJamesZhai_A1/XZMath.h                          |   55 +-
+ .../cmake-build-debug/Shaders/shader.vert          |    3 +-
+ .../cmake-build-debug/Shaders/vert.spv             |  Bin 1940 -> 2220 bytes
+ XuanJamesZhai_A1/cmake-build-debug/example.events  | 1230 ++++++++++++++++++++
+ XuanJamesZhai_A1/main.cpp                          |    6 +
+ 12 files changed, 2015 insertions(+), 425 deletions(-)
+
+commit 247ba4607a836b7aadcc297fef9b90c276ce5e55
+Author: Xuan(James) Zhai <46932284+XuanZhai@users.noreply.github.com>
+Date:   Sat Feb 10 05:06:08 2024 -0500
+
+    Add the animation, need to do the optimization and add the headless feature
+
+ XuanJamesZhai_A1/CMakeLists.txt   |   1 -
+ XuanJamesZhai_A1/S72Helper.cpp    | 137 +++++++++++++++++++++++++++++++++++---
+ XuanJamesZhai_A1/S72Helper.h      |  21 ++++++
+ XuanJamesZhai_A1/VulkanHelper.cpp |  40 +++++------
+ XuanJamesZhai_A1/XZJParser.h      |   6 +-
+ XuanJamesZhai_A1/XZMath.cpp       |  52 +++++++++++++++
+ XuanJamesZhai_A1/XZMath.h         |   6 ++
+ 7 files changed, 230 insertions(+), 33 deletions(-)
+
+commit 6c18c3ba1491634b08eab8b81c4a948b5432521c
+Author: Xuan(James) Zhai <46932284+XuanZhai@users.noreply.github.com>
+Date:   Fri Feb 9 01:41:11 2024 -0500
+
+    Update the shader code to let the channel get matched.
+
+ XuanJamesZhai_A1/cmake-build-debug/Shaders/frag.spv   | Bin 1184 -> 1316 bytes
+ .../cmake-build-debug/Shaders/shader.frag             |   4 ++--
+ .../cmake-build-debug/Shaders/shader.vert             |   4 ++--
+ XuanJamesZhai_A1/cmake-build-debug/Shaders/vert.spv   | Bin 1924 -> 1940 bytes
+ 4 files changed, 4 insertions(+), 4 deletions(-)
+
+commit f19337a72f0d76a643a7d4146bb5f706a40648c6
+Author: Xuan(James) Zhai <46932284+XuanZhai@users.noreply.github.com>
+Date:   Fri Feb 9 01:40:17 2024 -0500
+
+    Add the frustum culling, need to work on the animation.
+
+ XuanJamesZhai_A1/CMakeLists.txt     |   2 +-
+ XuanJamesZhai_A1/FrustumCulling.cpp | 284 ++++++++++++++++++++++++++++++++++++
+ XuanJamesZhai_A1/FrustumCulling.h   |  61 ++++++++
+ XuanJamesZhai_A1/S72Helper.cpp      |  64 +++++++-
+ XuanJamesZhai_A1/S72Helper.h        |   9 ++
+ XuanJamesZhai_A1/VulkanHelper.cpp   |  51 ++++---
+ XuanJamesZhai_A1/VulkanHelper.h     | 146 +++++++++---------
+ XuanJamesZhai_A1/XZMath.cpp         |  29 ++--
+ XuanJamesZhai_A1/XZMath.h           |   3 +
+ XuanJamesZhai_A1/main.cpp           |  13 +-
+ 10 files changed, 547 insertions(+), 115 deletions(-)
+
+commit 0b602171d3c09a2e0a85cb2e8a020d2646b9a217
+Author: Xuan(James) Zhai <46932284+XuanZhai@users.noreply.github.com>
+Date:   Thu Feb 8 01:06:24 2024 -0500
+
+    Finish Load and Show, need to add the frustum culling
+
+ XuanJamesZhai_A1/S72Helper.cpp                     | 411 ++++++++++++++-------
+ XuanJamesZhai_A1/S72Helper.h                       |  46 ++-
+ XuanJamesZhai_A1/VulkanHelper.cpp                  |  88 ++++-
+ XuanJamesZhai_A1/VulkanHelper.h                    |   3 +
+ XuanJamesZhai_A1/XZMath.cpp                        |  53 ++-
+ XuanJamesZhai_A1/XZMath.h                          |   6 +
+ .../cmake-build-debug/Shaders/compile.bat          |   3 +
+ .../cmake-build-debug/Shaders/frag.spv             | Bin 0 -> 1184 bytes
+ .../cmake-build-debug/Shaders/shader.frag          |  14 +
+ .../cmake-build-debug/Shaders/shader.vert          |  24 ++
+ .../cmake-build-debug/Shaders/vert.spv             | Bin 0 -> 1924 bytes
+ 11 files changed, 493 insertions(+), 155 deletions(-)
+
+commit 53ccecfc2aba95cb53b924fe28b066e6258fc190
+Author: Xuan(James) Zhai <46932284+XuanZhai@users.noreply.github.com>
+Date:   Wed Feb 7 03:46:41 2024 -0500
+
+    Need to add camera movements and input detection. maybe also resize function
+
+ XuanJamesZhai_A1/S72Helper.cpp    | 29 ++++---------
+ XuanJamesZhai_A1/S72Helper.h      | 73 ++++++++++++++------------------
+ XuanJamesZhai_A1/VulkanHelper.cpp | 85 ++++++++++++++++++++++----------------
+ XuanJamesZhai_A1/VulkanHelper.h   | 14 +++----
+ XuanJamesZhai_A1/XZMath.cpp       | 87 +++++++++++++++++----------------------
+ XuanJamesZhai_A1/XZMath.h         | 64 ++++++++++++++--------------
+ 6 files changed, 168 insertions(+), 184 deletions(-)
+
+commit 505fa66e9202987e2b1dffb8080c9b26bec574fe
+Author: Xuan(James) Zhai <46932284+XuanZhai@users.noreply.github.com>
+Date:   Wed Feb 7 01:57:51 2024 -0500
+
+    Start to change the mesh & mesh instance structure
+
+ XuanJamesZhai_A1/S72Helper.cpp    |  60 +++-------
+ XuanJamesZhai_A1/S72Helper.h      |  11 +-
+ XuanJamesZhai_A1/VulkanHelper.cpp | 239 ++++++++++++++++++++------------------
+ XuanJamesZhai_A1/VulkanHelper.h   |  40 +++----
+ XuanJamesZhai_A1/XZJParser.cpp    |  12 +-
+ XuanJamesZhai_A1/XZJParser.h      |   3 +
+ XuanJamesZhai_A1/main.cpp         |  31 +++--
+ 7 files changed, 194 insertions(+), 202 deletions(-)
+
+commit d823e875d31124f73b5d83711629fd548bfccfc1
+Author: Xuan(James) Zhai <46932284+XuanZhai@users.noreply.github.com>
+Date:   Tue Feb 6 00:50:59 2024 -0500
+
+    Add Camera Positions, but still need to do the optimization
+
+ XuanJamesZhai_A1/S72Helper.cpp    | 129 ++++++++++++++------------------------
+ XuanJamesZhai_A1/S72Helper.h      |  40 ++++++++----
+ XuanJamesZhai_A1/VulkanHelper.cpp |  12 ++--
+ XuanJamesZhai_A1/XZMath.cpp       |  55 ++++++++++++++--
+ XuanJamesZhai_A1/XZMath.h         |   6 ++
+ 5 files changed, 138 insertions(+), 104 deletions(-)
+
+commit d3ae9cadbff38d8dffa06cb38912f0cbeae8e9db
+Author: Xuan(James) Zhai <46932284+XuanZhai@users.noreply.github.com>
+Date:   Mon Feb 5 23:10:26 2024 -0500
+
+    The scene now can be rendered correctly, but need to optimized
+
+ XuanJamesZhai_A1/S72Helper.cpp    | 40 ++++++++++++++------
+ XuanJamesZhai_A1/S72Helper.h      |  7 +++-
+ XuanJamesZhai_A1/VulkanHelper.cpp | 11 +++---
+ XuanJamesZhai_A1/VulkanHelper.h   |  9 -----
+ XuanJamesZhai_A1/XZMath.cpp       | 80 +++++++++++++++++++--------------------
+ XuanJamesZhai_A1/XZMath.h         |  2 +
+ 6 files changed, 79 insertions(+), 70 deletions(-)
+
+commit e0c8d529c5fb04f5494b4637ee422b0fa6f4caf2
+Author: Xuan(James) Zhai <46932284+XuanZhai@users.noreply.github.com>
+Date:   Mon Feb 5 18:01:30 2024 -0500
+
+    Update
+
+ XuanJamesZhai_A1/S72Helper.cpp    | 177 ++++++++++++++++++++++++--------------
+ XuanJamesZhai_A1/S72Helper.h      |  13 ++-
+ XuanJamesZhai_A1/VulkanHelper.cpp |  21 ++---
+ XuanJamesZhai_A1/VulkanHelper.h   |  16 +++-
+ XuanJamesZhai_A1/XZJParser.h      |   2 +-
+ XuanJamesZhai_A1/XZMath.cpp       |  87 ++++++++++++++-----
+ XuanJamesZhai_A1/XZMath.h         |  11 ++-
+ 7 files changed, 222 insertions(+), 105 deletions(-)
+
+commit 7d812ba6c56349e012da623021eda275d4a79149
+Author: Xuan(James) Zhai <46932284+XuanZhai@users.noreply.github.com>
+Date:   Mon Feb 5 03:45:44 2024 -0500
+
+    Make the uniform buffer dynamic. The render image is incorrect, may need to modify the transformation matrix
+
+ XuanJamesZhai_A1/CMakeLists.txt   |   2 +-
+ XuanJamesZhai_A1/S72Helper.cpp    | 101 ++++-----
+ XuanJamesZhai_A1/S72Helper.h      |  21 +-
+ XuanJamesZhai_A1/VulkanHelper.cpp |  38 ++--
+ XuanJamesZhai_A1/VulkanHelper.h   |  71 +------
+ XuanJamesZhai_A1/XZJParser.h      |   6 +-
+ XuanJamesZhai_A1/XZMath.cpp       | 433 ++++++++++++++++++++++++++++++++++++++
+ XuanJamesZhai_A1/XZMath.h         |  79 +++++++
+ 8 files changed, 604 insertions(+), 147 deletions(-)
+
+commit 1516b79684dbfd4633238db5354e41519a9a29ed
+Author: Xuan(James) Zhai <46932284+XuanZhai@users.noreply.github.com>
+Date:   Sun Feb 4 05:52:04 2024 -0500
+
+    Modify the Vulkan helper to let the pipeline accept multiple meshes, need to change the uniform buffer to accept different MVP matrices
+
+ XuanJamesZhai_A1/S72Helper.cpp    |   2 +-
+ XuanJamesZhai_A1/S72Helper.h      |   3 +-
+ XuanJamesZhai_A1/VulkanHelper.cpp | 230 +++++++++++++++++++++++++++-----------
+ XuanJamesZhai_A1/VulkanHelper.h   |  93 +++++++++------
+ XuanJamesZhai_A1/main.cpp         |  21 ++--
+ 5 files changed, 237 insertions(+), 112 deletions(-)
+
+commit dd134d2b26a3567a452af3eb2805544d7caa1ec4
+Author: Xuan(James) Zhai <46932284+XuanZhai@users.noreply.github.com>
+Date:   Sat Feb 3 01:17:30 2024 -0500
+
+    Add functions to process the parsed data. The result will be forwarded to the pipline
+
+ XuanJamesZhai_A1/CMakeLists.txt   |   13 +-
+ XuanJamesZhai_A1/S72Helper.cpp    |  476 ++++++++
+ XuanJamesZhai_A1/S72Helper.h      |   98 ++
+ XuanJamesZhai_A1/VulkanHelper.cpp | 2285 +++++++++++++++++++++++++++++++++++++
+ XuanJamesZhai_A1/VulkanHelper.h   |  485 ++++++++
+ XuanJamesZhai_A1/XZJParser.cpp    |  101 +-
+ XuanJamesZhai_A1/XZJParser.h      |   22 +-
+ XuanJamesZhai_A1/main.cpp         |   25 +-
+ 8 files changed, 3408 insertions(+), 97 deletions(-)
+
+commit 806055e9ddb8d54ed5c21962453f2f0c1aa6e53a
+Author: Xuan(James) Zhai <46932284+XuanZhai@users.noreply.github.com>
+Date:   Wed Jan 31 23:37:39 2024 -0500
+
+    Finish the Parser, need to integrate with Vulkan
+
+ XuanJamesZhai_A1/XZJParser.cpp | 141 ++++++++++++++++++++++++-----------------
+ XuanJamesZhai_A1/XZJParser.h   |   2 +
+ 2 files changed, 85 insertions(+), 58 deletions(-)
+
+commit d824a0e52a6c0287578ed166bfabec18f3526716
+Author: Xuan(James) Zhai <46932284+XuanZhai@users.noreply.github.com>
+Date:   Wed Jan 31 17:12:15 2024 -0500
+
+    Finish A1 JSON Parser, need to refine it and fix some bugs.
+
+ .idea/15672_Real-Time-Graphics.iml                 |   8 +
+ .idea/modules.xml                                  |   8 +
+ .idea/vcs.xml                                      |   6 +
+ .idea/workspace.xml                                |  61 ++
+ XuanJamesZhai_A1/XZJParser.cpp                     | 184 ++++-
+ XuanJamesZhai_A1/XZJParser.h                       |  38 +-
+ ...d9e.json => cache-v2-1234867f6b30d60d74ef.json} | 110 ++-
+ .../reply/cmakeFiles-v1-930116014414dde90111.json  | 150 ----
+ .../reply/cmakeFiles-v1-d959718cde046a9ad867.json  | 793 +++++++++++++++++++++
+ ...json => codemodel-v2-c895bb1c238967e2faa7.json} |   8 +-
+ ...46.json => index-2024-01-31T14-58-13-0671.json} |  36 +-
+ ...anJamesZhai_A1-Debug-09bbf745ea2cd37ceb0f.json} |   5 +-
+ ...son => toolchains-v1-bd27a057bc71f930ebe5.json} |  15 +-
+ XuanJamesZhai_A1/cmake-build-debug/CMakeCache.txt  |  68 +-
+ .../{3.25.2 => 3.27.8}/CMakeCCompiler.cmake        |  16 +-
+ .../{3.25.2 => 3.27.8}/CMakeCXXCompiler.cmake      |  18 +-
+ .../CMakeDetermineCompilerABI_C.bin}               | Bin 51200 -> 51200 bytes
+ .../CMakeDetermineCompilerABI_CXX.bin}             | Bin 51200 -> 51200 bytes
+ .../{3.25.2 => 3.27.8}/CMakeRCCompiler.cmake       |   2 +-
+ .../{3.25.2 => 3.27.8}/CMakeSystem.cmake           |   0
+ .../CompilerIdC/CMakeCCompilerId.c                 |   8 +-
+ .../CompilerIdCXX/CMakeCXXCompilerId.cpp           |   8 +-
+ .../CMakeFiles/CMakeConfigureLog.yaml              | 189 +++++
+ .../CMakeFiles/CMakeDirectoryInformation.cmake     |  13 +
+ .../cmake-build-debug/CMakeFiles/Makefile.cmake    | 136 ++++
+ .../cmake-build-debug/CMakeFiles/Makefile2         | 101 +++
+ .../CMakeFiles/TargetDirectories.txt               |   6 +-
+ .../XuanJamesZhai_A1.dir/DependInfo.cmake          |  20 +
+ .../CMakeFiles/XuanJamesZhai_A1.dir/build.make     | 129 ++++
+ .../XuanJamesZhai_A1.dir/cmake_clean.cmake         |  15 +
+ .../XuanJamesZhai_A1.dir/compiler_depend.internal  | 241 +++++++
+ .../XuanJamesZhai_A1.dir/compiler_depend.make      | 477 +++++++++++++
+ .../XuanJamesZhai_A1.dir/compiler_depend.ts        |   2 +
+ .../CMakeFiles/XuanJamesZhai_A1.dir/depend.make    |   2 +
+ .../CMakeFiles/XuanJamesZhai_A1.dir/flags.make     |  10 +
+ .../CMakeFiles/XuanJamesZhai_A1.dir/manifest.rc    |   2 +-
+ .../CMakeFiles/XuanJamesZhai_A1.dir/progress.make  |   4 +
+ .../CMakeFiles/clion-Debug-log.txt                 |  29 +-
+ .../CMakeFiles/clion-environment.txt               |   6 +-
+ .../cmake-build-debug/CMakeFiles/progress.marks    |   1 +
+ .../cmake-build-debug/CMakeFiles/rules.ninja       |  69 --
+ XuanJamesZhai_A1/cmake-build-debug/Makefile        | 156 ++--
+ .../cmake-build-debug/XuanJamesZhai_A1.cbp         | 120 ++--
+ .../cmake-build-debug/cmake_install.cmake          |   4 +-
+ XuanJamesZhai_A1/main.cpp                          |  42 +-
+ 45 files changed, 2806 insertions(+), 510 deletions(-)
+
+commit c41feda543641f5eee0d350a07174a97f257a4d3
+Author: Xuan(James) Zhai <46932284+XuanZhai@users.noreply.github.com>
+Date:   Wed Jan 31 04:04:01 2024 -0500
+
+    First Update of A1, Start working on the JSON Parser
+
+ XuanJamesZhai_A1/.idea/.gitignore                  |    8 +
+ XuanJamesZhai_A1/.idea/XuanJamesZhai_A1.iml        |    2 +
+ XuanJamesZhai_A1/.idea/deployment.xml              |   63 ++
+ XuanJamesZhai_A1/.idea/encodings.xml               |    7 +
+ XuanJamesZhai_A1/.idea/misc.xml                    |    4 +
+ XuanJamesZhai_A1/.idea/modules.xml                 |    8 +
+ XuanJamesZhai_A1/.idea/vcs.xml                     |    6 +
+ XuanJamesZhai_A1/CMakeLists.txt                    |    6 +
+ XuanJamesZhai_A1/XZJParser.cpp                     |   95 ++
+ XuanJamesZhai_A1/XZJParser.h                       |   46 +
+ .../cmake-build-debug/.cmake/api/v1/query/cache-v2 |    0
+ .../.cmake/api/v1/query/cmakeFiles-v1              |    0
+ .../.cmake/api/v1/query/codemodel-v2               |    0
+ .../.cmake/api/v1/query/toolchains-v1              |    0
+ .../v1/reply/cache-v2-7f6ad488bdd0d7e67d9e.json    | 1123 ++++++++++++++++++++
+ .../reply/cmakeFiles-v1-930116014414dde90111.json  |  150 +++
+ .../reply/codemodel-v2-cc0cdd62a77bcc794840.json   |   60 ++
+ .../directory-.-Debug-d0094a50bb2071803777.json    |   14 +
+ .../v1/reply/index-2024-01-31T03-57-20-0446.json   |  108 ++
+ ...uanJamesZhai_A1-Debug-e17a072c95366ef0c771.json |  129 +++
+ .../reply/toolchains-v1-bd6535751b7f12f8bc28.json  |   75 ++
+ XuanJamesZhai_A1/cmake-build-debug/.ninja_deps     |  Bin 0 -> 4600 bytes
+ XuanJamesZhai_A1/cmake-build-debug/.ninja_log      |   25 +
+ XuanJamesZhai_A1/cmake-build-debug/CMakeCache.txt  |  348 ++++++
+ .../CMakeFiles/3.25.2/CMakeCCompiler.cmake         |   72 ++
+ .../CMakeFiles/3.25.2/CMakeCXXCompiler.cmake       |   83 ++
+ .../3.25.2/CMakeDetermineCompilerABI_C.bin         |  Bin 0 -> 51200 bytes
+ .../3.25.2/CMakeDetermineCompilerABI_CXX.bin       |  Bin 0 -> 51200 bytes
+ .../CMakeFiles/3.25.2/CMakeRCCompiler.cmake        |    6 +
+ .../CMakeFiles/3.25.2/CMakeSystem.cmake            |   15 +
+ .../3.25.2/CompilerIdC/CMakeCCompilerId.c          |  868 +++++++++++++++
+ .../3.25.2/CompilerIdCXX/CMakeCXXCompilerId.cpp    |  857 +++++++++++++++
+ .../CMakeFiles/ShowIncludes/foo.h                  |    1 +
+ .../CMakeFiles/ShowIncludes/main.c                 |    2 +
+ .../CMakeFiles/TargetDirectories.txt               |    3 +
+ .../CMakeFiles/XuanJamesZhai_A1.dir/embed.manifest |   10 +
+ .../XuanJamesZhai_A1.dir/intermediate.manifest     |   10 +
+ .../CMakeFiles/XuanJamesZhai_A1.dir/manifest.rc    |    2 +
+ .../CMakeFiles/XuanJamesZhai_A1.dir/manifest.res   |  Bin 0 -> 472 bytes
+ .../CMakeFiles/clion-Debug-log.txt                 |    4 +
+ .../CMakeFiles/clion-environment.txt               |    4 +
+ .../cmake-build-debug/CMakeFiles/cmake.check_cache |    1 +
+ .../cmake-build-debug/CMakeFiles/rules.ninja       |   69 ++
+ XuanJamesZhai_A1/cmake-build-debug/Makefile        |  181 ++++
+ .../cmake-build-debug/XuanJamesZhai_A1.cbp         |   92 ++
+ XuanJamesZhai_A1/cmake-build-debug/build.ninja     |  156 +++
+ .../cmake-build-debug/cmake_install.cmake          |   44 +
+ .../cmake-build-debug/sg-Articulation.s72          |  193 ++++
+ XuanJamesZhai_A1/main.cpp                          |    8 +
+ 49 files changed, 4958 insertions(+)
+
+commit c46072162be395aafbbdbdd7ebb4dba1527b6ba3
+Author: Xuan(James) Zhai <46932284+XuanZhai@users.noreply.github.com>
+Date:   Sun Jan 28 22:52:13 2024 -0500
+
+    Update main.cpp
+
+ Test_Program/TestProgram/main.cpp | 140 +++++++++++++++++++++++++++++++++-----
+ 1 file changed, 124 insertions(+), 16 deletions(-)
+
+commit a77049f532e4a01b4277db6d38378d8ff3cc4131
+Author: Xuan(James) Zhai <46932284+XuanZhai@users.noreply.github.com>
+Date:   Sun Jan 28 02:21:30 2024 -0500
+
+    Add Depth test and model
+
+ Test_Program/TestProgram/Shaders/frag.spv         | Bin 900 -> 864 bytes
+ Test_Program/TestProgram/Shaders/shader.frag      |   2 +-
+ Test_Program/TestProgram/Shaders/shader.vert      |   4 +-
+ Test_Program/TestProgram/Shaders/vert.spv         | Bin 1836 -> 1840 bytes
+ Test_Program/TestProgram/TestProgram.vcxproj      |   8 +-
+ Test_Program/TestProgram/Textures/viking_room.png | Bin 0 -> 962052 bytes
+ Test_Program/TestProgram/main.cpp                 | 266 +++++++++++++++++++---
+ 7 files changed, 236 insertions(+), 44 deletions(-)
+
+commit 3e926eb6e1a582de14c060d16d7c8cdac7d55d5c
+Author: Xuan(James) Zhai <46932284+XuanZhai@users.noreply.github.com>
+Date:   Sun Jan 21 23:54:25 2024 -0500
+
+    Combine Image Texture with the Sampler
+
+ Test_Program/TestProgram/Shaders/frag.spv    | Bin 572 -> 900 bytes
+ Test_Program/TestProgram/Shaders/shader.frag |   4 +-
+ Test_Program/TestProgram/Shaders/shader.vert |   4 ++
+ Test_Program/TestProgram/Shaders/vert.spv    | Bin 1676 -> 1836 bytes
+ Test_Program/TestProgram/main.cpp            |  86 ++++++++++++++++++---------
+ 5 files changed, 65 insertions(+), 29 deletions(-)
+
+commit fc480f371569efcd2ac9b1893b338b4d007ed8e7
+Author: Xuan(James) Zhai <46932284+XuanZhai@users.noreply.github.com>
+Date:   Sun Jan 21 22:21:36 2024 -0500
+
+    Add the texture image and the sampler. Need to combine them to represent the texture
+
+ Test_Program/TestProgram/TestProgram.vcxproj  |   8 +-
+ Test_Program/TestProgram/Textures/texture.jpg | Bin 0 -> 66649 bytes
+ Test_Program/TestProgram/main.cpp             | 384 +++++++++++++++++++++++---
+ 3 files changed, 349 insertions(+), 43 deletions(-)
+
+commit 41efaa1f8329506205170a4b8320a06087006aca
+Author: Xuan(James) Zhai <46932284+XuanZhai@users.noreply.github.com>
+Date:   Sat Jan 20 23:11:23 2024 -0500
+
+    Add the Uniform Buffer
+
+ Test_Program/TestProgram/Shaders/shader.vert |   7 +-
+ Test_Program/TestProgram/Shaders/vert.spv    | Bin 1080 -> 1676 bytes
+ Test_Program/TestProgram/main.cpp            | 203 ++++++++++++++++++++++++++-
+ 3 files changed, 205 insertions(+), 5 deletions(-)
+
+commit 0fa8b8fff2a8cd25c302affbfd911162a60ed242
+Author: Xuan(James) Zhai <46932284+XuanZhai@users.noreply.github.com>
+Date:   Sat Jan 20 00:26:08 2024 -0500
+
+    Add vertex buffer and the index buffer
+
+ Test_Program/TestProgram/Shaders/shader.vert       |  16 +-
+ Test_Program/TestProgram/Shaders/vert.spv          | Bin 1504 -> 1080 bytes
+ Test_Program/TestProgram/TestProgram.vcxproj       |  10 +-
+ .../TestProgram/TestProgram.vcxproj.filters        |  10 +-
+ Test_Program/TestProgram/main.cpp                  | 264 ++++++++++++++++++++-
+ 5 files changed, 270 insertions(+), 30 deletions(-)
+
+commit 304116b6008a23f94398cc48c4b311636da9290c
+Author: Xuan(James) Zhai <46932284+XuanZhai@users.noreply.github.com>
+Date:   Thu Jan 18 01:56:36 2024 -0500
+
+    Add creating window through the Windows framework
+
+ Test_Program/TestProgram/main.cpp | 347 ++++++++++++++++++++++++++++++--------
+ 1 file changed, 277 insertions(+), 70 deletions(-)
+
+commit 9d0eb366304b3ac7935f02d1df19c2b04f7eeeb2
+Author: Xuan(James) Zhai <46932284+XuanZhai@users.noreply.github.com>
+Date:   Wed Jan 17 21:28:02 2024 -0500
+
+    Add the GLFW version of the Hello Program
+
+ .gitignore                                         |  399 ++++++
+ Test_Program/TestProgram/Shaders/compile.bat       |    3 +
+ Test_Program/TestProgram/Shaders/frag.spv          |  Bin 0 -> 572 bytes
+ Test_Program/TestProgram/Shaders/shader.frag       |    9 +
+ Test_Program/TestProgram/Shaders/shader.vert       |   21 +
+ Test_Program/TestProgram/Shaders/vert.spv          |  Bin 0 -> 1504 bytes
+ Test_Program/TestProgram/TestProgram.sln           |   31 +
+ Test_Program/TestProgram/TestProgram.vcxproj       |  176 +++
+ .../TestProgram/TestProgram.vcxproj.filters        |   42 +
+ Test_Program/TestProgram/main.cpp                  | 1401 ++++++++++++++++++++
+ 10 files changed, 2082 insertions(+)
+
+commit c6b3918aa46baf9c123e5c96a3174b0785c08420
+Author: Xuan(James) Zhai <46932284+XuanZhai@users.noreply.github.com>
+Date:   Wed Jan 17 21:16:59 2024 -0500
+
+    Initial commit
+
+ .gitignore | 32 ++++++++++++++++++++++++++++++++
+ README.md  |  1 +
+ 2 files changed, 33 insertions(+)

@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<!-- saved from url=(0069)http://graphics.cs.cmu.edu/courses/15-472-s24/A1/report-template.html -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<title>15-472-s24: A1 - Scene Graph</title>
+<style>
+/* feel free to style your report in a fancier way! */
+
+@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;700&Anonymous+Pro&display=swap');
+
+html {
+	background:#505055;
+}
+
+body {
+	font-family: 'Quicksand', sans-serif;
+	color:#000;
+	background:#eeeee8;
+	font-size:15px;
+	margin: 1em auto 50vh auto;
+	padding: 1em 2em 1em 2em;
+	max-width:45em;
+	border-radius:4px;
+	box-shadow:0 0 10px #0008;
+}
+
+h1 { font-size: 20px; font-weight: 700; }
+h2 { font-size: 16px; font-weight: 700; }
+h3 { font-size: 16px; font-weight: 400; }
+h4 { font-size: 14px; font-weight: 400; }
+
+h1, h2, h3, h4 {
+	margin: 15px 0 0 -10px;
+}
+
+p {
+	margin: 5px 0 0 0;
+}
+
+.subtitle {
+	display:block;
+	font-size:16px;
+	font-weight:400;
+}
+
+.placeholder {
+	color:#800;
+	font-style:italic;
+}
+
+kbd {
+	display:inline-block;
+	background:#ccc;
+	color:#444;
+	font-style:normal;
+	font-weight:700;
+	border-radius:8px;
+	padding:1px 6px;
+	margin:1px;
+	border:1.5px solid #aaa;
+}
+
+code {
+	font-family: 'Anonymous Pro', monospace;
+	background: #222;
+	color:#fff;
+	border-radius:4px;
+	padding:2px 4px;
+	margin:1px;
+}
+
+code var {
+	color:#ef5;
+	font-style:italic;
+}
+
+.atag {
+	font-family: 'Calistoga', serif;
+	font-size:90%;
+	color:#000;
+	background:#b00;
+
+	display:inline-block;
+	padding:1px 4px;
+	border-radius: 4px;
+	line-height:120%;
+}
+.atag:before {
+	content:'»';
+}
+.atag.extra {
+	background:#b08;
+}
+.atag.creative {
+	/* thanks, shout.horse! */
+	background:linear-gradient(0.4turn, #ffe680, #916f6f);
+}
+
+</style>
+</head>
+<body>
+<h1>A1: Scene Viewer
+<span class="subtitle">by <span class="placeholder">Xuan(James) Zhai (andrewID: xuanzhai)</span></span>
+</h1>
+
+<p class="placeholder">
+	This program separates the assignment into three parts. The first is parsing the s72 file into several nodes. The second part is using the nodes to construct a scene graph.
+	Finally, the program visualizes the scene graph data using the Vulkan API. The program has all the functionalities the assignment requires. There are many modules like the headless event handlers, the animation handlers, and the frustum culling. <br><br>
+	The program has three running modes: <code>OnWindow</code>, <code>Headless</code>, and <code>PerformanceTest</code>. The <code>OnWindow</code>OnWindow mode renders the result to a GLFW window. The <code>Headless</code> mode reads a event file and process
+	all its event off-screen. The <code>PerformanceTest</code> mode is also headless, but instead of reading an event, it runs some specific tests.
+</p>
+
+<h2>My Animation <span class="atag creative">A1-create</span></h2>
+
+<p class="placeholder">
+	The scene and the animations were created in Blender, and they were exported as s72 and b72 files. (RotatingSuzanne.s72 and all related b72s)
+	The scene is a rotating Suzanne merry-go-round, and the meshes are from the Blender's default.
+</p>
+
+<video width="640" height="360">
+	<source src="RotatingSuzanne.mp4" type="video/mp4">
+</video>
+
+<p class="placeholder">
+	When parsing the s72 file, the parser stores the animations as the nodes with the type "DRIVER." When constructing the scene graphs, those nodes
+	becomes the Driver objects which have all the data in the nodes. Those driver instances will be stored separately in the s72Helper instance. <br><br>
+	When playing the animation, the program iterates through all the driver instances and get their current value. Later when updating the scene
+	graph, it will update their corresponding nodes' transform. 
+</p>
+
+<h2>Using the Scene Viewer</h2>
+
+<p class="placeholder">
+	To run the program, you need to run the "bin/viewer.exe" with command line arguments. <br>
+	NOTE 1: If the executable is not generated. type "node Maekfile.js" to make a build. <br>
+	NOTE 2: If you are on a Windows machine, you need to change the path of the GLFW in the Maekfile.js
+</p>
+
+<h3>Command-line Arguments</h3>
+
+<ul>
+<li class="placeholder"><code>--scene <var>scene.s72</var></code> -- required -- Load scene from <code><var>scene.s72</var></code> NOTE: All its b72 files should be at the same path as the s72 file. </li>
+<li class="placeholder"><code>--camera <var>name</var></code> -- optional -- Choose a specific camera to show the scene. If not provide a name, it will use the default user camera. </li>
+<li class="placeholder"><code>--physical-device <var>name</var></code> -- optional -- Choose a specific physical device to rener the scene. If not provide, it will use the first satisfied device it found. </li>
+<li class="placeholder"><code>--drawing-size <var>w</var> <var>h</var></code> --optional -- Set the display window or the image with a specific size. It not provide, it will be 1920 and 1080. </li>
+<li class="placeholder"><code>--culling <var>name</var></code> --optional -- Set the culling mode when rendering the scene. It has two options: "none" and "frustum". It not provide, it will be "none". </li>
+<li class="placeholder"><code>--headless <var>events</var></code> --optional -- If using a headless mode, it will read the input event file and prcess all the event actions off-screen. </li>
+<li class="placeholder"><code>--performance-test <var>count</var></code> --optional -- Do the off-screen performance test. Count refers to the number of iterations. More detail below. </li>
+</ul>
+
+<h3>Controls</h3>
+
+<ul>
+<li class="placeholder"><kbd>W</kbd> Move the camera forward </li>
+<li class="placeholder"><kbd>S</kbd> Move the camera back </li>
+<li class="placeholder"><kbd>A</kbd> Rotate the camera to left </li>
+<li class="placeholder"><kbd>D</kbd> Rotate the camera to right </li>
+<li class="placeholder"><kbd>E</kbd> Rotate the camera to up </li>
+<li class="placeholder"><kbd>Q</kbd> Rotate the camera to down </li>
+<li class="placeholder"><kbd>T</kbd> Switch camera. </li>
+<li class="placeholder"><kbd>R</kbd> Play and Pause the animation. </li>
+<li class="placeholder"><kbd>C</kbd> Toggle the frustum culling. </li>
+</ul>
+
+
+<h2>My Code</h2>
+
+<p class="placeholder">
+</p>
+
+<h3>Support Code for Math</h3>
+
+<p class="placeholder">
+	I implemented my own math classes within the namespace <code>XZMath</code>. It has three classes which are <code>vec3</code>, <code>quat</code>, and <code>mat4</code>. <br><br>
+	They are all std arrays or 2d std arrays of floats. (May switch to templates later) <br><br>
+	I've implemented all the necessary functions for each class. e.g. Constructors, Overload operators. And I've also implemented all the necessary computation functions like the dot product and the transformations.<br><br>
+	NOTE: <code>mat4</code> is a row-major four-by-four matrix, and all its calculations are also row-major.
+</p>
+
+<h3>Support Code for Vulkan</h3>
+
+<p class = "placeholder">
+	The window and the swapchain are created depends on the running mode. It only creates a GLFW in the OnWindow mode. <br><br>
+	<code>OnWindow</code>: Before the vulkan is initialized, it creates a GLFW window with all necessary setup. 
+	Later when creating the vulkan instance, it creates a surface and link to the GFLW window, and it also creates the swap chain. <br><br>
+	<code>Headless</code>: This mode does not have a surface and a Vulkan swapchain. The "swapchain" here becomes a list of VkImages.
+	The Vulkan API will directly render the result to the images. <br><br>
+	The vulkan resource's creation and destruction follows the instruction's pattern, It will do all the creations before the main loop, 
+	and do all the destructions after the main loop.
+</p>
+
+<h3>Loading scenes, Mesh data <span class="atag">A1-load</span></h3> 
+
+<p class="placeholder">
+	Parse JSON: Parsing the JSON file uses a recursive & stack approach. The program loads the whole file into a string. It then removes all the space and unnecessary characters in the string.
+	Next, it recursively goes through all the JSON objects and its children. <br><br>
+	Each JSON object will become a <code>ParserNode</code> object which is a variant of string, float, vector, and map. The string refers to the string type of the object. The float refers to the number type of the object.
+	The vector refers to the array type of the JSON object. The map refers to the object type of the JSON object. <br><br>
+	Process Nodes: In this section, the program analyzes the JSON nodes and form the scene graph.
+	It first finds the SCENE node since it is the root of the scene graph. Then it constructs the scene graph recursively. e.g. It will replace the children's index with the reference of the ParserNode. <br><br>
+	While creating the scene graph, it will also create the <code>Mesh</code>, <code>Camera</code>, <code>Driver</code> objects and store them separately in the s72Helper.
+</p>
+
+<h3>Drawing the scene. <span class="atag">A1-show</span></h3>
+
+<p class="placeholder">
+	The <code>Mesh</code> object is the basic unit to draw a mesh, so on the Vulkan side, each mesh object has its own vertex buffer and maybe its own index buffer. 
+	It also has a list of <code>mat4</code> which represents the transform matrices of all the instances. (Later in the optimization section, they will become mesh instances) <br><br>
+
+	There is an Uniform Buffer which has all the MVP data for the mesh instances. and they are located based on the offsets. <br><br>
+
+	When updating the scene graph, it will recursively traverse the whole tree structure with a transform matrix on the current node. That is, when going to a new node, a matrix will be updated with the node's transform data.
+	Moreover, it will recreate all the meshes' instance lists: it clears all the instance lists at the beginning, and while traversing to a mesh, it will add the transform matrix to the mesh's instance list. <br><br>
+
+	Then on the Vulkan side when recording the command buffer, it will loop through each mesh in the mesh list and bind the mesh data to the pipeline dynamically. 
+	For each instance of the current mesh, it will update the MVP matrix in the Uniform Buffer and do a draw call. (Will switch to instance rendering in the optimization section)
+</p>
+
+<p class="placeholder">
+	<img src="RotatingSuzanne.png" width="640" height="360" alt="Scene RotatingSuzanne">
+</p>
+
+<h3>Handling interactive camera and debug camera movement. <span class="atag">A1-show</span></h3>
+
+<p class="placeholder">
+	All the scenes will have a default camera which is the User-Camera; it is a flying camera so that the user can move around in the scene.
+	It has all the based movements like move forward and backward, rotate to a specific direction along an axis. <br><br>
+	
+	If the program receives an input, it updates the current camera's view matrix by recalculating the position and direction.
+	NOTE: The rotation along an axis is using a Euler Angle Rotation, may switch to a Quaternion Rotation in the further development to avoid the Gimbal Lock issue.
+</p>
+<p class="placeholder">
+	<img src="RotatingSuzanne-Controls.gif" width="640" height="360" alt="Moving Scene RotatingSuzanne(Controls)">
+</p>
+
+<h3>Frustum culling <span class="atag">A1-cull</span></h3>
+
+<p class="placeholder">
+	I use the Frustum Culling method in this program; the algorithm is inspired and refered from <a href="url">https://bruop.github.io/improved_frustum_culling/</a>. 
+	I retyped the code with a few math class and program oriented optimizations. This algorithm detects collision using the Separating Axis Theorem.
+	<br><br>
+
+	Each <code>Mesh</code> object has a AABB bounding box. To form the AABB box, the program reads the mesh's src b72 file, record the min/max vertex position on each axis. <br><br>
+	
+	When doing the culling, it will pass the camera info, the mesh's AABB info, and the instance's tranform matrix into the function,
+	to compute if the instance is culled or not. NOTE: The culling does not apply to the Debug-Camera, and the Debug-Camera will show the User-Camera's uclling result.
+</p>
+
+<p class="placeholder">
+	User Camera:
+	<img src="User-Camera.png" width="640" height="360" alt="Scene RotatingSuzanne(User-Camera)">
+	Debug Camera:
+	<img src="Debug-Camera.png" width="640" height="360" alt="Scene RotatingSuzanne(Debug-Camera)">
+</p>
+
+<h3>Animating the scene <span class="atag">A1-move</span></h3>
+
+<p class="placeholder">
+	Each <code>Driver</code> object will have all the information in the DRIVER node. All the Drivers are stored in a vector list in the s72Helper instance.
+	The s72Instance also has a variable indicates the start time-step of the animation. <br><br>
+
+	If playing the animation, the program keeps doing the traversal and updating the instances. When iterating each node, it checks if it has a moving driver.
+	If it has, given the duration (current time-step minus the start time-step), the driver instance returns the value(tranlation,rotation,or scale) on that time.
+	The program later will use that new data to compute the transform matrix for that node. <br><br>
+
+	<code>std::variant&lt;XZM::vec3, XZM::quat&gt; GetCurrentValue(float currTime)</code> is the function to get the value from a given time. 
+	Within the function, it will first find which mode it is using (STEP,LERP, or SLERP), and then it will call its corresponding function to do the calculations.
+
+</p>
+
+<p class="placeholder">
+	<img src="RotatingSuzanne-Animation.gif" width="640" height="360" alt="Scene RotatingSuzanne(Debug-Camera)">
+</p>
+
+<h3>Handling headless mode <span class="atag">A1-hide</span></h3>
+
+<p class="placeholder">
+	If the user choose to use the headless mode, the program will not create the GLFW window, the Vulkan surface, and the Vulkan swapchain. 
+	But instead it lets the swapchain to be a vector of Vkimages. And the result is directly rendered to the images. 
+	If the user wants to store the render result, the data in the Vkimage will be copied to a PPM file. NOTE: Since the image usage is local-bit, doing the copy needs to go through a staging buffer which may lead to some extra cost. <br><br>
+
+	The program also provides the functionalities to process a event file. It will parse the event into a <code>EventNode</code> data structure and store all the nodes in a container.
+	When running the code, it will use a clock to track the current time step and the last time step, and it will use a Sliding Window to process all the actions within the period.
+</p>
+
+<h3>Performance improvements <span class="atag extra">A1x-fast</span></h3>
+<p class="placeholder">
+	When doing the bottleneck testing, I found that my program got struggled with doing the multi-instance rendering. (More details in the bottleneck testing section below). <br><br>
+	Thus, I decided to switch to the <span class="atag extra">instanced rendering</span>. I move the model matrix out of the uniform buffer and store it in a dynamic instance buffer. 
+	I also update the vertex binding description and the attribute description to accept the instance data. <br><br>
+
+	I added a <code>visibleInstances</code> which stores the instances' model matrices for the one that will actually be rendered after culling. The program will update this data every time it draws the frame, 
+	and the instance data will be mapped to the dynamic instance buffer to achieve the instanced rendering.
+</p>
+
+<h2>Performance Tests</h2>
+
+<p class="placeholder">
+</p>
+
+<p class="placeholder">
+	Testing platform: <br><br>
+	CPU: AMD Ryzen 1700X <br>
+	GPU: Nvidia RTX 2080 <br>
+	Memory: 16GB <br>
+	OS: Windows 10 <br>
+	Vulkan version: 1.3.268.0 <br>
+	Testing tools: RenderDoc <br>
+</p>
+
+<h3>Culling</h3>
+<p class="placeholder">
+	Introduction: For this test, The scene is <a href="RotatingSuzanne.s72">RotatingSuzanne.s72</a>. The testing window size is 1920x1080. I use RenderDoc to record the FPS and other render data. <br><br>
+	The test has three cases: The whole object is rendered(in sight), Half or part of the whole object is out of sight, and the whole object is out of sight. <br><br>
+	Test Scenario: For each test case, I use RenderDoc to capture the frames and record the FPS on/around that frame. I'll record it from the 10000th frame to the 100000th frame. 
+	Moreover, I turn on/off the frustum culling to see the difference in FPS. 
+	NOTE: This test uses the Vulkan mesh drawing "Per-Vertex" instead of "Per-Instance." (instanced rendering) <br><br>
+</p>
+
+<p class="placeholder">
+	Test Scene screenshot: Full Object<br>
+	<img src="Full_Object.png" width="640" height="360" alt="Full Object Screenshot"> <br><br>
+	Test Scene screenshot: Half/Part of Object<br>
+	<img src="Half_Object.png" width="640" height="360" alt="Half/Part Object Screenshot"> <br><br>
+	Test Scene screenshot: No Object <br>
+	<img src="No_Object.png" width="640" height="360" alt="Full  Object Screenshot"> <br><br>
+</p>
+
+<p class="placeholder">
+	Result: <br>
+	FPS for each case Table
+	<img src="table1.png" width="640" height="250" alt="Culling Table 1"> <br><br>
+	Summary Table<br>
+	<img src="table2.png" width="640" height="100" alt="Culling Table 2"> <br><br>
+	Summary Plot <br>
+	<img src="plot1.png" width="640" height="360" alt="Culling Plot 2"> <br><br>
+</p>
+
+<p class="placeholder">
+	Summary: Although this scene is simple, the comparisons still show a big difference between culling modes. 
+	As there are more mesh instances are out of sight, the FPS increases greater when using the Frustum Culling.
+	And the difference between using and not using the Frustum Culling also increases.
+</p>
+
+<h3>Bottlenecks</h3>
+<p class="placeholder">
+	Demonstrate your code bottlenecking on scene traversal (CPU), vertex processing/assembly (GPU), and fragment processing/write-back (GPU).
+	Introduction: For this test, The scene is <a href="sphereflake.s72">sphereflake.s72</a> in the s72 example repository. 
+	The testing window size is 640x360. The test has two parts: 1: Use RenderDoc to capture the frame. 2: Use the PerformanceTest mode to test the running time.  <br><br>
+	Test Scenario: <br>
+	1: RenderDoc <br>
+	I use RenderDoc to capture frames and record the FPS on/around that frame. I turn off the frustum culling.
+	NOTE: This test uses the Vulkan mesh drawing "Per-Vertex" instead of "Per-Instance." (instanced rendering) <br><br>
+</p>
+
+<p class="placeholder">
+	Test Scene screenshot: Bottleneck<br>
+	<img src="Bottleneck.png" width="640" height="360" alt="Bottleneck Screenshot"> <br><br>
+	Test Scene screenshot: Data in RenderDoc<br>
+	<img src="Bottleneck2.png" width="640" height="360" alt="Bottleneck Screenshot"> <br><br>
+</p>
+
+<p class="placeholder">
+	Result: <br>
+	FPS and number of draw calls
+	<img src="table3.png" width="640" height="250" alt="Bottlenecks Table"> <br><br>
+</p>
+
+<p class="placeholder">
+	2: Performance Test Mode: <br>
+	The performance test mode will count the elapsed time when updating the scene graphs and doing the rendering. And it will return the average time in microseconds. <br>
+	To test the bottleneck, I run the performance test with a 50-iteration-time. <br><br>
+</p>
+
+<p class="placeholder">
+	Result: <br>
+	Average time for updating the scene graph and drawing the scene. 
+	<img src="Bottleneck3.png"alt="Bottlenecks Performance Test"> <br><br>
+</p>
+
+<p class="placeholder">
+	Summary: Since there are many mesh instances in the scene, it takes a lot of time to traverse the scene with updates. 
+	In fact, my program got stuck if I tried to update the scene every time before drawing it. <br>
+	When drawing the scene, due to a large amount of mesh instance, It leads to a created number of draw calls.
+	Furthermore, since I'm doing the "Per-Vertex" drawing, I think it is also a huge cost compared to doing the instanced rendering.
+</p>
+
+<h3>Performance Improvements</h3>
+
+<p class="placeholder">
+	Introduction: Based on the bottleneck testing above, I switched to the instanced rendering and see if there's any improvement.
+	After the implementation, I use the same test scenario in the previous section. <br><br>
+</p>
+
+<p class="placeholder">
+	Test Scene screenshot: Instanced Rendering<br>
+	<img src="Improvement1.png" width="640" height="360" alt="Instanced Rendering"> <br><br>
+</p>
+
+<p class="placeholder">
+	Result: <br>
+	Average time for updating the scene graph and drawing the scene.
+	<img src="Improvement2.png" width="640" height="250" alt="Instanced Rendering Average FPS"> <br><br>
+	Number of draw calls and instance drawed.
+	<img src="Improvement3.png"width="640" height="250" alt="Instanced Rendering Data with RenderDoc"> <br><br>
+	Average time for updating the scene graph and drawing the scene.
+	<img src="Improvement4.png"alt="Instanced Rendering Performance Test"> <br><br>
+</p>
+
+<p class="placeholder">
+	Summary: Instanced Rendering does a huge improvement if the scene has many instances refer to the same mesh. Those instances will be drawn in one vkCmdDraw command.
+	The FPS grows from 0.4 to 28 on the sphereflake scene. <br><br>
+	Moreover, after we moved the model matrix out of the uniform buffer, we don't need a uniform matrix for each mesh instance anymore, but instead we can hold one for a mesh object. 
+	That's before the view matrix and the perspective matrix are the same for all the instances. <br><br>
+	About the cost of using the instanced rendering, we need to allocate a dynamic instance buffer for each mesh, and since we don't know the instance count, we have to allocate it with the max instance count.
+	Besides, we need to determine all the visible instances before we do all the drawings, that may be a little bit extra works.
+</p>
+
+
+<h2>Feedback</h2>
+<p class="placeholder">
+Not really have one. Maybe need more time for the next assignments?
+</p>
+
+
+
+</body></html>
