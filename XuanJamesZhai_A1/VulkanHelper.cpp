@@ -3,8 +3,8 @@
 //
 #include "VulkanHelper.h"
 #define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
 
+#include "stb_image.h"
 #include <utility>
 
 
@@ -764,7 +764,7 @@ void VulkanHelper::CreateHeadlessSwapChain(){
     headlessImageMemory.resize(imageCount);
 
     for(size_t i = 0; i < imageCount; i++){
-        CreateImage(windowWidth,windowHeight,1,VK_FORMAT_R8G8B8A8_UNORM,VK_IMAGE_TILING_OPTIMAL,VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,swapChainImages[i],headlessImageMemory[i]);
+        CreateImage(windowWidth,windowHeight,1,1,VK_FORMAT_R8G8B8A8_UNORM,VK_IMAGE_TILING_OPTIMAL,VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,swapChainImages[i],headlessImageMemory[i]);
     }
 
     swapChainImageFormat = VK_FORMAT_R8G8B8A8_UNORM;
@@ -778,12 +778,12 @@ void VulkanHelper::CreateHeadlessSwapChain(){
 * @param[in] format: The format of the image view.
 * @param[in] aspectFlags: The aspect mask. Can be color or depth.
 */
-VkImageView VulkanHelper::CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t newMipLevels)
+VkImageView VulkanHelper::CreateImageView(VkImage image, VkFormat format, VkImageViewType viewType, VkImageAspectFlags aspectFlags, uint32_t newMipLevels, uint32_t layerCount)
 {
     VkImageViewCreateInfo viewInfo{};
     viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     viewInfo.image = image;
-    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.viewType = viewType;
     viewInfo.format = format;
 
     /* The subresourceRange field describes what the image’s purpose is and which part of the image should be accessed. */
@@ -792,7 +792,7 @@ VkImageView VulkanHelper::CreateImageView(VkImage image, VkFormat format, VkImag
     viewInfo.subresourceRange.baseMipLevel = 0;
     viewInfo.subresourceRange.levelCount = newMipLevels;
     viewInfo.subresourceRange.baseArrayLayer = 0;
-    viewInfo.subresourceRange.layerCount = 1;
+    viewInfo.subresourceRange.layerCount = layerCount;
 
     /* Create the image view*/
     VkImageView imageView;
@@ -812,7 +812,7 @@ void VulkanHelper::CreateImageViews()
     swapChainImageViews.resize(swapChainImages.size());
 
     for (uint32_t i = 0; i < swapChainImages.size(); i++) {
-        swapChainImageViews[i] = CreateImageView(swapChainImages[i], swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+        swapChainImageViews[i] = CreateImageView(swapChainImages[i], swapChainImageFormat, VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_ASPECT_COLOR_BIT, 1,1);
     }
 }
 
@@ -1538,6 +1538,7 @@ void VulkanHelper::UpdateUniformBuffer(uint32_t currentImage, const S72Object::M
     //ubo = mesh.instances.at(instanceIndex);
     ubo.view = currCamera->viewMatrix;
     ubo.proj = currCamera->projMatrix;;
+    ubo.viewDir = currCamera->cameraDir;
 
     /* Flip the Y-Dir */
     ubo.proj.data[1][1] *= -1;
@@ -1599,12 +1600,12 @@ void VulkanHelper::CreateDescriptorSets()
         bufferInfo.range = sizeof(UniformBufferObject);
 
         /* Bind the actual image and sampler resources to the descriptors. */
-        //VkDescriptorImageInfo imageInfo{};
-        //imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        //imageInfo.imageView = textureImageView;
-        //imageInfo.sampler = textureSampler;
+        VkDescriptorImageInfo imageInfo{};
+        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        imageInfo.imageView = envTextureImageView;
+        imageInfo.sampler = textureSampler;
 
-        std::array<VkWriteDescriptorSet, 1> descriptorWrites{};
+        std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
 
         descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[0].dstSet = descriptorSets[i];
@@ -1614,13 +1615,13 @@ void VulkanHelper::CreateDescriptorSets()
         descriptorWrites[0].descriptorCount = 1;
         descriptorWrites[0].pBufferInfo = &bufferInfo;
 
-        //descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        //descriptorWrites[1].dstSet = descriptorSets[i];
-        //descriptorWrites[1].dstBinding = 1;
-        //descriptorWrites[1].dstArrayElement = 0;
-        //descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        //descriptorWrites[1].descriptorCount = 1;
-        //descriptorWrites[1].pImageInfo = &imageInfo;
+        descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[1].dstSet = descriptorSets[i];
+        descriptorWrites[1].dstBinding = 1;
+        descriptorWrites[1].dstArrayElement = 0;
+        descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWrites[1].descriptorCount = 1;
+        descriptorWrites[1].pImageInfo = &imageInfo;
 
         vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
     }
@@ -1792,7 +1793,7 @@ void VulkanHelper::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t i
 * @param[out] image: The image instance.
 * @param[out] imageMemory: The memory used to allocate the image.
 */
-void VulkanHelper::CreateImage(uint32_t width, uint32_t height, uint32_t newMipLevels, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory)
+void VulkanHelper::CreateImage(uint32_t width, uint32_t height, uint32_t newMipLevels, uint32_t newArrayLayer, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkImageCreateFlags flags, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory)
 {
     /* Set the info for the texture */
     VkImageCreateInfo imageInfo{};
@@ -1802,7 +1803,7 @@ void VulkanHelper::CreateImage(uint32_t width, uint32_t height, uint32_t newMipL
     imageInfo.extent.height = static_cast<uint32_t>(height);
     imageInfo.extent.depth = 1;
     imageInfo.mipLevels = newMipLevels;                                // Mipmap level is 1
-    imageInfo.arrayLayers = 1;
+    imageInfo.arrayLayers = newArrayLayer;
 
     imageInfo.format = format;
     imageInfo.tiling = tiling;
@@ -1810,7 +1811,7 @@ void VulkanHelper::CreateImage(uint32_t width, uint32_t height, uint32_t newMipL
     imageInfo.usage = usage;
     imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;              // Used for multi-sampling
-    imageInfo.flags = 0; // Optional
+    imageInfo.flags = flags; // Optional
 
     if (vkCreateImage(device, &imageInfo, nullptr, &image) != VK_SUCCESS) {
         throw std::runtime_error("failed to create image!");
@@ -1841,18 +1842,18 @@ void VulkanHelper::CreateImage(uint32_t width, uint32_t height, uint32_t newMipL
 * @param[in] width: The image's width.
 * @param[in] height: The image's height.
 */
-void VulkanHelper::CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) {
+void VulkanHelper::CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height, uint32_t layerCount) {
     VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
 
     VkBufferImageCopy region{};
     region.bufferOffset = 0;
-    region.bufferRowLength = 0;
-    region.bufferImageHeight = 0;
+    region.bufferRowLength = width;
+    region.bufferImageHeight = height;
 
     region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     region.imageSubresource.mipLevel = 0;
     region.imageSubresource.baseArrayLayer = 0;
-    region.imageSubresource.layerCount = 1;
+    region.imageSubresource.layerCount = layerCount;
 
     region.imageOffset = { 0, 0, 0 };
     region.imageExtent = {
@@ -1881,7 +1882,7 @@ void VulkanHelper::CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t wi
 * @param[in] oldLayout: The old layout we have.
 * @param[in] newLayout: The new layout we determine.
 */
-void VulkanHelper::TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t newMipLevels) {
+void VulkanHelper::TransitionImageLayout(VkImage image, VkFormat format, uint32_t layerCount, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t newMipLevels) {
     VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
 
     VkImageMemoryBarrier barrier{};
@@ -1898,7 +1899,7 @@ void VulkanHelper::TransitionImageLayout(VkImage image, VkFormat format, VkImage
     barrier.subresourceRange.baseMipLevel = 0;
     barrier.subresourceRange.levelCount = newMipLevels;
     barrier.subresourceRange.baseArrayLayer = 0;
-    barrier.subresourceRange.layerCount = 1;
+    barrier.subresourceRange.layerCount = layerCount;
 
     /* Set the barrier access mask */
     VkPipelineStageFlags sourceStage;
@@ -1937,6 +1938,91 @@ void VulkanHelper::TransitionImageLayout(VkImage image, VkFormat format, VkImage
 }
 
 
+void VulkanHelper::ProcesHDRImage(const float* src, unsigned char*& dst, int texWidth, int texHeight){
+
+    int numPixel = texWidth * texHeight;
+    //int dstIndex = 0;
+
+    for(int i = 0; i < numPixel; i+=4){
+        float r = src[i];
+        float g = src[i+1];
+        float b = src[i+2];
+        float e = src[i+3];
+
+        // Scale to 0-255 range and store in sRGB array
+        dst[i] = static_cast<unsigned char>(r);
+        dst[i+1] = static_cast<unsigned char>(g);
+        dst[i+2] = static_cast<unsigned char>(b);
+
+        //dst[i] = static_cast<unsigned char>(r*255);
+        //dst[i+1] = static_cast<unsigned char>(g*255);
+        //dst[i+2] = static_cast<unsigned char>(b*255);
+        dst[i+3] = static_cast<unsigned char>(255.0f);
+
+        //std::cout << (r+0.5f)/256*pow_e << " " << (g+0.5f)/256*pow_e << " " << (b+0.5f)/256*pow_e << std::endl;
+
+        //dstIndex += 3;
+    }
+}
+
+
+void VulkanHelper::CreateEnvTextureImage(const std::string& filename){
+
+    int texWidth, texHeight, texChannels;
+
+    stbi_ldr_to_hdr_scale(255.0f);
+    //stbi_hdr_to_ldr_gamma(2.2f);
+    float* pixelsHDR = stbi_loadf(filename.c_str(), &texWidth, &texHeight, &texChannels, 0);
+
+    VkDeviceSize imageSize = texWidth * texHeight * texChannels;
+
+    unsigned char* pixels = new unsigned char[imageSize];
+
+    ProcesHDRImage(pixelsHDR,pixels,texWidth,texHeight);
+
+    texHeight /= 6;
+    //imageSize = texWidth * texHeight * (texChannels-1);
+
+    uint32_t envMipLevels = 1;
+
+    if (!pixels) {
+        throw std::runtime_error("failed to load texture image!");
+    }
+
+    /* Create a buffer to store the image data */
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+
+    CreateBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+
+    /* Copy the image to the buffer */
+    void* data;
+    vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
+    memcpy(data, pixels, static_cast<size_t>(imageSize));
+    vkUnmapMemory(device, stagingBufferMemory);
+
+    stbi_image_free(pixelsHDR);
+    delete[] pixels;
+
+    CreateImage(texWidth, texHeight, envMipLevels, 6,VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, envTextureImage, envTextureImageMemory);
+
+    /* Copy the staging buffer to the texture image */
+    TransitionImageLayout(envTextureImage, VK_FORMAT_R8G8B8A8_SRGB, 6, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, envMipLevels);
+    CopyBufferToImage(stagingBuffer, envTextureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight),6);
+    TransitionImageLayout(envTextureImage, VK_FORMAT_R8G8B8A8_SRGB, 6, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, envMipLevels);
+
+    /* Clear the stage buffer */
+    vkDestroyBuffer(device, stagingBuffer, nullptr);
+    vkFreeMemory(device, stagingBufferMemory, nullptr);
+}
+
+
+void VulkanHelper::CreateEnvTextureImageView(){
+    /* Create the texture image view */
+    envTextureImageView = CreateImageView(envTextureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_VIEW_TYPE_CUBE, VK_IMAGE_ASPECT_COLOR_BIT, 1, 6);
+}
+
+
 /**
 * @brief Create the texture image with a given texture.
 */
@@ -1968,11 +2054,11 @@ void VulkanHelper::CreateTextureImage()
 
     stbi_image_free(pixels);
 
-    CreateImage(texWidth, texHeight, mipLevels, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory);
+    CreateImage(texWidth, texHeight, mipLevels, 1, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory);
 
     /* Copy the staging buffer to the texture image */
-    TransitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels);
-    CopyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
+    TransitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, 1, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels);
+    CopyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight),1);
 
     /* Change texture image's layout for the shade access */
     //transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, mipLevels);
@@ -1991,7 +2077,7 @@ void VulkanHelper::CreateTextureImage()
 void VulkanHelper::CreateTextureImageView()
 {
     /* Create the texture image view */
-    textureImageView = CreateImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT,mipLevels);
+    textureImageView = CreateImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_ASPECT_COLOR_BIT,mipLevels, 1);
 }
 
 
@@ -2131,8 +2217,8 @@ void VulkanHelper::CreateDepthResources()
     VkFormat depthFormat = FindDepthFormat();
 
     /* Create the image with the given format */
-    CreateImage(swapChainExtent.width, swapChainExtent.height, 1,depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage, depthImageMemory);
-    depthImageView = CreateImageView(depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT,1);
+    CreateImage(swapChainExtent.width, swapChainExtent.height, 1,1,depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage, depthImageMemory);
+    depthImageView = CreateImageView(depthImage, depthFormat, VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_ASPECT_DEPTH_BIT,1, 1);
 }
 
 
@@ -2450,6 +2536,10 @@ void VulkanHelper::InitVulkan()
     //CreateTextureImage();
     //CreateTextureImageView();
     //CreateTextureSampler();
+    CreateEnvTextureImage("ox_bridge_morning_512.png");
+    CreateEnvTextureImageView();
+    CreateTextureSampler();
+
     CreateVertexBuffers();
     CreateIndexBuffers();
     CreateInstanceBuffers();
@@ -2779,6 +2869,11 @@ void VulkanHelper::CleanUp()
         vkDestroyBuffer(device, instanceBuffers[i], nullptr);
         vkFreeMemory(device, instanceBufferMemories[i], nullptr);
     }
+
+    /**********************************/
+    vkDestroyImageView(device, envTextureImageView, nullptr);
+    vkDestroyImage(device, envTextureImage, nullptr);
+    vkFreeMemory(device, envTextureImageMemory, nullptr);
 
     vkDestroySampler(device, textureSampler, nullptr);
     vkDestroyImageView(device, textureImageView, nullptr);

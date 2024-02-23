@@ -40,8 +40,8 @@
 const std::string MODEL_PATH = "models/viking_room.obj";
 const std::string TEXTURE_PATH = "Textures/viking_room.png";
 
-const std::string VERTEX_SHADER_PATH = "../spv/shader.vert.spv";
-const std::string FRAGMENT_SHADER_PATH = "../spv/shader.frag.spv";
+const std::string VERTEX_SHADER_PATH = "Shaders/shader.vert.spv";
+const std::string FRAGMENT_SHADER_PATH = "Shaders/shader.frag.spv";
 
 
 /* How many frames should be processed concurrently */
@@ -68,8 +68,9 @@ const bool enableValidationLayers = true;
 
 /* MVP data for the vertices */
 struct UniformBufferObject {
-    alignas(16) XZM::mat4 view;
-    alignas(16) XZM::mat4 proj;
+    alignas(64) XZM::mat4 view;
+    alignas(64) XZM::mat4 proj;
+    alignas(64) XZM::vec3 viewDir;
 };
 
 
@@ -201,6 +202,16 @@ private:
     /* Handles to the descriptor sets */
     std::vector<VkDescriptorSet> descriptorSets;
 
+
+
+    VkImage envTextureImage = VK_NULL_HANDLE;
+
+    VkDeviceMemory envTextureImageMemory = VK_NULL_HANDLE;
+
+    VkImageView envTextureImageView = VK_NULL_HANDLE;
+
+
+
     /* The image of the texture */
     VkImage textureImage = VK_NULL_HANDLE;
 
@@ -323,7 +334,7 @@ private:
     void CreateHeadlessSwapChain();
 
     /* Create an image view instance based on the image and its format. */
-    VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels);
+    VkImageView CreateImageView(VkImage image, VkFormat format, VkImageViewType viewType, VkImageAspectFlags aspectFlags, uint32_t newMipLevels, uint32_t layerCount);
 
     /* Create the Image Views that will handle the images in the swap chain. */
     void CreateImageViews();
@@ -407,13 +418,19 @@ private:
     void RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
     /* Create the image instance. */
-    void CreateImage(uint32_t width, uint32_t height, uint32_t newMipLevels, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
+    void CreateImage(uint32_t width, uint32_t height, uint32_t newMipLevels, uint32_t newArrayLayers, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkImageCreateFlags flags, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
 
     /* Copy a VkBuffer to a VkImage. */
-    void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
+    void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height, uint32_t layerCount);
 
     /* Transit the image's layout with a new layout using a pipeline barrier. */
-    void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t newMipLevels);
+    void TransitionImageLayout(VkImage image, VkFormat format,uint32_t layerCount, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t newMipLevels);
+
+    void ProcesHDRImage(const float* src, unsigned char*& dst, int texWidth, int texHeight);
+
+    void CreateEnvTextureImage(const std::string& filename);
+
+    void CreateEnvTextureImageView();
 
     /* Create the texture image with a given texture. */
     void CreateTextureImage();

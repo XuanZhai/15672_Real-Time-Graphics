@@ -26,8 +26,6 @@ namespace S72Object {
             std::shared_ptr<ParserNode> data = nullptr;
 
             XZM::vec3 cameraPos;
-            /* The normalized vector the camera is facing. */
-            XZM::vec3 cameraDir;
 
             /* Fundamental data for a camera, use to build the projection matrix. */
             float aspect;
@@ -37,6 +35,9 @@ namespace S72Object {
         public:
             XZM::mat4 viewMatrix;
             XZM::mat4 projMatrix;
+
+            /* The normalized vector the camera is facing. */
+            XZM::vec3 cameraDir;
 
             std::string name = "Camera";
 

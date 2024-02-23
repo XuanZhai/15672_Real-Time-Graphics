@@ -3,6 +3,7 @@
 #include <string>
 #include <memory>
 #include "RenderHelper.h"
+#include "EnvironmentMap.h"
 
 /* The s72 scene file name passed from the command line. */
 static std::string sceneName;
@@ -63,6 +64,10 @@ void ReadCMDArguments(int argc, char** argv){
 
 
 int main(int argc, char** argv) {
+
+    EnvironmentMap aa;
+    aa.LoadEnvironmentTexture("src.png");
+
 
     ReadCMDArguments(argc,argv);
 
