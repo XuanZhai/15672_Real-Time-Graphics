@@ -70,7 +70,7 @@ const bool enableValidationLayers = true;
 struct UniformBufferObject {
     alignas(64) XZM::mat4 view;
     alignas(64) XZM::mat4 proj;
-    alignas(64) XZM::vec3 viewDir;
+    alignas(64) XZM::vec3 viewPos;
 };
 
 
@@ -421,12 +421,16 @@ private:
     void CreateImage(uint32_t width, uint32_t height, uint32_t newMipLevels, uint32_t newArrayLayers, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkImageCreateFlags flags, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
 
     /* Copy a VkBuffer to a VkImage. */
-    void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height, uint32_t layerCount);
+    void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
+
+    void CopyBufferToImageEnv(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height,uint32_t nChannel);
 
     /* Transit the image's layout with a new layout using a pipeline barrier. */
     void TransitionImageLayout(VkImage image, VkFormat format,uint32_t layerCount, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t newMipLevels);
 
     void ProcesHDRImage(const float* src, unsigned char*& dst, int texWidth, int texHeight);
+
+    void ProcessRGBEImage(const unsigned char* src, float*& dst, int texWidth, int texHeight);
 
     void CreateEnvTextureImage(const std::string& filename);
 

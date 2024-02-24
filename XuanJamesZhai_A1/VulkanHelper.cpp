@@ -794,6 +794,7 @@ VkImageView VulkanHelper::CreateImageView(VkImage image, VkFormat format, VkImag
     viewInfo.subresourceRange.baseArrayLayer = 0;
     viewInfo.subresourceRange.layerCount = layerCount;
 
+
     /* Create the image view*/
     VkImageView imageView;
     if (vkCreateImageView(device, &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
@@ -1538,7 +1539,7 @@ void VulkanHelper::UpdateUniformBuffer(uint32_t currentImage, const S72Object::M
     //ubo = mesh.instances.at(instanceIndex);
     ubo.view = currCamera->viewMatrix;
     ubo.proj = currCamera->projMatrix;;
-    ubo.viewDir = currCamera->cameraDir;
+    ubo.viewPos = currCamera->cameraPos;
 
     /* Flip the Y-Dir */
     ubo.proj.data[1][1] *= -1;
@@ -1555,11 +1556,11 @@ void VulkanHelper::CreateDescriptorPool()
 {
     /* Describe which descriptor types our descriptor sets are going to contain */
     /* The first is used for the uniform buffer. The second is used for the image sampler */
-    std::array<VkDescriptorPoolSize, 1> poolSizes{};
+    std::array<VkDescriptorPoolSize, 2> poolSizes{};
     poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
     poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-    //poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    //poolSizes[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    poolSizes[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
     /* Create the pool info for allocation */
     VkDescriptorPoolCreateInfo poolInfo{};
@@ -1842,18 +1843,18 @@ void VulkanHelper::CreateImage(uint32_t width, uint32_t height, uint32_t newMipL
 * @param[in] width: The image's width.
 * @param[in] height: The image's height.
 */
-void VulkanHelper::CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height, uint32_t layerCount) {
+void VulkanHelper::CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) {
     VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
 
     VkBufferImageCopy region{};
     region.bufferOffset = 0;
-    region.bufferRowLength = width;
-    region.bufferImageHeight = height;
+    region.bufferRowLength = 0;
+    region.bufferImageHeight = 0;
 
     region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     region.imageSubresource.mipLevel = 0;
     region.imageSubresource.baseArrayLayer = 0;
-    region.imageSubresource.layerCount = layerCount;
+    region.imageSubresource.layerCount = 1;
 
     region.imageOffset = { 0, 0, 0 };
     region.imageExtent = {
@@ -1873,6 +1874,48 @@ void VulkanHelper::CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t wi
 
     EndSingleTimeCommands(commandBuffer);
 }
+
+
+void VulkanHelper::CopyBufferToImageEnv(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height,uint32_t nChannel){
+    VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
+
+    std::vector<VkBufferImageCopy> regions;
+    uint64_t offset = 0;
+
+    std::array<uint32_t,6> faceOrder{5,4,2,3,1,0};
+
+    for(uint32_t face = 0; face < 6; face++){
+        VkBufferImageCopy region{};
+        region.bufferOffset = offset;
+
+        region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        region.imageSubresource.mipLevel = 0;
+        region.imageSubresource.baseArrayLayer = faceOrder[face];
+        region.imageSubresource.layerCount = 1;
+
+        region.imageOffset = { 0, 0, 0 };
+        region.imageExtent = {
+                width,
+                height,
+                1
+        };
+
+        offset += width*height*nChannel*sizeof(float);
+        regions.emplace_back(region);
+    }
+
+    vkCmdCopyBufferToImage(
+            commandBuffer,
+            buffer,
+            image,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            static_cast<uint32_t>(regions.size()),
+            regions.data()
+    );
+
+    EndSingleTimeCommands(commandBuffer);
+}
+
 
 
 /**
@@ -1966,50 +2009,90 @@ void VulkanHelper::ProcesHDRImage(const float* src, unsigned char*& dst, int tex
 }
 
 
+void VulkanHelper::ProcessRGBEImage(const unsigned char* src, float*& dst, int texWidth, int texHeight){
+
+    int numPixel = texWidth * texHeight;
+
+    for(int i = 0; i < numPixel*4; i+=4){
+        auto r = static_cast<float>(src[i]);
+        auto g = static_cast<float>(src[i+1]);
+        auto b = static_cast<float>(src[i+2]);
+        auto e = static_cast<int>(src[i+3]);
+
+        if(r == 0 && g == 0 && b == 0 && e == 0){
+            dst[i] = 0;
+            dst[i+1] = 0;
+            dst[i+2] = 0;
+            dst[i+3] = 1;
+            continue;
+        }
+
+        r = (r+0.5f)/256;
+        g = (g+0.5f)/256;
+        b = (b+0.5f)/256;
+        e = e - 128;
+
+        r = ldexp(r,e);
+        g = ldexp(g,e);
+        b = ldexp(b,e);
+
+        // Scale to 0-255 range and store in sRGB array
+        dst[i] = r;
+        dst[i+1] = g;
+        dst[i+2] = b;
+        dst[i+3] = 1;
+    }
+}
+
+
 void VulkanHelper::CreateEnvTextureImage(const std::string& filename){
+
 
     int texWidth, texHeight, texChannels;
 
-    stbi_ldr_to_hdr_scale(255.0f);
-    //stbi_hdr_to_ldr_gamma(2.2f);
-    float* pixelsHDR = stbi_loadf(filename.c_str(), &texWidth, &texHeight, &texChannels, 0);
+    //float* pixelsHDR = stbi_loadf(filename.c_str(), &texWidth, &texHeight, &texChannels, 0);
+
+    unsigned char* pixelRGBE = stbi_load(filename.c_str(), &texWidth, &texHeight, &texChannels, 4);
 
     VkDeviceSize imageSize = texWidth * texHeight * texChannels;
 
-    unsigned char* pixels = new unsigned char[imageSize];
 
-    ProcesHDRImage(pixelsHDR,pixels,texWidth,texHeight);
+    auto* pixelRBG = new float[imageSize];
+
+    //ProcesHDRImage(pixelsHDR,pixels,texWidth,texHeight);
+
+    ProcessRGBEImage(pixelRGBE,pixelRBG,texWidth,texHeight);
 
     texHeight /= 6;
     //imageSize = texWidth * texHeight * (texChannels-1);
 
     uint32_t envMipLevels = 1;
 
-    if (!pixels) {
-        throw std::runtime_error("failed to load texture image!");
-    }
+    //if (!pixels) {
+    //    throw std::runtime_error("failed to load texture image!");
+    //}
 
     /* Create a buffer to store the image data */
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
 
-    CreateBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+    CreateBuffer(imageSize*sizeof(float), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
 
     /* Copy the image to the buffer */
     void* data;
-    vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
-    memcpy(data, pixels, static_cast<size_t>(imageSize));
+    vkMapMemory(device, stagingBufferMemory, 0, imageSize*sizeof(float), 0, &data);
+    memcpy(data, pixelRBG, static_cast<size_t>(imageSize)*sizeof(float));
     vkUnmapMemory(device, stagingBufferMemory);
 
-    stbi_image_free(pixelsHDR);
-    delete[] pixels;
+    stbi_image_free(pixelRGBE);
+    //delete[] pixels;
 
-    CreateImage(texWidth, texHeight, envMipLevels, 6,VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, envTextureImage, envTextureImageMemory);
+    CreateImage(texWidth, texHeight, envMipLevels, 6,VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, envTextureImage, envTextureImageMemory);
 
     /* Copy the staging buffer to the texture image */
-    TransitionImageLayout(envTextureImage, VK_FORMAT_R8G8B8A8_SRGB, 6, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, envMipLevels);
-    CopyBufferToImage(stagingBuffer, envTextureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight),6);
-    TransitionImageLayout(envTextureImage, VK_FORMAT_R8G8B8A8_SRGB, 6, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, envMipLevels);
+    TransitionImageLayout(envTextureImage, VK_FORMAT_R32G32B32A32_SFLOAT, 6, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, envMipLevels);
+    CopyBufferToImageEnv(stagingBuffer, envTextureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), static_cast<uint32_t>(texChannels));
+    TransitionImageLayout(envTextureImage, VK_FORMAT_R32G32B32A32_SFLOAT, 6, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, envMipLevels);
 
     /* Clear the stage buffer */
     vkDestroyBuffer(device, stagingBuffer, nullptr);
@@ -2019,7 +2102,7 @@ void VulkanHelper::CreateEnvTextureImage(const std::string& filename){
 
 void VulkanHelper::CreateEnvTextureImageView(){
     /* Create the texture image view */
-    envTextureImageView = CreateImageView(envTextureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_VIEW_TYPE_CUBE, VK_IMAGE_ASPECT_COLOR_BIT, 1, 6);
+    envTextureImageView = CreateImageView(envTextureImage, VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_VIEW_TYPE_CUBE, VK_IMAGE_ASPECT_COLOR_BIT, 1, 6);
 }
 
 
@@ -2058,7 +2141,7 @@ void VulkanHelper::CreateTextureImage()
 
     /* Copy the staging buffer to the texture image */
     TransitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, 1, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels);
-    CopyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight),1);
+    CopyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
 
     /* Change texture image's layout for the shade access */
     //transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, mipLevels);
