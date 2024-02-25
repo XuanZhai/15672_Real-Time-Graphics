@@ -267,7 +267,7 @@ void S72Object::Mesh::ProcessMesh(){
 
         indicesCount = (uint32_t) std::get<float>(indicesOffsets->data);
         SetIndicesSrc(std::get<std::string>(new_indicesSrc->data));
-        useIndices = true;
+        isUseIndex = true;
     }
 }
 
@@ -502,6 +502,23 @@ std::string S72Object::Driver::HasMatchNodeAndChannel(const std::shared_ptr<Pars
 }
 
 
+
+
+
+void S72Object::Material::ProcessMaterial(const std::shared_ptr<ParserNode>& node){
+
+
+    name = std::get<std::string>(node->GetObjectValue("name")->data);
+
+    // TODO: Process other value like the normal map.
+}
+
+
+
+
+
+
+
 /* =============================================== S72Helper ======================================================== */
 
 
@@ -579,6 +596,15 @@ void S72Helper::ReconstructRoot() {
 
             drivers.emplace_back(newDriver);
         }
+        else if(std::get<std::string>(node->GetObjectValue("type")->data) == "ENVIRONMENT"){
+            auto radNode = node->GetObjectValue("radiance");
+            envFileName = std::get<std::string>(radNode->GetObjectValue("src")->data);
+        }
+        else if(std::get<std::string>(node->GetObjectValue("type")->data) == "MATERIAL"){
+            std::shared_ptr<S72Object::Material> material = std::make_shared<S72Object::Material>();
+            material->ProcessMaterial(node);
+            materials.insert(std::make_pair(material->name, material));
+        }
         index++;
     }
 
@@ -631,9 +657,21 @@ void S72Helper::ReconstructNode(std::shared_ptr<ParserNode> newNode, XZM::mat4 n
     else if(type == "MESH"){
             std::string meshName = std::get<std::string>(newNode->GetObjectValue("name")->data);
             /* Insert into the mesh list, use a red-black tree so that it is unique. */
-            if(!meshes.count(meshName)){
-                meshes.insert(std::make_pair(meshName,std::make_shared<S72Object::Mesh>(newNode)));
+            if(!meshes.count(meshName)) {
+
+                std::string matName = "simple";
+                if (newNode->GetObjectValue("material") != nullptr) {
+                    size_t matIndex = (size_t) std::get<float>(newNode->GetObjectValue("material")->data);
+                    std::shared_ptr<ParserNode> matNode = std::get<ParserNode::PNVector>(root->data)[matIndex];
+
+                    matName = std::get<std::string>(matNode->GetObjectValue("name")->data);
+                }
+                meshes.insert(std::make_pair(meshName, std::make_shared<S72Object::Mesh>(newNode)));
+                meshes[meshName]->material = matName;
+
+                meshesByMaterial[matName].emplace_back(meshes[meshName]);
             }
+
             /* Add that instance to the mesh's instance list, also update the total instance count. */
             meshes[meshName]->instances.emplace_back(newMat);
             instanceCount++;

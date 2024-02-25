@@ -82,6 +82,11 @@ std::shared_ptr<ParserNode> XZJParser::ParseInput(size_t l,size_t r) {
     }
     /* If the data is an array. */
     else if(s72Data[l] == '['){
+
+        if(l+1 < s72Data.length() && s72Data[l+1] == ']'){
+            return nullptr;
+        }
+
         /* Construct data as PNVector */
         obj->data = ParserNode::PNVector();
         size_t sl = l+1;
@@ -110,6 +115,11 @@ std::shared_ptr<ParserNode> XZJParser::ParseInput(size_t l,size_t r) {
     }
     /* If the data is an object */
     else if(s72Data[l] == '{'){
+
+        if(l+1 < s72Data.length() && s72Data[l+1] == '}'){
+            return nullptr;
+        }
+
         /* Construct data as PNMap. */
         obj->data = ParserNode::PNMap();
 
@@ -156,16 +166,30 @@ void XZJParser::RemoveSpace(const std::string& input) {
 
     /* Check if we are currently within a string */
     bool isString = false;
+    bool isComment = false;
     /* Allocate enough space so that we don't need to do allocation again */
     s72Data.reserve(input.length());
 
-    for(const char& c : input){
+    for(size_t index = 0; index < input.length(); index++){
         /* If there is a '"', it means we are entering/exiting a string */
+        const char c = input[index];
+
         if(c == '"'){
             isString = !isString;
         }
+        if(index < input.length()-1 && c == '/' && input[index+1] == '*' ){
+            isComment = true;
+            continue;
+        }
+        else if(index < input.length()-1 && c == '*' && input[index+1] == '/' ){
+            isComment = false;
+            index += 1;
+            continue;
+        }
+
+
         /* Append the valid character */
-        if((c != ' ' && c != '\t' && c != '\n' && c != '\r') || isString){
+        if((c != ' ' && c != '\t' && c != '\n' && c != '\r' && !isComment) || isString){
             s72Data.push_back(c);
         }
     }

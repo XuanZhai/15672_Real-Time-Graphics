@@ -15,6 +15,7 @@
 #include "XZJParser.h"
 #include "XZMath.h"
 #include "FrustumCulling.h"
+#include "VkMaterial.h"
 
 namespace S72Object {
     /**
@@ -126,7 +127,7 @@ namespace S72Object {
             uint32_t cOffset = 0;
 
             /* If we use indexed drawing and its index data. */
-            bool useIndices = false;
+            bool isUseIndex = false;
             std::string indicesSrc;
             uint32_t indicesCount = 0;
 
@@ -138,6 +139,8 @@ namespace S72Object {
 
             /* An AABB bounding box for the mesh. */
             AABB boundingBox;
+
+            std::string material;
 
             /* Construct a mesh based on the node. */
             explicit Mesh(std::shared_ptr<ParserNode> &node);
@@ -176,7 +179,16 @@ namespace S72Object {
 
             /* Check If the given node uses the driver. If true, return the channel. */
             std::string HasMatchNodeAndChannel(const std::shared_ptr<ParserNode> &node) const;
-        };
+    };
+
+
+    class Material{
+        public:
+            std::string name;
+            // TODO: May have other data.
+
+            void ProcessMaterial(const std::shared_ptr<ParserNode>& node);
+    };
 }
 
 
@@ -209,6 +221,12 @@ public:
 
     /* A list of Drivers. */
     std::vector<std::shared_ptr<S72Object::Driver>> drivers;
+
+    std::string envFileName;
+
+    std::unordered_map<std::string, std::shared_ptr<S72Object::Material>> materials;
+
+    std::unordered_map<std::string, std::vector<std::shared_ptr<S72Object::Mesh>>> meshesByMaterial;
 
     S72Helper();
     /* Read and parse a s72 file from a given path. */

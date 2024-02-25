@@ -30,6 +30,8 @@
 
 #include "S72Helper.h"
 #include "EventHelper.h"
+#include "VkMaterial.h"
+#include "VkMesh.h"
 
 
 
@@ -42,6 +44,12 @@ const std::string TEXTURE_PATH = "Textures/viking_room.png";
 
 const std::string VERTEX_SHADER_PATH = "Shaders/shader.vert.spv";
 const std::string FRAGMENT_SHADER_PATH = "Shaders/shader.frag.spv";
+
+const std::unordered_map<std::string, std::array<std::string,2>> shaderMap = {
+        {"simple", {"Shaders/simple.vert.spv","Shaders/simple.frag.spv"}},
+        {"environment", {"Shaders/environment.vert.spv","Shaders/environment.frag.spv"}},
+        {"mirror", {"Shaders/mirror.vert.spv","Shaders/mirror.frag.spv"}}
+};
 
 
 /* How many frames should be processed concurrently */
@@ -137,12 +145,6 @@ private:
     /* Vulkan render pass; the attachments referenced by the pipeline stages and their usage */
     VkRenderPass renderPass = VK_NULL_HANDLE;
 
-    /* Used to specify the 'uniform' values in the pipeline; the uniform and push values referenced by the shader that can be updated at draw time */
-    VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
-
-    /* An instance of the render pipeline */
-    VkPipeline graphicsPipeline = VK_NULL_HANDLE;
-
     /* The frame buffer instances. Each for an image in the swap chain */
     std::vector<VkFramebuffer> swapChainFramebuffers;
 
@@ -163,29 +165,8 @@ private:
     /* Used to handle the explicit window resize event */
     bool framebufferResized = false;
 
-    /* The vertex buffers used to store the vertex data */
-    std::vector<VkBuffer> vertexBuffers;
 
-    /* Handle to the memory of the vertex buffers */
-    std::vector<VkDeviceMemory> vertexBufferMemories;
-
-    /* Mapped with the index buffers, indicated which one we want to use index rendering. */
-    std::vector<bool> isUseIndices;
-
-    /* The index buffer used to store the indices */
-    std::vector<VkBuffer> indexBuffers;
-
-    /* Handle to the memory of the index buffer */
-    std::vector<VkDeviceMemory> indexBufferMemories;
-
-    /* The instance buffer used to store the instance data. */
-    std::vector<VkBuffer> instanceBuffers;
-
-    /* Handle to the memory of the instance buffer. */
-    std::vector<VkDeviceMemory> instanceBufferMemories;
-
-    /* Specifies the types of resources that are going to be accessed by the pipeline like the MVP matrix */
-    VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
+    std::unordered_map<std::string,std::shared_ptr<VkMesh>> VkMeshes;
 
     /* Buffer that contains UBO data */
     std::vector<VkBuffer> uniformBuffers;
@@ -196,13 +177,10 @@ private:
     /* A reference map to the uniform buffer which can put data into them */
     std::vector<void*> uniformBuffersMapped;
 
-    /* Handle to the descriptor pool */
-    VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
 
-    /* Handles to the descriptor sets */
-    std::vector<VkDescriptorSet> descriptorSets;
+    std::unordered_map<std::string,std::shared_ptr<VkMaterial>> VkMaterials;
 
-
+    std::string envFileName;
 
     VkImage envTextureImage = VK_NULL_HANDLE;
 
@@ -210,13 +188,23 @@ private:
 
     VkImageView envTextureImageView = VK_NULL_HANDLE;
 
+    VkImage lamTextureImage = VK_NULL_HANDLE;
 
+    VkDeviceMemory lamTextureImageMemory = VK_NULL_HANDLE;
+
+    VkImageView lamTextureImageView = VK_NULL_HANDLE;
+
+    std::vector<VkImage> ggxTextureImage;
+
+    std::vector<VkDeviceMemory> ggxTextureImageMemory;
+
+    std::vector<VkImageView> ggxTextureImageView;
 
     /* The image of the texture */
     VkImage textureImage = VK_NULL_HANDLE;
 
     /* The mipmap level of the texture */
-    uint32_t mipLevels = 0;
+    //uint32_t mipLevels = 0;
 
     /* The handle to the memory of the texture */
     VkDeviceMemory textureImageMemory = VK_NULL_HANDLE;
@@ -346,7 +334,7 @@ private:
     void CreateDescriptorSetLayout();
 
     /* Read the shaders and create the graphics pipeline. */
-    void CreateGraphicsPipeline();
+    void CreateGraphicsPipeline(const std::string& vertexFileName, const std::string& fragmentFileName, const VkDescriptorSetLayout& descriptorSetLayout, VkPipeline& graphicsPipeline, VkPipelineLayout& pipelineLayout);
 
     /* Create the render pass to attach the framebuffer. */
     void CreateRenderPass();
@@ -369,11 +357,10 @@ private:
     /* Copy a vulkan buffer from source to destination. */
     void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
-    /* Create a list of vertex buffers. One for each mesh in the s72. */
-    void CreateVertexBuffers();
+    void CreateMeshes();
 
     /* Create the vertex buffer to store the vertex data. */
-    void CreateVertexBuffer(const S72Object::Mesh& newMesh, size_t index);
+    void CreateVertexBuffer(const S72Object::Mesh& newMesh, VkMesh& vkMesh);
 
     /* For a binding description struct based on the info of a mesh instance. */
     static std::array<VkVertexInputBindingDescription2EXT,2> CreateBindingDescription(const S72Object::Mesh& newMesh);
@@ -381,32 +368,20 @@ private:
     /* Form an attribute description struct based on the info of a mesh instance. */
     static std::array<VkVertexInputAttributeDescription2EXT, 7> CreateAttributeDescription(const S72Object::Mesh& newMesh);
 
-    /* Create a list of index buffers. One for each mesh that uses the indices to draw. */
-    void CreateIndexBuffers();
-
     /* Create the index buffer to store the index relations. */
-    void CreateIndexBuffer(const S72Object::Mesh& newMesh, size_t index);
-
-    /* Create a list of dynamic instance buffers. One has the instance info like the model matrix. */
-    void CreateInstanceBuffers();
+    void CreateIndexBuffer(const S72Object::Mesh& newMesh, VkMesh& vkMesh);
 
     /* Create a single dynamic instance buffer for a mesh. */
-    void CreateInstanceBuffer(size_t index);
+    void CreateInstanceBuffer(VkMesh& vkMesh);
 
     /* Update an instance buffer with the new instance data. */
-    void UpdateInstanceBuffer(const S72Object::Mesh& newMesh, size_t index);
+    void UpdateInstanceBuffer(const S72Object::Mesh& newMesh);
 
     /* Create the uniform buffer to store the uniform data. */
     void CreateUniformBuffers();
 
     /* Update the uniform buffer on the current image with given ubo data. */
-    void UpdateUniformBuffer(uint32_t currentImage, const S72Object::Mesh& mesh, size_t instanceIndex, size_t totalIndex);
-
-    /* Create a pool to allocate descriptor sets. */
-    void CreateDescriptorPool();
-
-    /* Create descriptor sets, one for each frame. */
-    void CreateDescriptorSets();
+    void UpdateUniformBuffer(uint32_t currentImage);
 
     /* Create the command pool which will be used to allocate the memory for the command buffer. */
     void CreateCommandPool();
@@ -423,18 +398,18 @@ private:
     /* Copy a VkBuffer to a VkImage. */
     void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
 
-    void CopyBufferToImageEnv(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height,uint32_t nChannel);
+    void CopyBufferToImageCube(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height,uint32_t nChannel);
 
     /* Transit the image's layout with a new layout using a pipeline barrier. */
-    void TransitionImageLayout(VkImage image, VkFormat format,uint32_t layerCount, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t newMipLevels);
+    void TransitionImageLayout(VkImage image,uint32_t layerCount, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t newMipLevels);
 
-    void ProcesHDRImage(const float* src, unsigned char*& dst, int texWidth, int texHeight);
+    static void ProcessRGBEImage(const unsigned char* src, float*& dst, int texWidth, int texHeight);
 
-    void ProcessRGBEImage(const unsigned char* src, float*& dst, int texWidth, int texHeight);
+    void CreateCubeTextureImageAndView(const std::string& filename, VkImage& image, VkDeviceMemory& imageMemory, VkImageView& imageView);
 
-    void CreateEnvTextureImage(const std::string& filename);
+    void CreateEnvironments();
 
-    void CreateEnvTextureImageView();
+    void CreateMaterials();
 
     /* Create the texture image with a given texture. */
     void CreateTextureImage();
@@ -473,7 +448,7 @@ private:
     void RecreateSwapChain();
 
     /* Generate the mipmaps through the command buffer. */
-    void GenerateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t newMipLevels);
+    void GenerateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t newMipLevels, uint32_t newLayerCount);
 
     /* Create a main loop to let the window keep opening (Looping using the MSG mechanism). */
     static void MainLoopWIN();
