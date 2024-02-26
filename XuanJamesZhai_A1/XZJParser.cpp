@@ -83,6 +83,7 @@ std::shared_ptr<ParserNode> XZJParser::ParseInput(size_t l,size_t r) {
     /* If the data is an array. */
     else if(s72Data[l] == '['){
 
+        /* If it is an empty array. */
         if(l+1 < s72Data.length() && s72Data[l+1] == ']'){
             return nullptr;
         }
@@ -116,6 +117,7 @@ std::shared_ptr<ParserNode> XZJParser::ParseInput(size_t l,size_t r) {
     /* If the data is an object */
     else if(s72Data[l] == '{'){
 
+        /* If it is an empty object. */
         if(l+1 < s72Data.length() && s72Data[l+1] == '}'){
             return nullptr;
         }

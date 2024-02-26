@@ -505,15 +505,6 @@ std::string S72Object::Driver::HasMatchNodeAndChannel(const std::shared_ptr<Pars
 
 
 
-void S72Object::Material::ProcessMaterial(const std::shared_ptr<ParserNode>& node){
-
-
-    name = std::get<std::string>(node->GetObjectValue("name")->data);
-
-    // TODO: Process other value like the normal map.
-}
-
-
 
 
 
@@ -601,8 +592,25 @@ void S72Helper::ReconstructRoot() {
             envFileName = std::get<std::string>(radNode->GetObjectValue("src")->data);
         }
         else if(std::get<std::string>(node->GetObjectValue("type")->data) == "MATERIAL"){
-            std::shared_ptr<S72Object::Material> material = std::make_shared<S72Object::Material>();
-            material->ProcessMaterial(node);
+            std::shared_ptr<S72Object::Material> material = nullptr;
+            std::string materialName = std::get<std::string>(node->GetObjectValue("name")->data);
+
+            if(materialName == "simple"){
+                std::shared_ptr<S72Object::Material> material_Simple = std::make_shared<S72Object::Material>();
+                material_Simple->ProcessMaterial(node);
+                material = std::dynamic_pointer_cast<S72Object::Material>(material_Simple);
+            }
+            else if(materialName == "environment" || materialName == "mirror"){
+                std::shared_ptr<S72Object::Material> material_Simple = std::make_shared<S72Object::Material>();
+                material_Simple->ProcessMaterial(node);
+                material = std::dynamic_pointer_cast<S72Object::Material>(material_Simple);
+            }
+            if(std::get<std::string>(node->GetObjectValue("name")->data) == "lambertian"){
+                std::shared_ptr<S72Object::Material_Lambertian> material_Lam = std::make_shared<S72Object::Material_Lambertian>();
+                material_Lam->ProcessMaterial(node);
+                material = std::dynamic_pointer_cast<S72Object::Material>(material_Lam);
+            }
+
             materials.insert(std::make_pair(material->name, material));
         }
         index++;

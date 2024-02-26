@@ -13,22 +13,23 @@
 #include <stdexcept>
 #include <unordered_map>
 #include <array>
-
-struct UniformBufferObject;
-
+#include "S72Helper.h"
 
 class VkMaterial {
+
+protected:
+    VkDevice device = VK_NULL_HANDLE;
+
+    uint32_t Max_In_Flight = 1;
+
+    VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
 
 public:
     std::string name;
 
-    VkDevice device;
-
     VkPipeline pipeline = VK_NULL_HANDLE;
 
     VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
-
-    VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
 
     VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
 
@@ -36,15 +37,13 @@ public:
 
     void SetDevice(VkDevice newDevice);
 
-    void CreateDescriptorSetLayout();
+    virtual void CreateDescriptorSetLayout();
 
-    void CreateGraphicsPipeline();
+    virtual void CreateDescriptorPool();
 
-    void CreateDescriptorPool();
+    //virtual void CreateDescriptorSets(const VkSampler& textureSampler, const std::vector<VkBuffer>& uniformBuffers, const VkImageView& cubeMap);
 
-    void CreateDescriptorSets(const VkSampler& textureSampler, const std::vector<VkBuffer>& uniformBuffers, const VkImageView& cubeMap);
-
-    void CleanUp();
+    virtual void CleanUp();
 };
 
 

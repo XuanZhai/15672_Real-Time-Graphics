@@ -16,6 +16,7 @@
 #include "XZMath.h"
 #include "FrustumCulling.h"
 #include "VkMaterial.h"
+#include "S72Materials.h"
 
 namespace S72Object {
     /**
@@ -181,14 +182,7 @@ namespace S72Object {
             std::string HasMatchNodeAndChannel(const std::shared_ptr<ParserNode> &node) const;
     };
 
-
-    class Material{
-        public:
-            std::string name;
-            // TODO: May have other data.
-
-            void ProcessMaterial(const std::shared_ptr<ParserNode>& node);
-    };
+    class Material;
 }
 
 

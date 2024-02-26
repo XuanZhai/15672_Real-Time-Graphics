@@ -6,7 +6,7 @@
 			[
 				{
 					"build" : ".",
-					"jsonFile" : "directory-.-Release-d0094a50bb2071803777.json",
+					"jsonFile" : "directory-.-Debug-d0094a50bb2071803777.json",
 					"minimumCMakeVersion" : 
 					{
 						"string" : "3.21"
@@ -19,7 +19,7 @@
 					]
 				}
 			],
-			"name" : "Release",
+			"name" : "Debug",
 			"projects" : 
 			[
 				{
@@ -39,7 +39,7 @@
 				{
 					"directoryIndex" : 0,
 					"id" : "XuanJamesZhai_A1::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-XuanJamesZhai_A1-Release-3a8e9c3883cb6b2a7784.json",
+					"jsonFile" : "target-XuanJamesZhai_A1-Debug-60372129fbf54ab4aab3.json",
 					"name" : "XuanJamesZhai_A1",
 					"projectIndex" : 0
 				}
@@ -49,7 +49,7 @@
 	"kind" : "codemodel",
 	"paths" : 
 	{
-		"build" : "F:/Code/15672_Real-Time-Graphics/XuanJamesZhai_A1/cmake-build-release",
+		"build" : "F:/Code/15672_Real-Time-Graphics/XuanJamesZhai_A1/cmake-build-debug",
 		"source" : "F:/Code/15672_Real-Time-Graphics/XuanJamesZhai_A1"
 	},
 	"version" : 

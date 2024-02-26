@@ -38,17 +38,13 @@
 /* A macro to select if we want to create a window using WSI. If false it will be created with GLFW. */
 #define USE_WSI false
 
-/* Placeholders, won't be used in AI. */
-const std::string MODEL_PATH = "models/viking_room.obj";
-const std::string TEXTURE_PATH = "Textures/viking_room.png";
 
-const std::string VERTEX_SHADER_PATH = "Shaders/shader.vert.spv";
-const std::string FRAGMENT_SHADER_PATH = "Shaders/shader.frag.spv";
-
+/* A map of materials and its shader files. */
 const std::unordered_map<std::string, std::array<std::string,2>> shaderMap = {
         {"simple", {"Shaders/simple.vert.spv","Shaders/simple.frag.spv"}},
         {"environment", {"Shaders/environment.vert.spv","Shaders/environment.frag.spv"}},
-        {"mirror", {"Shaders/mirror.vert.spv","Shaders/mirror.frag.spv"}}
+        {"mirror", {"Shaders/mirror.vert.spv","Shaders/mirror.frag.spv"}},
+        {"lambertian", {"Shaders/lambertian.vert.spv","Shaders/lambertian.frag.spv"}}
 };
 
 
@@ -165,7 +161,7 @@ private:
     /* Used to handle the explicit window resize event */
     bool framebufferResized = false;
 
-
+    /* A map of VkMeshes hold all the vertex info in the GPU. */
     std::unordered_map<std::string,std::shared_ptr<VkMesh>> VkMeshes;
 
     /* Buffer that contains UBO data */
@@ -177,40 +173,26 @@ private:
     /* A reference map to the uniform buffer which can put data into them */
     std::vector<void*> uniformBuffersMapped;
 
-
+    /* A map of VkMaterials hold all the material info in the GPU. */
     std::unordered_map<std::string,std::shared_ptr<VkMaterial>> VkMaterials;
 
+    /* The filename of the environment cube map. */
     std::string envFileName;
 
+    /* Data for the environment map. */
     VkImage envTextureImage = VK_NULL_HANDLE;
-
     VkDeviceMemory envTextureImageMemory = VK_NULL_HANDLE;
-
     VkImageView envTextureImageView = VK_NULL_HANDLE;
 
+    /* Data for the lambertian environment map. */
     VkImage lamTextureImage = VK_NULL_HANDLE;
-
     VkDeviceMemory lamTextureImageMemory = VK_NULL_HANDLE;
-
     VkImageView lamTextureImageView = VK_NULL_HANDLE;
 
+    /* Data for the ggx environment map. */
     std::vector<VkImage> ggxTextureImage;
-
     std::vector<VkDeviceMemory> ggxTextureImageMemory;
-
     std::vector<VkImageView> ggxTextureImageView;
-
-    /* The image of the texture */
-    VkImage textureImage = VK_NULL_HANDLE;
-
-    /* The mipmap level of the texture */
-    //uint32_t mipLevels = 0;
-
-    /* The handle to the memory of the texture */
-    VkDeviceMemory textureImageMemory = VK_NULL_HANDLE;
-
-    /* The image view to access the texture image */
-    VkImageView textureImageView = VK_NULL_HANDLE;
 
     /* The texture sampler instance to sample the texture image */
     VkSampler textureSampler = VK_NULL_HANDLE;
@@ -330,9 +312,6 @@ private:
     /* Create a module to wrap the info in the binary shader vector. */
     VkShaderModule CreateShaderModule(const std::vector<char>& code);
 
-    /* Provide details about every descriptor binding and create the descriptor layout. */
-    void CreateDescriptorSetLayout();
-
     /* Read the shaders and create the graphics pipeline. */
     void CreateGraphicsPipeline(const std::string& vertexFileName, const std::string& fragmentFileName, const VkDescriptorSetLayout& descriptorSetLayout, VkPipeline& graphicsPipeline, VkPipelineLayout& pipelineLayout);
 
@@ -357,6 +336,7 @@ private:
     /* Copy a vulkan buffer from source to destination. */
     void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
+    /* Fill the VkMesh map based on the data in the s72Instance. */
     void CreateMeshes();
 
     /* Create the vertex buffer to store the vertex data. */
@@ -398,24 +378,29 @@ private:
     /* Copy a VkBuffer to a VkImage. */
     void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
 
+    /* Copy a VkBuffer which contains a cube map to a VkImage. */
     void CopyBufferToImageCube(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height,uint32_t nChannel);
 
     /* Transit the image's layout with a new layout using a pipeline barrier. */
     void TransitionImageLayout(VkImage image,uint32_t layerCount, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t newMipLevels);
 
+    /* Convert a RGBE Image to a float RGB Image. */
     static void ProcessRGBEImage(const unsigned char* src, float*& dst, int texWidth, int texHeight);
 
+    /* Create the VkImage and the VkImageView for a cube map. */
     void CreateCubeTextureImageAndView(const std::string& filename, VkImage& image, VkDeviceMemory& imageMemory, VkImageView& imageView);
 
+    /* Create the three environment cube maps. */
     void CreateEnvironments();
 
+    /* Fill the VkMaterial list based on the material data in the s72Instance. */
     void CreateMaterials();
 
     /* Create the texture image with a given texture. */
-    void CreateTextureImage();
+    void CreateTextureImage(const std::string& src, int texWidth, int texHeight, int nChannels, uint32_t mipLevels, VkImage& textureImage, VkDeviceMemory& textureImageMemory);
 
     /* Create the image view to access and present the texture image. */
-    void CreateTextureImageView();
+    void CreateTextureImageView(const VkImage& textureImage, VkImageView& textureImageView, int nChannels, uint32_t mipLevels);
 
     /* Create the texture sampler to access the texture. */
     void CreateTextureSampler();
