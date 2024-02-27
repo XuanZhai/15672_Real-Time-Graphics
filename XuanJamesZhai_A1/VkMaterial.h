@@ -15,12 +15,15 @@
 #include <array>
 #include "S72Helper.h"
 
+
+/**
+ * @brief A Vulkan-side material base object. Contains the pipeline and the descriptor info.
+ */
 class VkMaterial {
 
 protected:
+    /* The device it is working one. */
     VkDevice device = VK_NULL_HANDLE;
-
-    uint32_t Max_In_Flight = 1;
 
     VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
 
@@ -35,14 +38,16 @@ public:
 
     std::vector<VkDescriptorSet> descriptorSets;
 
+    /* Set the physical device. */
     void SetDevice(VkDevice newDevice);
 
-    virtual void CreateDescriptorSetLayout();
+    /* Create the descriptor set layout. */
+    virtual void CreateDescriptorSetLayout() = 0;
 
-    virtual void CreateDescriptorPool();
+    /* Create the descriptor pool. */
+    virtual void CreateDescriptorPool() = 0;
 
-    //virtual void CreateDescriptorSets(const VkSampler& textureSampler, const std::vector<VkBuffer>& uniformBuffers, const VkImageView& cubeMap);
-
+    /* Destructor. */
     virtual void CleanUp();
 };
 

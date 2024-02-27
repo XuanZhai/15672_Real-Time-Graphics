@@ -28,8 +28,8 @@ void main() {
 
     vec3 baseColor = texture(albedoSampler, fragTexCoord).xyz;
 
-    vec3 lambert = toneMapReinhard(texture(cubeSampler, viewDir).xyz,1);
+    vec3 lambert = toneMapReinhard(texture(cubeSampler, reflectedDir).xyz,1);
     //vec3 lambert = texture(cubeSampler, reflectedDir).xyz;
 
-    outColor = vec4(lambert,1.0);
+    outColor = vec4(lambert * baseColor,1.0);
 }

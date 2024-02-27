@@ -5,8 +5,11 @@
 #ifndef XUANJAMESZHAI_A1_VKMATERIAL_ENVIRONMENTMIRROR_H
 #define XUANJAMESZHAI_A1_VKMATERIAL_ENVIRONMENTMIRROR_H
 
-#include "VkMesh.h"
+#include "VkMaterial.h"
 
+/**
+ * @brief A subclass of VkMaterial, used for the environment and mirror material.
+ */
 class VkMaterial_EnvironmentMirror : public VkMaterial {
 
 public:

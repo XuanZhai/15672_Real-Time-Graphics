@@ -5,6 +5,10 @@
 #include "VkMaterial_Simple.h"
 #include "VulkanHelper.h"
 
+
+/**
+ * @brief Create the descriptor set layout for the material.
+ */
 void VkMaterial_Simple::CreateDescriptorSetLayout() {
 
     /* Set the binding info for ubo */
@@ -27,20 +31,23 @@ void VkMaterial_Simple::CreateDescriptorSetLayout() {
 }
 
 
+/**
+ * @brief Create the descriptor pool for the material.
+ */
 void VkMaterial_Simple::CreateDescriptorPool() {
 
     /* Describe which descriptor types our descriptor sets are going to contain */
     /* The first is used for the uniform buffer. The second is used for the image sampler */
     std::array<VkDescriptorPoolSize,1> poolSizes{};
     poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-    poolSizes[0].descriptorCount = static_cast<uint32_t>(Max_In_Flight);
+    poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
     /* Create the pool info for allocation */
     VkDescriptorPoolCreateInfo poolInfo{};
     poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
     poolInfo.pPoolSizes = poolSizes.data();
-    poolInfo.maxSets = static_cast<uint32_t>(Max_In_Flight);
+    poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
     if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
         throw std::runtime_error("failed to create descriptor pool!");
@@ -48,23 +55,27 @@ void VkMaterial_Simple::CreateDescriptorPool() {
 }
 
 
+/**
+ * @brief Create the descriptor set for the environment/mirror material.
+ * @param uniformBuffers The UBO buffer..
+ */
 void VkMaterial_Simple::CreateDescriptorSets(const std::vector<VkBuffer>& uniformBuffers) {
 
     /* Create one descriptor set for each frame in flight */
-    std::vector<VkDescriptorSetLayout> layouts(Max_In_Flight, descriptorSetLayout);
+    std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, descriptorSetLayout);
     VkDescriptorSetAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     allocInfo.descriptorPool = descriptorPool;
-    allocInfo.descriptorSetCount = static_cast<uint32_t>(Max_In_Flight);
+    allocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
     allocInfo.pSetLayouts = layouts.data();
 
-    descriptorSets.resize(Max_In_Flight);
+    descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
     if (vkAllocateDescriptorSets(device, &allocInfo, descriptorSets.data()) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate descriptor sets!");
     }
 
     /* Configure each descriptor set */
-    for (size_t i = 0; i < Max_In_Flight; i++) {
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         VkDescriptorBufferInfo bufferInfo{};
         bufferInfo.buffer = uniformBuffers[i];
         bufferInfo.offset = 0;

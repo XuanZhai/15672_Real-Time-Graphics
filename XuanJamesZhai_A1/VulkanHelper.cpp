@@ -1327,9 +1327,9 @@ std::array<VkVertexInputBindingDescription2EXT,2> VulkanHelper::CreateBindingDes
  * @param[in] newMeshInstance The mesh we are construct from.
  * @return newMeshInstance's attribute description info.
  */
-std::array<VkVertexInputAttributeDescription2EXT, 7> VulkanHelper::CreateAttributeDescription(const S72Object::Mesh& newMeshInstance){
+std::array<VkVertexInputAttributeDescription2EXT, 9> VulkanHelper::CreateAttributeDescription(const S72Object::Mesh& newMeshInstance){
 
-    std::array<VkVertexInputAttributeDescription2EXT, 7> attributeDescriptions{};
+    std::array<VkVertexInputAttributeDescription2EXT, 9> attributeDescriptions{};
 
     /* Attribute for the vertex data */
     attributeDescriptions[0].binding = 0;
@@ -1345,37 +1345,51 @@ std::array<VkVertexInputAttributeDescription2EXT, 7> VulkanHelper::CreateAttribu
     attributeDescriptions[1].offset = newMeshInstance.nOffset;
     attributeDescriptions[1].sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT;
 
-    /* Attribute for the color data */
+    /* Attribute for the tangent data */
     attributeDescriptions[2].binding = 0;
     attributeDescriptions[2].location = 2;
-    attributeDescriptions[2].format = newMeshInstance.cFormat;
-    attributeDescriptions[2].offset = newMeshInstance.cOffset;
+    attributeDescriptions[2].format = newMeshInstance.taFormat;
+    attributeDescriptions[2].offset = newMeshInstance.taOffset;
     attributeDescriptions[2].sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT;
 
-    /* Per instance data. */
-    attributeDescriptions[3].binding = 1;
+    /* Attribute for the texture coordinate data */
+    attributeDescriptions[3].binding = 0;
     attributeDescriptions[3].location = 3;
-    attributeDescriptions[3].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-    attributeDescriptions[3].offset = offsetof(S72Object::MeshInstance, model);
+    attributeDescriptions[3].format = newMeshInstance.teFormat;
+    attributeDescriptions[3].offset = newMeshInstance.teOffset;
     attributeDescriptions[3].sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT;
 
-    attributeDescriptions[4].binding = 1;
+    /* Attribute for the color data */
+    attributeDescriptions[4].binding = 0;
     attributeDescriptions[4].location = 4;
-    attributeDescriptions[4].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-    attributeDescriptions[4].offset = offsetof(S72Object::MeshInstance, model) + sizeof(float)*4;
+    attributeDescriptions[4].format = newMeshInstance.cFormat;
+    attributeDescriptions[4].offset = newMeshInstance.cOffset;
     attributeDescriptions[4].sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT;
 
+    /* Per instance data. */
     attributeDescriptions[5].binding = 1;
     attributeDescriptions[5].location = 5;
     attributeDescriptions[5].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-    attributeDescriptions[5].offset = offsetof(S72Object::MeshInstance, model) + sizeof(float)*8;
+    attributeDescriptions[5].offset = offsetof(S72Object::MeshInstance, model);
     attributeDescriptions[5].sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT;
 
     attributeDescriptions[6].binding = 1;
     attributeDescriptions[6].location = 6;
     attributeDescriptions[6].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-    attributeDescriptions[6].offset = offsetof(S72Object::MeshInstance, model) + sizeof(float)*12;
+    attributeDescriptions[6].offset = offsetof(S72Object::MeshInstance, model) + sizeof(float)*4;
     attributeDescriptions[6].sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT;
+
+    attributeDescriptions[7].binding = 1;
+    attributeDescriptions[7].location = 7;
+    attributeDescriptions[7].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    attributeDescriptions[7].offset = offsetof(S72Object::MeshInstance, model) + sizeof(float)*8;
+    attributeDescriptions[7].sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT;
+
+    attributeDescriptions[8].binding = 1;
+    attributeDescriptions[8].location = 8;
+    attributeDescriptions[8].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    attributeDescriptions[8].offset = offsetof(S72Object::MeshInstance, model) + sizeof(float)*12;
+    attributeDescriptions[8].sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT;
 
     return attributeDescriptions;
 }
@@ -1575,7 +1589,7 @@ void VulkanHelper::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t i
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
     std::array<VkVertexInputBindingDescription2EXT,2> newBindingDescription{};
-    std::array<VkVertexInputAttributeDescription2EXT, 7> newAttributeDescription{};
+    std::array<VkVertexInputAttributeDescription2EXT, 9> newAttributeDescription{};
     auto vkCmdSetVertexInputExt = (PFN_vkCmdSetVertexInputEXT)vkGetDeviceProcAddr(device, "vkCmdSetVertexInputEXT");
     auto vkCmdSetPrimitiveTopologyEXT = (PFN_vkCmdSetPrimitiveTopologyEXT)( vkGetDeviceProcAddr( device, "vkCmdSetPrimitiveTopologyEXT" ) );
 
@@ -1753,6 +1767,7 @@ void VulkanHelper::CopyBufferToImageCube(VkBuffer buffer, VkImage image, uint32_
     uint64_t offset = 0;
 
     /* Set the order of the cube map. MAY CHANGE HERE. */
+    //std::array<uint32_t,6> faceOrder{0,1,2,3,4,5};
     std::array<uint32_t,6> faceOrder{5,4,2,3,1,0};
 
     /* Loop through each face. */
@@ -1965,7 +1980,7 @@ void VulkanHelper::CreateEnvironments(){
     CreateCubeTextureImageAndView(s72Instance->envFileName, envTextureImage,envTextureImageMemory,envTextureImageView);
 
     /* Create the lambertian map. */
-    std::string lamFileName = "lam_" + s72Instance->envFileName;
+    std::string lamFileName = s72Instance->envFileName + "_lam.png";
     CreateCubeTextureImageAndView(lamFileName,lamTextureImage,lamTextureImageMemory,lamTextureImageView);
 
     /* TODO: Create the GGX map. */

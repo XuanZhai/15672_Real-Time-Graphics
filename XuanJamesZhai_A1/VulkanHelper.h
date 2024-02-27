@@ -346,7 +346,7 @@ private:
     static std::array<VkVertexInputBindingDescription2EXT,2> CreateBindingDescription(const S72Object::Mesh& newMesh);
 
     /* Form an attribute description struct based on the info of a mesh instance. */
-    static std::array<VkVertexInputAttributeDescription2EXT, 7> CreateAttributeDescription(const S72Object::Mesh& newMesh);
+    static std::array<VkVertexInputAttributeDescription2EXT, 9> CreateAttributeDescription(const S72Object::Mesh& newMesh);
 
     /* Create the index buffer to store the index relations. */
     void CreateIndexBuffer(const S72Object::Mesh& newMesh, VkMesh& vkMesh);

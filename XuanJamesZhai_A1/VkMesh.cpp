@@ -5,6 +5,9 @@
 #include "VkMesh.h"
 
 
+/**
+ * @brief Destruct the buffers and free the memory.
+ */
 void VkMesh::CleanUp(){
 
         vkDestroyBuffer(device, vertexBuffer, nullptr);

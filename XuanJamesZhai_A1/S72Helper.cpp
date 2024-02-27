@@ -24,7 +24,9 @@ std::unordered_map<std::string, VkPrimitiveTopology> topologyMap = {
 
 std::unordered_map<std::string,VkFormat> formatMap = {
         {"R32G32B32_SFLOAT", VK_FORMAT_R32G32B32_SFLOAT},
-        {"R8G8B8A8_UNORM",VK_FORMAT_R8G8B8_UNORM}
+        {"R8G8B8A8_UNORM",VK_FORMAT_R8G8B8_UNORM},
+        {"R32G32B32A32_SFLOAT", VK_FORMAT_R32G32B32A32_SFLOAT},
+        {"R32G32_SFLOAT", VK_FORMAT_R32G32_SFLOAT}
 };
 
 
@@ -38,7 +40,7 @@ std::string S72Helper::s72fileName;
  * @brief Default Constructor
  */
 S72Object::Camera::Camera() {
-    cameraPos = XZM::vec3(12.493f,-3.00024f,3.50548f);
+    cameraPos = XZM::vec3(0,-10,0);
     cameraDir = XZM::Normalize(XZM::vec3(0,0,0)-cameraPos);
     aspect = 1.7778f;
     v_fov = 0.287167f;
@@ -206,6 +208,8 @@ S72Object::Mesh::Mesh(std::shared_ptr<ParserNode>& node){
 
     pFormat = VK_FORMAT_R32G32B32_SFLOAT;
     nFormat = VK_FORMAT_R32G32B32_SFLOAT;
+    taFormat = VK_FORMAT_R32G32B32A32_SFLOAT;
+    teFormat = VK_FORMAT_R32G32_SFLOAT;
     cFormat = VK_FORMAT_R8G8B8A8_UNORM;
 }
 
@@ -230,6 +234,8 @@ void S72Object::Mesh::ProcessMesh(){
 
     std::shared_ptr<ParserNode> position = attributes->GetObjectValue("POSITION");
     std::shared_ptr<ParserNode> normal = attributes->GetObjectValue("NORMAL");
+    std::shared_ptr<ParserNode> tangent = attributes->GetObjectValue("TANGENT");
+    std::shared_ptr<ParserNode> texcoord = attributes->GetObjectValue("TEXCOORD");
     std::shared_ptr<ParserNode> color = attributes->GetObjectValue("COLOR");
 
     std::shared_ptr<ParserNode> new_src = position->GetObjectValue("src");
@@ -241,15 +247,23 @@ void S72Object::Mesh::ProcessMesh(){
     std::shared_ptr<ParserNode> new_nOffset = normal->GetObjectValue("offset");
     std::shared_ptr<ParserNode> new_nFormat = normal->GetObjectValue("format");
 
+    std::shared_ptr<ParserNode> new_taOffset = tangent->GetObjectValue("offset");
+    std::shared_ptr<ParserNode> new_taFormat = tangent->GetObjectValue("format");
+
+    std::shared_ptr<ParserNode> new_teOffset = texcoord->GetObjectValue("offset");
+    std::shared_ptr<ParserNode> new_teFormat = texcoord->GetObjectValue("format");
+
     std::shared_ptr<ParserNode> new_cOffset = color->GetObjectValue("offset");
     std::shared_ptr<ParserNode> new_cFormat = color->GetObjectValue("format");
 
     name = std::get<std::string>(new_name->data);
     count = (uint32_t) std::get<float>(new_count->data);
-
     stride = (uint32_t) std::get<float>(new_stride->data);
+
     pOffset = (uint32_t) std::get<float>(new_pOffset->data);
     nOffset = (uint32_t) std::get<float>(new_nOffset->data);
+    taOffset = (uint32_t) std::get<float>(new_taOffset->data);
+    teOffset = (uint32_t) std::get<float>(new_teOffset->data);
     cOffset = (uint32_t) std::get<float>(new_cOffset->data);
 
     SetSrc(std::get<std::string>(new_src->data));
@@ -257,7 +271,9 @@ void S72Object::Mesh::ProcessMesh(){
 
     SetFormat(0,std::get<std::string>(new_pFormat->data));
     SetFormat(1,std::get<std::string>(new_nFormat->data));
-    SetFormat(2,std::get<std::string>(new_cFormat->data));
+    SetFormat(2,std::get<std::string>(new_taFormat->data));
+    SetFormat(3,std::get<std::string>(new_teFormat->data));
+    SetFormat(4,std::get<std::string>(new_cFormat->data));
 
     if((*pnMap).count("indices")){
         std::shared_ptr<ParserNode> indices = data->GetObjectValue("indices");
@@ -332,7 +348,12 @@ void S72Object::Mesh::SetFormat(size_t channel, const std::string& format){
 
     if(channel == 0) pFormat = formatMap[format];
     else if(channel == 1) nFormat = formatMap[format];
-    else cFormat = formatMap[format];
+    else if(channel == 2) taFormat = formatMap[format];
+    else if(channel == 3) teFormat = formatMap[format];
+    else if(channel == 4) cFormat = formatMap[format];
+    else{
+        throw std::runtime_error("Set Mesh Error: Does not find a correspond format. ");
+    }
 }
 
 
@@ -360,22 +381,16 @@ void S72Object::Mesh::ReadBoundingBox(std::stringstream& buffer){
 
     /* The size of the position, normal, and color are determined by the offsets. */
     long long posSize = (nOffset - pOffset) / 3;
-    long long normSize = (cOffset-nOffset) / 3;
-    long long colorSize = (stride - cOffset) / 4;
+    long long posGap = stride - nOffset;
+
+    std::shared_ptr<char> garbage(new char[posGap]);
 
     for(size_t i = 0; i < count; i++){
         buffer.read(reinterpret_cast<char*>(&currPos.data[0]), posSize);
         buffer.read(reinterpret_cast<char*>(&currPos.data[1]), posSize);
         buffer.read(reinterpret_cast<char*>(&currPos.data[2]), posSize);
 
-        buffer.read(reinterpret_cast<char*>(&currNormal.data[0]), normSize);
-        buffer.read(reinterpret_cast<char*>(&currNormal.data[1]), normSize);
-        buffer.read(reinterpret_cast<char*>(&currNormal.data[2]), normSize);
-
-        buffer.read(reinterpret_cast<char*>(&currColor.data[0]), colorSize);
-        buffer.read(reinterpret_cast<char*>(&currColor.data[1]), colorSize);
-        buffer.read(reinterpret_cast<char*>(&currColor.data[2]), colorSize);
-        buffer.read(reinterpret_cast<char*>(&currColor.data[2]), colorSize);
+        buffer.read(garbage.get(), posGap);
 
         /* Update the min/max position in different axis. */
         boundingBox.b_min.data[0] = std::min(currPos.data[0], boundingBox.b_min.data[0]);
@@ -589,7 +604,7 @@ void S72Helper::ReconstructRoot() {
         }
         else if(std::get<std::string>(node->GetObjectValue("type")->data) == "ENVIRONMENT"){
             auto radNode = node->GetObjectValue("radiance");
-            envFileName = std::get<std::string>(radNode->GetObjectValue("src")->data);
+            envFileName = S72Helper::s72fileName + "/../" + std::get<std::string>(radNode->GetObjectValue("src")->data);
         }
         else if(std::get<std::string>(node->GetObjectValue("type")->data) == "MATERIAL"){
             std::shared_ptr<S72Object::Material> material = nullptr;

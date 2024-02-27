@@ -121,10 +121,14 @@ namespace S72Object {
             /* Position, Normal, and Color Vulkan formats */
             VkFormat pFormat;
             VkFormat nFormat;
+            VkFormat taFormat;
+            VkFormat teFormat;
             VkFormat cFormat;
             /* Position, Normal, and Color Vulkan offsets */
             uint32_t pOffset = 0;
             uint32_t nOffset = 0;
+            uint32_t taOffset = 0;
+            uint32_t teOffset = 0;
             uint32_t cOffset = 0;
 
             /* If we use indexed drawing and its index data. */

@@ -7,8 +7,9 @@
 
 #include "VkMaterial.h"
 
-struct UniformBufferObject;
-
+/**
+ * @brief A subclass of VkMaterial, used for the simple color material.
+ */
 class VkMaterial_Simple : public VkMaterial{
 
 public:

@@ -4,6 +4,10 @@
 
 #include "S72Materials.h"
 
+/**
+ * @brief Read a node and load all the info.
+ * @param node The node we want to load.
+ */
 void S72Object::Material::ProcessMaterial(const std::shared_ptr<ParserNode>& node){
 
 
@@ -14,6 +18,10 @@ void S72Object::Material::ProcessMaterial(const std::shared_ptr<ParserNode>& nod
 }
 
 
+/**
+ * @brief Read a node and load all the info. Overrode for the lambertian material.
+ * @param node The node we want to load.
+ */
 void S72Object::Material_Lambertian::ProcessMaterial(const std::shared_ptr<ParserNode> &node) {
 
     name = std::get<std::string>(node->GetObjectValue("name")->data);

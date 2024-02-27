@@ -7,9 +7,11 @@ layout(binding = 0) uniform UniformBufferObject{
 } ubo;
 
 layout(location = 0) in vec3 inPosition;
-layout(location = 1) in vec3 normal;
-layout(location = 2) in vec4 inColor;
-layout(location = 3) in mat4 inModel;
+layout(location = 1) in vec3 inNormal;
+layout(location = 2) in vec4 inTangent;
+layout(location = 3) in vec2 inTexCoord;
+layout(location = 4) in vec4 inColor;
+layout(location = 5) in mat4 inModel;
 
 layout(location = 0) out vec4 fragColor;
 layout(location = 1) out vec3 fragNormal;
@@ -21,8 +23,8 @@ void main() {
     gl_Position = ubo.proj * ubo.view * inModel * vec4(inPosition, 1.0);
 
     fragColor = inColor;
-    fragNormal = (transpose(inverse(inModel)) * vec4(normal,1.0)).xyz;
-    fragTexCoord = vec2(0,0);
+    fragNormal = (transpose(inverse(inModel)) * vec4(inNormal,1.0)).xyz;
+    fragTexCoord = inTexCoord;
 
     fragPosition = (inModel * vec4(inPosition,1.0)).xyz;
 }

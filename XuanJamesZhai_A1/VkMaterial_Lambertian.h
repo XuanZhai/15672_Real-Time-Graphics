@@ -7,7 +7,9 @@
 
 #include "VkMaterial.h"
 
-
+/**
+ * @brief A subclass of VkMaterial, used for the environment and mirror material.
+ */
 class VkMaterial_Lambertian : public VkMaterial {
 
 public:

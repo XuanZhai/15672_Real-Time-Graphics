@@ -15,6 +15,6 @@ layout(binding = 0) uniform UniformBufferObject{
 } ubo;
 
 void main() {
-    vec3 light = mix(vec3(0,0,0), vec3(1,1,1), dot(normalize(fragNormal), vec3(0,0,1)) * 0.5 + 0.5);
-    outColor = vec4(light * fragColor.xyz, fragColor.w);
+    //vec3 light = mix(vec3(0,0,0), vec3(1,1,1), dot(normalize(fragNormal), vec3(0,0,1)) * 0.5 + 0.5);
+    outColor = vec4(fragColor.xyz, fragColor.w);
 }
