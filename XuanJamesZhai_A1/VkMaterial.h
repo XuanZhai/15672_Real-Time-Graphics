@@ -38,6 +38,12 @@ public:
 
     std::vector<VkDescriptorSet> descriptorSets;
 
+    VkImage normalImage = VK_NULL_HANDLE;
+
+    VkDeviceMemory normalImageMemory = VK_NULL_HANDLE;
+
+    VkImageView normalImageView = VK_NULL_HANDLE;
+
     /* Set the physical device. */
     void SetDevice(VkDevice newDevice);
 

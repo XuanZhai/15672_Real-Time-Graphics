@@ -24,6 +24,7 @@ void main() {
 
     fragColor = inColor;
     fragNormal = (transpose(inverse(inModel)) * vec4(inNormal,1.0)).xyz;
+
     fragTexCoord = vec2(0,0);
 
     fragPosition = (inModel * vec4(inPosition,1.0)).xyz;

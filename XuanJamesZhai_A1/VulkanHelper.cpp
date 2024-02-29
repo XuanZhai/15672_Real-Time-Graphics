@@ -1998,18 +1998,28 @@ void VulkanHelper::CreateMaterials(){
             std::shared_ptr<VkMaterial_Simple> newVkMaterial_Simple = std::make_shared<VkMaterial_Simple>();
             newVkMaterial_Simple->name = material.first;
             newVkMaterial_Simple->SetDevice(device);
+
+            /* Create the texture for the normal. */
+            CreateTextureImage(material.second->normal,material.second->normalWidth,material.second->normalHeight, material.second->normalChannel,material.second->normalMipLevels, newVkMaterial_Simple->normalImage,newVkMaterial_Simple->normalImageMemory);
+            CreateTextureImageView(newVkMaterial_Simple->normalImage,newVkMaterial_Simple->normalImageView, material.second->normalChannel,material.second->normalMipLevels);
+
             newVkMaterial_Simple->CreateDescriptorSetLayout();
             newVkMaterial_Simple->CreateDescriptorPool();
-            newVkMaterial_Simple->CreateDescriptorSets(uniformBuffers);
+            newVkMaterial_Simple->CreateDescriptorSets(uniformBuffers,textureSampler,newVkMaterial_Simple->normalImageView);
             newVkMaterial = std::dynamic_pointer_cast<VkMaterial>(newVkMaterial_Simple);
         }
         else if(material.first == "environment" || material.first == "mirror"){
             std::shared_ptr<VkMaterial_EnvironmentMirror> newVkMaterial_Env = std::make_shared<VkMaterial_EnvironmentMirror>();
             newVkMaterial_Env->name = material.first;
             newVkMaterial_Env->SetDevice(device);
+
+            /* Create the texture for the normal. */
+            CreateTextureImage(material.second->normal,material.second->normalWidth,material.second->normalHeight, material.second->normalChannel,material.second->normalMipLevels, newVkMaterial_Env->normalImage,newVkMaterial_Env->normalImageMemory);
+            CreateTextureImageView(newVkMaterial_Env->normalImage,newVkMaterial_Env->normalImageView, material.second->normalChannel,material.second->normalMipLevels);
+
             newVkMaterial_Env->CreateDescriptorSetLayout();
             newVkMaterial_Env->CreateDescriptorPool();
-            newVkMaterial_Env->CreateDescriptorSets(uniformBuffers,textureSampler,envTextureImageView);
+            newVkMaterial_Env->CreateDescriptorSets(uniformBuffers,textureSampler,newVkMaterial_Env->normalImageView,envTextureImageView);
             newVkMaterial = std::dynamic_pointer_cast<VkMaterial>(newVkMaterial_Env);
         }
         else if(material.first == "lambertian"){
@@ -2018,13 +2028,17 @@ void VulkanHelper::CreateMaterials(){
             newVkMaterial_Lam->SetDevice(device);
             std::shared_ptr<S72Object::Material_Lambertian> material_Lam = std::dynamic_pointer_cast<S72Object::Material_Lambertian>(material.second);
 
+            /* Create the texture for the normal. */
+            CreateTextureImage(material.second->normal,material.second->normalWidth,material.second->normalHeight, material.second->normalChannel,material.second->normalMipLevels, newVkMaterial_Lam->normalImage,newVkMaterial_Lam->normalImageMemory);
+            CreateTextureImageView(newVkMaterial_Lam->normalImage,newVkMaterial_Lam->normalImageView, material.second->normalChannel,material.second->normalMipLevels);
+
             /* Create the texture for the albedo. */
             CreateTextureImage(material_Lam->albedo,material_Lam->albedoWidth,material_Lam->albedoHeight, material_Lam->albedoChannel,material_Lam->albedoMipLevels, newVkMaterial_Lam->albedoImage,newVkMaterial_Lam->albedoImageMemory);
             CreateTextureImageView(newVkMaterial_Lam->albedoImage,newVkMaterial_Lam->albedoImageView, material_Lam->albedoChannel,material_Lam->albedoMipLevels);
 
             newVkMaterial_Lam->CreateDescriptorSetLayout();
             newVkMaterial_Lam->CreateDescriptorPool();
-            newVkMaterial_Lam->CreateDescriptorSets(uniformBuffers,textureSampler,lamTextureImageView);
+            newVkMaterial_Lam->CreateDescriptorSets(uniformBuffers,textureSampler, newVkMaterial_Lam->normalImageView, lamTextureImageView);
             newVkMaterial = std::dynamic_pointer_cast<VkMaterial>(newVkMaterial_Lam);
         }
 

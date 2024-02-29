@@ -17,6 +17,7 @@ layout(location = 0) out vec4 fragColor;
 layout(location = 1) out vec3 fragNormal;
 layout(location = 2) out vec2 fragTexCoord;
 layout(location = 3) out vec3 fragPosition;
+layout(location = 4) out mat3 TBN;
 
 void main() {
 
@@ -25,6 +26,13 @@ void main() {
     fragColor = inColor;
     fragNormal = normalize((transpose(inverse(inModel)) * vec4(inNormal,1.0)).xyz);
     fragTexCoord = inTexCoord;
+
+    vec3 T = (transpose(inverse(inModel)) * vec4(inTangent.xyz,1.0)).xyz;
+    vec3 B = cross(fragNormal,T);
+    if(inTangent.a < 0){
+        B = -B;
+    }
+    TBN = mat3(T, B, fragNormal);;
 
     fragPosition = (inModel * vec4(inPosition,1.0)).xyz;
 }

@@ -14,8 +14,9 @@ layout(binding = 0) uniform UniformBufferObject{
     vec3 viewPos;
 } ubo;
 
-layout(binding = 1) uniform sampler2D albedoSampler;
-layout(binding = 2) uniform samplerCube cubeSampler;
+layout(binding = 1) uniform sampler2D normalSampler;
+layout(binding = 2) uniform sampler2D albedoSampler;
+layout(binding = 3) uniform samplerCube cubeSampler;
 
 vec3 toneMapReinhard(vec3 color, float exposure) {
     return color / (color + vec3(1.0)) * exposure;

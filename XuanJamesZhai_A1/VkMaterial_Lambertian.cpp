@@ -11,7 +11,7 @@
  */
 void VkMaterial_Lambertian::CreateDescriptorSetLayout() {
 
-    std::array<VkDescriptorSetLayoutBinding,3> bindings{};
+    std::array<VkDescriptorSetLayoutBinding,4> bindings{};
 
     /* Set the binding info for ubo */
     bindings[0].binding = 0;
@@ -20,21 +20,26 @@ void VkMaterial_Lambertian::CreateDescriptorSetLayout() {
     bindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
     bindings[0].pImmutableSamplers = nullptr;
 
-    /* Set the cube map sampler */
+    /* Set the normal map sampler */
     bindings[1].binding = 1;
     bindings[1].descriptorCount = 1;
     bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     bindings[1].pImmutableSamplers = nullptr;
     bindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;     // Use the image sampler in the fragment shader stage.
 
-    /* Set the albedo map sampler */
+    /* Set the cube map sampler */
     bindings[2].binding = 2;
     bindings[2].descriptorCount = 1;
     bindings[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     bindings[2].pImmutableSamplers = nullptr;
     bindings[2].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;     // Use the image sampler in the fragment shader stage.
 
-    // TODO: May need the normal map.
+    /* Set the albedo map sampler */
+    bindings[3].binding = 3;
+    bindings[3].descriptorCount = 1;
+    bindings[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    bindings[3].pImmutableSamplers = nullptr;
+    bindings[3].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;     // Use the image sampler in the fragment shader stage.
 
     /* Combine all the bindings into a single object */
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
@@ -54,7 +59,7 @@ void VkMaterial_Lambertian::CreateDescriptorSetLayout() {
 void VkMaterial_Lambertian::CreateDescriptorPool() {
     /* Describe which descriptor types our descriptor sets are going to contain */
     /* The first is used for the uniform buffer. The second is used for the image sampler */
-    std::array<VkDescriptorPoolSize,3> poolSizes{};
+    std::array<VkDescriptorPoolSize,4> poolSizes{};
 
     poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
     poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
@@ -64,6 +69,9 @@ void VkMaterial_Lambertian::CreateDescriptorPool() {
 
     poolSizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     poolSizes[2].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+
+    poolSizes[3].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    poolSizes[3].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
     /* Create the pool info for allocation */
     VkDescriptorPoolCreateInfo poolInfo{};
@@ -84,7 +92,7 @@ void VkMaterial_Lambertian::CreateDescriptorPool() {
  * @param textureSampler The sampler for the texture.
  * @param cubeMap The lambertian cube map.
  */
-void VkMaterial_Lambertian::CreateDescriptorSets(const std::vector<VkBuffer> &uniformBuffers,VkSampler const &textureSampler, const VkImageView& cubeMap) {
+void VkMaterial_Lambertian::CreateDescriptorSets(const std::vector<VkBuffer> &uniformBuffers,VkSampler const &textureSampler, const VkImageView& normalMap, const VkImageView& cubeMap) {
     /* Create one descriptor set for each frame in flight */
     std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, descriptorSetLayout);
     VkDescriptorSetAllocateInfo allocInfo{};
@@ -105,6 +113,10 @@ void VkMaterial_Lambertian::CreateDescriptorSets(const std::vector<VkBuffer> &un
         bufferInfo.offset = 0;
         bufferInfo.range = sizeof(UniformBufferObject);
 
+        std::array<VkDescriptorImageInfo,1> normalMapInfo{};
+        normalMapInfo[0].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        normalMapInfo[0].imageView = normalMap;
+        normalMapInfo[0].sampler = textureSampler;
 
         std::array<VkDescriptorImageInfo,1> cubeMapInfo{};
         cubeMapInfo[0].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -116,7 +128,7 @@ void VkMaterial_Lambertian::CreateDescriptorSets(const std::vector<VkBuffer> &un
         albedoInfo[0].imageView = cubeMap;
         albedoInfo[0].sampler = textureSampler;
 
-        std::array<VkWriteDescriptorSet, 3> descriptorWrites{};
+        std::array<VkWriteDescriptorSet, 4> descriptorWrites{};
 
         descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[0].dstSet = descriptorSets[i];
@@ -131,16 +143,24 @@ void VkMaterial_Lambertian::CreateDescriptorSets(const std::vector<VkBuffer> &un
         descriptorWrites[1].dstBinding = 1;
         descriptorWrites[1].dstArrayElement = 0;
         descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrites[1].descriptorCount = cubeMapInfo.size();
-        descriptorWrites[1].pImageInfo = cubeMapInfo.data();
+        descriptorWrites[1].descriptorCount = normalMapInfo.size();
+        descriptorWrites[1].pImageInfo = normalMapInfo.data();
 
         descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[2].dstSet = descriptorSets[i];
         descriptorWrites[2].dstBinding = 2;
         descriptorWrites[2].dstArrayElement = 0;
         descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrites[2].descriptorCount = albedoInfo.size();
-        descriptorWrites[2].pImageInfo = albedoInfo.data();
+        descriptorWrites[2].descriptorCount = cubeMapInfo.size();
+        descriptorWrites[2].pImageInfo = cubeMapInfo.data();
+
+        descriptorWrites[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[3].dstSet = descriptorSets[i];
+        descriptorWrites[3].dstBinding = 3;
+        descriptorWrites[3].dstArrayElement = 0;
+        descriptorWrites[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWrites[3].descriptorCount = albedoInfo.size();
+        descriptorWrites[3].pImageInfo = albedoInfo.data();
 
         vkUpdateDescriptorSets(device, descriptorWrites.size(), descriptorWrites.data(), 0, nullptr);
     }

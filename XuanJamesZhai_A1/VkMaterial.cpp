@@ -22,4 +22,8 @@ void VkMaterial::CleanUp() {
     vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
     vkDestroyPipeline(device, pipeline, nullptr);
     vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+
+    vkDestroyImageView(device, normalImageView, nullptr);
+    vkDestroyImage(device, normalImage, nullptr);
+    vkFreeMemory(device, normalImageMemory, nullptr);
 }

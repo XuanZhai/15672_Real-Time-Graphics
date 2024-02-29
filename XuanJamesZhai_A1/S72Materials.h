@@ -8,6 +8,7 @@
 #include <string>
 #include <cmath>
 #include "S72Helper.h"
+#include "stb_image.h"
 
 
 namespace S72Object{
@@ -18,10 +19,16 @@ namespace S72Object{
     class Material{
         public:
             std::string name;
-            // TODO: May have other data.
+            std::string normal;
+            int normalHeight = 0;
+            int normalWidth = 0;
+            int normalChannel = 0;
+            uint32_t normalMipLevels;
 
             /* Read a node and load all the info. */
             virtual void ProcessMaterial(const std::shared_ptr<ParserNode>& node);
+
+            static void ReadPNG(const std::string& filename, std::string& src, int& width, int& height, int& nChannels, uint32_t& mipLevels);
     };
 
 

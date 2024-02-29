@@ -22,7 +22,7 @@ public:
 
     void CreateDescriptorPool() override;
 
-    void CreateDescriptorSets(const std::vector<VkBuffer>& uniformBuffers, const VkSampler& textureSampler, const VkImageView& cubeMap);
+    void CreateDescriptorSets(const std::vector<VkBuffer>& uniformBuffers, const VkSampler& textureSampler, const VkImageView& normalMap, const VkImageView& cubeMap);
 
     void CleanUp() override;
 };

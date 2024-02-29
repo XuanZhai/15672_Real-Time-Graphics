@@ -11,7 +11,7 @@
  */
 void VkMaterial_EnvironmentMirror::CreateDescriptorSetLayout() {
 
-    std::array<VkDescriptorSetLayoutBinding,2> bindings{};
+    std::array<VkDescriptorSetLayoutBinding,3> bindings{};
 
     /* Set the binding info for ubo */
     bindings[0].binding = 0;
@@ -20,14 +20,19 @@ void VkMaterial_EnvironmentMirror::CreateDescriptorSetLayout() {
     bindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
     bindings[0].pImmutableSamplers = nullptr;
 
-    /* Set the environment cube map sampler */
+    /* Set the normal map sampler */
     bindings[1].binding = 1;
     bindings[1].descriptorCount = 1;
     bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     bindings[1].pImmutableSamplers = nullptr;
     bindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;     // Use the image sampler in the fragment shader stage.
 
-    // TODO: May need the normal map.
+    /* Set the environment cube map sampler */
+    bindings[2].binding = 2;
+    bindings[2].descriptorCount = 1;
+    bindings[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    bindings[2].pImmutableSamplers = nullptr;
+    bindings[2].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;     // Use the image sampler in the fragment shader stage.
 
     /* Combine all the bindings into a single object */
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
@@ -47,13 +52,16 @@ void VkMaterial_EnvironmentMirror::CreateDescriptorSetLayout() {
 void VkMaterial_EnvironmentMirror::CreateDescriptorPool() {
     /* Describe which descriptor types our descriptor sets are going to contain */
     /* The first is used for the uniform buffer. The second is used for the image sampler */
-    std::array<VkDescriptorPoolSize,2> poolSizes{};
+    std::array<VkDescriptorPoolSize,3> poolSizes{};
 
     poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
     poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
     poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     poolSizes[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+
+    poolSizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    poolSizes[2].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
     /* Create the pool info for allocation */
     VkDescriptorPoolCreateInfo poolInfo{};
@@ -74,7 +82,7 @@ void VkMaterial_EnvironmentMirror::CreateDescriptorPool() {
  * @param textureSampler The sampler for the texture.
  * @param cubeMap The environment cube map.
  */
-void VkMaterial_EnvironmentMirror::CreateDescriptorSets(const std::vector<VkBuffer> &uniformBuffers, VkSampler const &textureSampler, VkImageView const &cubeMap) {
+void VkMaterial_EnvironmentMirror::CreateDescriptorSets(const std::vector<VkBuffer> &uniformBuffers, VkSampler const &textureSampler, const VkImageView& normalMap, VkImageView const &cubeMap) {
     /* Create one descriptor set for each frame in flight */
     std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, descriptorSetLayout);
     VkDescriptorSetAllocateInfo allocInfo{};
@@ -95,16 +103,17 @@ void VkMaterial_EnvironmentMirror::CreateDescriptorSets(const std::vector<VkBuff
         bufferInfo.offset = 0;
         bufferInfo.range = sizeof(UniformBufferObject);
 
+        std::array<VkDescriptorImageInfo,1> normalMapInfo{};
+        normalMapInfo[0].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        normalMapInfo[0].imageView = normalMap;
+        normalMapInfo[0].sampler = textureSampler;
 
-        std::vector<VkDescriptorImageInfo> imageInfo;
+        std::array<VkDescriptorImageInfo,1> cubeMapInfo{};
+        cubeMapInfo[0].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        cubeMapInfo[0].imageView = cubeMap;
+        cubeMapInfo[0].sampler = textureSampler;
 
-        VkDescriptorImageInfo cubeMapInfo;
-        cubeMapInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        cubeMapInfo.imageView = cubeMap;
-        cubeMapInfo.sampler = textureSampler;
-        imageInfo.emplace_back(cubeMapInfo);
-
-        std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
+        std::array<VkWriteDescriptorSet, 3> descriptorWrites{};
 
         descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[0].dstSet = descriptorSets[i];
@@ -119,8 +128,16 @@ void VkMaterial_EnvironmentMirror::CreateDescriptorSets(const std::vector<VkBuff
         descriptorWrites[1].dstBinding = 1;
         descriptorWrites[1].dstArrayElement = 0;
         descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrites[1].descriptorCount = imageInfo.size();
-        descriptorWrites[1].pImageInfo = imageInfo.data();
+        descriptorWrites[1].descriptorCount = normalMapInfo.size();
+        descriptorWrites[1].pImageInfo = normalMapInfo.data();
+
+        descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[2].dstSet = descriptorSets[i];
+        descriptorWrites[2].dstBinding = 2;
+        descriptorWrites[2].dstArrayElement = 0;
+        descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWrites[2].descriptorCount = cubeMapInfo.size();
+        descriptorWrites[2].pImageInfo = cubeMapInfo.data();
 
         vkUpdateDescriptorSets(device, descriptorWrites.size(), descriptorWrites.data(), 0, nullptr);
     }
