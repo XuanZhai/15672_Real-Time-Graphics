@@ -1767,8 +1767,8 @@ void VulkanHelper::CopyBufferToImageCube(VkBuffer buffer, VkImage image, uint32_
     uint64_t offset = 0;
 
     /* Set the order of the cube map. MAY CHANGE HERE. */
-    //std::array<uint32_t,6> faceOrder{0,1,2,3,4,5};
-    std::array<uint32_t,6> faceOrder{5,4,2,3,1,0};
+    std::array<uint32_t,6> faceOrder{0,1,2,3,4,5};
+    //std::array<uint32_t,6> faceOrder{5,4,2,3,1,0};
 
     /* Loop through each face. */
     for(uint32_t face = 0; face < 6; face++) {
