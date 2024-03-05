@@ -620,10 +620,15 @@ void S72Helper::ReconstructRoot() {
                 material_Simple->ProcessMaterial(node);
                 material = std::dynamic_pointer_cast<S72Object::Material>(material_Simple);
             }
-            if(std::get<std::string>(node->GetObjectValue("name")->data) == "lambertian"){
+            else if(std::get<std::string>(node->GetObjectValue("name")->data) == "lambertian"){
                 std::shared_ptr<S72Object::Material_Lambertian> material_Lam = std::make_shared<S72Object::Material_Lambertian>();
                 material_Lam->ProcessMaterial(node);
                 material = std::dynamic_pointer_cast<S72Object::Material>(material_Lam);
+            }
+            else if(std::get<std::string>(node->GetObjectValue("name")->data) == "pbr"){
+                std::shared_ptr<S72Object::Material_PBR> material_PBR = std::make_shared<S72Object::Material_PBR>();
+                material_PBR->ProcessMaterial(node);
+                material = std::dynamic_pointer_cast<S72Object::Material>(material_PBR);
             }
 
             materials.insert(std::make_pair(material->name, material));

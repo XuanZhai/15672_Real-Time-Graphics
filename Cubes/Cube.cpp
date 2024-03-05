@@ -9,7 +9,14 @@
 #include "stb_image.h"
 
 
-void Cube::LoadFace(const stbi_uc *src, int face, int width, int height) {
+/**
+ * @brief Load a face data from a loaded RGBE image. Stored as a float images.
+ * @param src The source RGBE image.
+ * @param face The face we want to load.
+ * @param width The image's width.
+ * @param height The image's height.
+ */
+void Cube::LoadFace(const stbi_uc *src, EFace face, int width, int height) {
 
     int numPixel = width * height;
     int offSet = numPixel * 4 * face;
@@ -42,9 +49,13 @@ void Cube::LoadFace(const stbi_uc *src, int face, int width, int height) {
 }
 
 
+/**
+ * @brief Read a RGBE src image from a given path and name.
+ * @param fileName The source file path and name.
+ */
 void Cube::ReadFile(const std::string &fileName) {
 
-    inputName = fileName;
+    srcName = fileName;
 
     stbi_uc* src = stbi_load(fileName.c_str(),&cubeMapWidth,&cubeMapHeight,&cubeMapChannel,0);
 
@@ -56,20 +67,20 @@ void Cube::ReadFile(const std::string &fileName) {
 
     for(int face = 0; face < 6; face++){
         cubeMaps[face] = new XZM::vec3*[cubeMapHeight];
-        //cubeMaps[face].resize(cubeMapHeight);
         for(int row = 0; row < cubeMapHeight; row++){
             cubeMaps[face][row] = new XZM::vec3[cubeMapWidth];
-            //cubeMaps[face][row].resize(cubeMapWidth);
         }
-
-        LoadFace(src,face,cubeMapWidth,cubeMapHeight);
+        LoadFace(src, static_cast<EFace>(face), cubeMapWidth, cubeMapHeight);
     }
 
     stbi_image_free(src);
-    std::cout << "Input loaded" << std::endl;
+    printf("Cube: Input cube map loaded.\n");
 }
 
 
+/**
+ * @brief Collect the brightest directions.
+ */
 void Cube::ProcessBright(){
     uint32_t bright = std::min< uint32_t >(cubeMapWidth*cubeMapHeight*6, 10000);
 
@@ -81,19 +92,20 @@ void Cube::ProcessBright(){
             for(uint32_t u = 0; u < cubeMapWidth; u++){
                 pixelList.emplace_back();
                 pixelList.back().first = std::max({cubeMaps[face][v][u].data[0],cubeMaps[face][v][u].data[1],cubeMaps[face][v][u].data[2]});
-                pixelList.back().second.face = face;
+                pixelList.back().second.face = static_cast<EFace>(face);
                 pixelList.back().second.v = v;
                 pixelList.back().second.u = u;
             }
         }
     }
 
+    /* Sort all the pixels with the brightness. */
     std::stable_sort(pixelList.rbegin(),pixelList.rend());
 
     for(auto i = 0; i < bright; i++){
-        XZM::vec3 sc; //maps to rightward axis on face
-        XZM::vec3 tc; //maps to upward axis on face
-        XZM::vec3 rc; //direction to face
+        XZM::vec3 sc;
+        XZM::vec3 tc;
+        XZM::vec3 rc;
 
         auto face = pixelList[i].second.face;
         auto u = pixelList[i].second.u;
@@ -142,6 +154,11 @@ void Cube::ProcessBright(){
 }
 
 
+/**
+ * @brief Given a direction, sum its project with the brightest directions.
+ * @param dir The input direction.
+ * @return A cos-weighted of the light info between the input direction and the bright directions.
+ */
 XZM::vec3 Cube::SumBrightDirection(const XZM::vec3& dir){
     XZM::vec3 ret = XZM::vec3();
     for (auto const &bd : brightDirections) {
@@ -151,6 +168,11 @@ XZM::vec3 Cube::SumBrightDirection(const XZM::vec3& dir){
 }
 
 
+/**
+ * @brief Project a given direction to the cube map, retrieve its color info.
+ * @param dir The input direction.
+ * @return The light info of that projected pixel on the cube map.
+ */
 XZM::vec3 Cube::Projection(const XZM::vec3 &dir) {
     float sc, tc, rc;
     uint32_t face;
@@ -166,7 +188,6 @@ XZM::vec3 Cube::Projection(const XZM::vec3 &dir) {
         else            { sc = -dir.data[0]; tc = -dir.data[1]; rc = dir.data[2]; face = EFace::Down; }
     }
 
-
     int32_t u = std::floor(0.5f * (sc / std::abs(rc) + 1.0f) * (float)cubeMapWidth);
     u = std::max(0, std::min(int32_t(cubeMapWidth)-1, u));
     int32_t v = std::floor(0.5f * (tc / std::abs(rc) + 1.0f) * (float)cubeMapHeight);
@@ -176,10 +197,17 @@ XZM::vec3 Cube::Projection(const XZM::vec3 &dir) {
 }
 
 
-void Cube::ReadFace(unsigned char*& dst, int face, int width, int height){
+/**
+ * @brief Read a face data to a RGBE image.
+ * @param dst The target image we want to store to.
+ * @param face The face index.
+ * @param width The output width.
+ * @param height The output height.
+ */
+void Cube::ReadFace(unsigned char*& dst, EFace face, uint32_t width, uint32_t height){
 
-    int numPixel = width * height;
-    int offSet = numPixel * 4 * face;
+    uint32_t numPixel = width * height;
+    uint32_t offSet = numPixel * 4 * face;
 
     for(int i = 0; i < height; i++){
         for(int j = 0; j < width; j++){
@@ -189,7 +217,6 @@ void Cube::ReadFace(unsigned char*& dst, int face, int width, int height){
 
             float d = std::max(r, std::max(g, b));
             if (d <= 1e-32f) {
-                //return glm::u8vec4(0,0,0,0);
                 dst[offSet + 4*i*width + 4*j] = 0;
                 dst[offSet + 4*i*width + 4*j+1] = 0;
                 dst[offSet + 4*i*width + 4*j+2] = 0;
@@ -199,7 +226,7 @@ void Cube::ReadFace(unsigned char*& dst, int face, int width, int height){
             int e;
             float fac = 255.999f * (std::frexp(d, &e) / d);
 
-            //value is too large to represent, clamp to bright white:
+            /* value is too large to represent, clamp. */
             if (e > 127) {
                 dst[offSet + 4*i*width + 4*j] = 0xff;
                 dst[offSet + 4*i*width + 4*j+1] = 0xff;
@@ -216,6 +243,9 @@ void Cube::ReadFace(unsigned char*& dst, int face, int width, int height){
 }
 
 
+/**
+ * @brief Reset the output data to 0.
+ */
 void Cube::ClearOutput(){
 
     if(outMaps[0] == nullptr || outMaps[0][0] == nullptr) return;
@@ -230,13 +260,18 @@ void Cube::ClearOutput(){
 }
 
 
+/**
+ * @brief Destruct all the allocated data.
+ */
 Cube::~Cube() {
     for(int face = 0; face < 6; face++){
+        /* Clear the cube map. */
         for(int row = 0; row < cubeMapHeight; row++){
             delete[] cubeMaps[face][row];
         }
         delete[] cubeMaps[face];
 
+        /* Clear the output map. */
         for(int row = 0; row < outMapHeight; row++){
             delete[] outMaps[face][row];
         }

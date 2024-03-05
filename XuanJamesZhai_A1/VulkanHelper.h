@@ -44,9 +44,11 @@ const std::unordered_map<std::string, std::array<std::string,2>> shaderMap = {
         {"simple", {"Shaders/simple.vert.spv","Shaders/simple.frag.spv"}},
         {"environment", {"Shaders/environment.vert.spv","Shaders/environment.frag.spv"}},
         {"mirror", {"Shaders/mirror.vert.spv","Shaders/mirror.frag.spv"}},
-        {"lambertian", {"Shaders/lambertian.vert.spv","Shaders/lambertian.frag.spv"}}
+        {"lambertian", {"Shaders/lambertian.vert.spv","Shaders/lambertian.frag.spv"}},
+        {"pbr", {"Shaders/pbr.vert.spv","Shaders/pbr.frag.spv"}}
 };
 
+const int GGX_LEVELS = 10;
 
 /* How many frames should be processed concurrently */
 const int MAX_FRAMES_IN_FLIGHT = 3;

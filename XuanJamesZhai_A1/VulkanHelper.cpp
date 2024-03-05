@@ -8,6 +8,7 @@
 #include "VkMaterial_Simple.h"
 #include "VkMaterial_EnvironmentMirror.h"
 #include "VkMaterial_Lambertian.h"
+#include "VkMaterial_PBR.h"
 #include <utility>
 
 
@@ -1983,7 +1984,15 @@ void VulkanHelper::CreateEnvironments(){
     std::string lamFileName = s72Instance->envFileName + "_lam.png";
     CreateCubeTextureImageAndView(lamFileName,lamTextureImage,lamTextureImageMemory,lamTextureImageView);
 
-    /* TODO: Create the GGX map. */
+    /* Create the ggx map. */
+    ggxTextureImage.resize(GGX_LEVELS);
+    ggxTextureImageMemory.resize(GGX_LEVELS);
+    ggxTextureImageView.resize(GGX_LEVELS);
+    for(int i = 0; i < GGX_LEVELS; i++){
+        std::string ggxFileName = s72Instance->envFileName + "_ggx_" + std::to_string(i) + ".png";
+        CreateCubeTextureImageAndView(ggxFileName,ggxTextureImage[i],ggxTextureImageMemory[i],ggxTextureImageView[i]);
+    }
+
 }
 
 
@@ -2023,23 +2032,50 @@ void VulkanHelper::CreateMaterials(){
             newVkMaterial = std::dynamic_pointer_cast<VkMaterial>(newVkMaterial_Env);
         }
         else if(material.first == "lambertian"){
-            std::shared_ptr<VkMaterial_Lambertian> newVkMaterial_Lam = std::make_shared<VkMaterial_Lambertian>();
-            newVkMaterial_Lam->name = material.first;
-            newVkMaterial_Lam->SetDevice(device);
+            std::shared_ptr<VkMaterial_Lambertian> Vk_lam = std::make_shared<VkMaterial_Lambertian>();
+            Vk_lam->name = material.first;
+            Vk_lam->SetDevice(device);
             std::shared_ptr<S72Object::Material_Lambertian> material_Lam = std::dynamic_pointer_cast<S72Object::Material_Lambertian>(material.second);
 
             /* Create the texture for the normal. */
-            CreateTextureImage(material.second->normal,material.second->normalWidth,material.second->normalHeight, material.second->normalChannel,material.second->normalMipLevels, newVkMaterial_Lam->normalImage,newVkMaterial_Lam->normalImageMemory);
-            CreateTextureImageView(newVkMaterial_Lam->normalImage,newVkMaterial_Lam->normalImageView, material.second->normalChannel,material.second->normalMipLevels);
+            CreateTextureImage(material.second->normal,material.second->normalWidth,material.second->normalHeight, material.second->normalChannel,material.second->normalMipLevels, Vk_lam->normalImage,Vk_lam->normalImageMemory);
+            CreateTextureImageView(Vk_lam->normalImage,Vk_lam->normalImageView, material.second->normalChannel,material.second->normalMipLevels);
 
             /* Create the texture for the albedo. */
-            CreateTextureImage(material_Lam->albedo,material_Lam->albedoWidth,material_Lam->albedoHeight, material_Lam->albedoChannel,material_Lam->albedoMipLevels, newVkMaterial_Lam->albedoImage,newVkMaterial_Lam->albedoImageMemory);
-            CreateTextureImageView(newVkMaterial_Lam->albedoImage,newVkMaterial_Lam->albedoImageView, material_Lam->albedoChannel,material_Lam->albedoMipLevels);
+            CreateTextureImage(material_Lam->albedo,material_Lam->albedoWidth,material_Lam->albedoHeight, material_Lam->albedoChannel,material_Lam->albedoMipLevels, Vk_lam->albedoImage,Vk_lam->albedoImageMemory);
+            CreateTextureImageView(Vk_lam->albedoImage,Vk_lam->albedoImageView, material_Lam->albedoChannel,material_Lam->albedoMipLevels);
 
-            newVkMaterial_Lam->CreateDescriptorSetLayout();
-            newVkMaterial_Lam->CreateDescriptorPool();
-            newVkMaterial_Lam->CreateDescriptorSets(uniformBuffers,textureSampler, newVkMaterial_Lam->normalImageView, lamTextureImageView);
-            newVkMaterial = std::dynamic_pointer_cast<VkMaterial>(newVkMaterial_Lam);
+            Vk_lam->CreateDescriptorSetLayout();
+            Vk_lam->CreateDescriptorPool();
+            Vk_lam->CreateDescriptorSets(uniformBuffers,textureSampler, Vk_lam->normalImageView, lamTextureImageView);
+            newVkMaterial = std::dynamic_pointer_cast<VkMaterial>(Vk_lam);
+        }
+        else if(material.first == "pbr"){
+            std::shared_ptr<VkMaterial_PBR> Vk_pbr = std::make_shared<VkMaterial_PBR>();
+            Vk_pbr->name = material.first;
+            Vk_pbr->SetDevice(device);
+            std::shared_ptr<S72Object::Material_PBR> material_PBR = std::dynamic_pointer_cast<S72Object::Material_PBR>(material.second);
+
+            /* Create the texture for the normal. */
+            CreateTextureImage(material.second->normal,material.second->normalWidth,material.second->normalHeight, material.second->normalChannel,material.second->normalMipLevels, Vk_pbr->normalImage,Vk_pbr->normalImageMemory);
+            CreateTextureImageView(Vk_pbr->normalImage,Vk_pbr->normalImageView, material.second->normalChannel,material.second->normalMipLevels);
+
+            /* Create the texture for the albedo. */
+            CreateTextureImage(material_PBR->albedo,material_PBR->albedoWidth,material_PBR->albedoHeight, material_PBR->albedoChannel,material_PBR->albedoMipLevels, Vk_pbr->albedoImage,Vk_pbr->albedoImageMemory);
+            CreateTextureImageView(Vk_pbr->albedoImage,Vk_pbr->albedoImageView, material_PBR->albedoChannel,material_PBR->albedoMipLevels);
+
+            /* Create the texture for the roughness. */
+            CreateTextureImage(material_PBR->roughness,material_PBR->roughnessWidth,material_PBR->roughnessHeight, 1,material_PBR->roughnessMipLevels, Vk_pbr->roughnessImage,Vk_pbr->roughnessImageMemory);
+            CreateTextureImageView(Vk_pbr->roughnessImage,Vk_pbr->roughnessImageView, 1,material_PBR->roughnessMipLevels);
+
+            /* Create the texture for the metallic. */
+            CreateTextureImage(material_PBR->metallic,material_PBR->metallicWidth,material_PBR->metallicHeight, 1,material_PBR->metallicMipLevels, Vk_pbr->metallicImage,Vk_pbr->metallicImageMemory);
+            CreateTextureImageView(Vk_pbr->metallicImage,Vk_pbr->metallicImageView, 1,material_PBR->metallicMipLevels);
+
+            Vk_pbr->CreateDescriptorSetLayout();
+            Vk_pbr->CreateDescriptorPool();
+            Vk_pbr->CreateDescriptorSets(uniformBuffers,textureSampler, Vk_pbr->normalImageView, ggxTextureImageView);
+            newVkMaterial = std::dynamic_pointer_cast<VkMaterial>(Vk_pbr);
         }
 
         /* Create the pipeline. */
@@ -2907,6 +2943,12 @@ void VulkanHelper::CleanUp()
     vkDestroyImageView(device, lamTextureImageView, nullptr);
     vkDestroyImage(device, lamTextureImage, nullptr);
     vkFreeMemory(device, lamTextureImageMemory, nullptr);
+
+    for(auto i = 0; i < GGX_LEVELS; i++){
+        vkDestroyImageView(device, ggxTextureImageView[i], nullptr);
+        vkDestroyImage(device, ggxTextureImage[i], nullptr);
+        vkFreeMemory(device, ggxTextureImageMemory[i], nullptr);
+    }
 
     vkDestroySampler(device, textureSampler, nullptr);
 

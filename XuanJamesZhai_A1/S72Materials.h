@@ -46,6 +46,28 @@ namespace S72Object{
 
             void ProcessMaterial(const std::shared_ptr<ParserNode>& node) override;
     };
+
+
+    class Material_PBR : public Material{
+        public:
+            std::string albedo;
+            int albedoHeight = 0;
+            int albedoWidth = 0;
+            int albedoChannel = 0;
+            uint32_t albedoMipLevels;
+
+            std::string roughness;
+            int roughnessHeight = 0;
+            int roughnessWidth = 0;
+            uint32_t roughnessMipLevels;
+
+            std::string metallic;
+            int metallicHeight = 0;
+            int metallicWidth = 0;
+            uint32_t metallicMipLevels;
+
+            void ProcessMaterial(const std::shared_ptr<ParserNode>& node) override;
+    };
 }
 
 

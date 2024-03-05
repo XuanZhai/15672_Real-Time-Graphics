@@ -3,6 +3,7 @@
 //
 
 #include "S72Materials.h"
+#include "stb_image.h"
 
 /**
  * @brief Read a node and load all the info.
@@ -89,7 +90,71 @@ void S72Object::Material_Lambertian::ProcessMaterial(const std::shared_ptr<Parse
         albedoWidth = 1;
         albedoChannel = 4;
         albedoMipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(albedoWidth, albedoHeight)))) + 1;
-    } else {
-        // TODO: Read a png albedo color map.
+    }
+    else {
+        std::string src = std::get<std::string>(newAlbedo->GetObjectValue("src")->data);
+        ReadPNG(src,albedo,albedoWidth,albedoHeight,albedoChannel,albedoMipLevels);
+    }
+}
+
+
+void S72Object::Material_PBR::ProcessMaterial(const std::shared_ptr<ParserNode>& node){
+
+    Material::ProcessMaterial(node);
+
+    if (node->GetObjectValue("pbr") == nullptr) {
+        throw std::runtime_error("It is not a pbr material!");
+    }
+
+    auto pbr = node->GetObjectValue("pbr");
+
+    /* Read the albedo value. */
+    auto albedoNode = pbr->GetObjectValue("albedo");
+    if (std::get_if<ParserNode::PNVector>(&albedoNode->data) != nullptr) {
+        ParserNode::PNVector color = std::get<ParserNode::PNVector>(albedoNode->data);
+
+        float r = std::get<float>(color[0]->data);
+        float g = std::get<float>(color[1]->data);
+        float b = std::get<float>(color[2]->data);
+
+        albedo = std::string() + (char) (r * 256) + (char) (g * 256) + (char) (b * 256) + (char)(255);
+        albedoHeight = 1;
+        albedoWidth = 1;
+        albedoChannel = 4;
+        albedoMipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(albedoWidth, albedoHeight)))) + 1;
+    }
+    else {
+        std::string src = std::get<std::string>(albedoNode->GetObjectValue("src")->data);
+        ReadPNG(src,albedo,albedoWidth,albedoHeight,albedoChannel,albedoMipLevels);
+    }
+
+    /* Read the roughness value. */
+    auto roughnessNode = pbr->GetObjectValue("roughness");
+    if(std::get_if<float>(&roughnessNode->data) != nullptr){
+        float r = std::get<float>(roughnessNode->data);
+        roughness = std::string() + (char) (r * 256);
+        roughnessWidth = 1;
+        roughnessHeight = 1;
+        roughnessMipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(roughnessWidth, roughnessHeight)))) + 1;
+    }
+    else{
+        std::string src = std::get<std::string>(roughnessNode->GetObjectValue("src")->data);
+        int tempChannel = 0;
+        ReadPNG(src,roughness,roughnessWidth,roughnessHeight,tempChannel,roughnessMipLevels);
+    }
+
+    /* Read the metallic value. */
+    auto metallicNode = pbr->GetObjectValue("metalness");
+    if(std::get_if<float>(&metallicNode->data) != nullptr){
+        float r = std::get<float>(metallicNode->data);
+        metallic = std::string() + (char) (r * 256);
+        metallicWidth = 1;
+        metallicHeight = 1;
+        metallicMipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(metallicWidth, metallicHeight)))) + 1;
+    }
+    else{
+        std::string src = std::get<std::string>(metallicNode->GetObjectValue("src")->data);
+        int tempChannel = 0;
+        ReadPNG(src,metallic,metallicWidth,metallicHeight,tempChannel,metallicMipLevels);
     }
 }

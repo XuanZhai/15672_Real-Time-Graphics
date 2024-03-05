@@ -27,14 +27,14 @@ void VkMaterial_Lambertian::CreateDescriptorSetLayout() {
     bindings[1].pImmutableSamplers = nullptr;
     bindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;     // Use the image sampler in the fragment shader stage.
 
-    /* Set the cube map sampler */
+    /* Set the albedo map sampler */
     bindings[2].binding = 2;
     bindings[2].descriptorCount = 1;
     bindings[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     bindings[2].pImmutableSamplers = nullptr;
     bindings[2].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;     // Use the image sampler in the fragment shader stage.
 
-    /* Set the albedo map sampler */
+    /* Set the cube map sampler */
     bindings[3].binding = 3;
     bindings[3].descriptorCount = 1;
     bindings[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -120,12 +120,12 @@ void VkMaterial_Lambertian::CreateDescriptorSets(const std::vector<VkBuffer> &un
 
         std::array<VkDescriptorImageInfo,1> cubeMapInfo{};
         cubeMapInfo[0].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        cubeMapInfo[0].imageView = albedoImageView;
+        cubeMapInfo[0].imageView = cubeMap;
         cubeMapInfo[0].sampler = textureSampler;
 
         std::array<VkDescriptorImageInfo,1> albedoInfo{};
         albedoInfo[0].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        albedoInfo[0].imageView = cubeMap;
+        albedoInfo[0].imageView = albedoImageView;
         albedoInfo[0].sampler = textureSampler;
 
         std::array<VkWriteDescriptorSet, 4> descriptorWrites{};
@@ -151,16 +151,16 @@ void VkMaterial_Lambertian::CreateDescriptorSets(const std::vector<VkBuffer> &un
         descriptorWrites[2].dstBinding = 2;
         descriptorWrites[2].dstArrayElement = 0;
         descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrites[2].descriptorCount = cubeMapInfo.size();
-        descriptorWrites[2].pImageInfo = cubeMapInfo.data();
+        descriptorWrites[2].descriptorCount = albedoInfo.size();
+        descriptorWrites[2].pImageInfo = albedoInfo.data();
 
         descriptorWrites[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[3].dstSet = descriptorSets[i];
         descriptorWrites[3].dstBinding = 3;
         descriptorWrites[3].dstArrayElement = 0;
         descriptorWrites[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrites[3].descriptorCount = albedoInfo.size();
-        descriptorWrites[3].pImageInfo = albedoInfo.data();
+        descriptorWrites[3].descriptorCount = cubeMapInfo.size();
+        descriptorWrites[3].pImageInfo = cubeMapInfo.data();
 
         vkUpdateDescriptorSets(device, descriptorWrites.size(), descriptorWrites.data(), 0, nullptr);
     }

@@ -8,19 +8,24 @@
 #include "Cube.h"
 #include <random>
 
+/* Reference: Inspired by https://github.com/ixchow/15-466-ibl/blob/master/cubes/blur_cube.cpp */
 
+
+/**
+ * @brief A child class of Cube. Create the Lambertian lookup table.
+ */
 class Lambertian : public Cube{
 
-
-    XZM::vec3 MakeSample() override;
+    /* Sample a direction. */
+    static XZM::vec3 MakeSample();
 
 public:
-
-    void Processing(uint32_t nSamples, int outWidth, int outHeight) override;
-
+    /* An override function for doing the Lambertian Monte-Carlo. */
+    void Processing(uint32_t nSamples, uint32_t outWidth, uint32_t outHeight) override;
+    /* Process the Lambertian Monte-Carlo for a given output face. */
     void ProcessingFace(EFace face);
-
-    void SaveOutput() override;
+    /* Save the output as a png file. */
+    void SaveOutput();
 };
 
 

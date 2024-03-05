@@ -4,6 +4,7 @@ layout(location = 0) in vec4 fragColor;
 layout(location = 1) in vec3 fragNormal;
 layout(location = 2) in vec2 fragTexCoord;
 layout(location = 3) in vec3 fragPosition;
+layout(location = 4) in mat3 TBN;
 
 layout(location = 0) out vec4 outColor;
 
@@ -24,8 +25,12 @@ vec3 toneMapReinhard(vec3 color, float exposure) {
 
 void main() {
 
+    vec3 normal = texture(normalSampler, fragTexCoord).rgb;
+    normal = normal * 2.0 - 1.0;
+    normal = normalize(TBN * normal);
+
     vec3 viewDir = normalize(fragPosition-ubo.viewPos);
-    vec3 reflectedDir = reflect(normalize(viewDir), normalize(fragNormal));
+    vec3 reflectedDir = reflect(normalize(viewDir), normal);
 
     vec3 baseColor = texture(albedoSampler, fragTexCoord).xyz;
 
