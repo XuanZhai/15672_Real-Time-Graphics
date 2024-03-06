@@ -1542,7 +1542,7 @@ void VulkanHelper::CreateCommandBuffers()
 * @param[in] imageIndex: The index of the current swap chain image we want to write to
 */
 void VulkanHelper::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex)
-{
+{ 
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     beginInfo.flags = 0; // Optional
@@ -1969,6 +1969,32 @@ void VulkanHelper::CreateCubeTextureImageAndView(const std::string& filename, Vk
 }
 
 
+void VulkanHelper::CreateBRDFImageAndView(const std::string& filename){
+
+    int texWidth;
+    int texHeight;
+    int texChannel;
+    auto src = stbi_load(filename.c_str(),&texWidth,&texHeight,&texChannel,0);
+
+    std::string str_src;
+    str_src.reserve(texWidth*texHeight*4);
+
+    for(auto i = 0; i < texWidth; i++){
+        for(auto j = 0; j < texHeight; j++){
+            str_src.push_back((char)src[i*texHeight*3 + j*3    ]);
+            str_src.push_back((char)src[i*texHeight*3 + j*3 + 1]);
+            str_src.push_back((char)src[i*texHeight*3 + j*3 + 2]);
+            str_src.push_back((char)1);
+        }
+    }
+
+    CreateTextureImage(str_src,10,10,4,1,pbrBRDFImage,pbrBRDFImageMemory);
+    CreateTextureImageView(pbrBRDFImage,pbrBRDFImageView,4,1);
+
+    stbi_image_free(src);
+}
+
+
 /**
  * @brief Create the environment cube maps.
  */
@@ -1985,13 +2011,16 @@ void VulkanHelper::CreateEnvironments(){
     CreateCubeTextureImageAndView(lamFileName,lamTextureImage,lamTextureImageMemory,lamTextureImageView);
 
     /* Create the ggx map. */
-    ggxTextureImage.resize(GGX_LEVELS);
-    ggxTextureImageMemory.resize(GGX_LEVELS);
-    ggxTextureImageView.resize(GGX_LEVELS);
+    pbrTextureImage.resize(GGX_LEVELS);
+    pbrTextureImageMemory.resize(GGX_LEVELS);
+    pbrTextureImageView.resize(GGX_LEVELS);
     for(int i = 0; i < GGX_LEVELS; i++){
         std::string ggxFileName = s72Instance->envFileName + "_ggx_" + std::to_string(i) + ".png";
-        CreateCubeTextureImageAndView(ggxFileName,ggxTextureImage[i],ggxTextureImageMemory[i],ggxTextureImageView[i]);
+        CreateCubeTextureImageAndView(ggxFileName,pbrTextureImage[i],pbrTextureImageMemory[i],pbrTextureImageView[i]);
     }
+
+    std::string brdfFileName = s72Instance->envFileName + "_ggx_brdf.png";
+    CreateBRDFImageAndView(brdfFileName);
 
 }
 
@@ -2009,12 +2038,16 @@ void VulkanHelper::CreateMaterials(){
             newVkMaterial_Simple->SetDevice(device);
 
             /* Create the texture for the normal. */
-            CreateTextureImage(material.second->normal,material.second->normalWidth,material.second->normalHeight, material.second->normalChannel,material.second->normalMipLevels, newVkMaterial_Simple->normalImage,newVkMaterial_Simple->normalImageMemory);
-            CreateTextureImageView(newVkMaterial_Simple->normalImage,newVkMaterial_Simple->normalImageView, material.second->normalChannel,material.second->normalMipLevels);
+            CreateTextureImage(material.second->normalMap,material.second->normalMapWidth,material.second->normalMapHeight, material.second->normalMapChannel,material.second->normalMipLevels, newVkMaterial_Simple->normalImage,newVkMaterial_Simple->normalImageMemory);
+            CreateTextureImageView(newVkMaterial_Simple->normalImage,newVkMaterial_Simple->normalImageView, material.second->normalMapChannel,material.second->normalMipLevels);
+
+            /* Create the texture for the height. */
+            CreateTextureImage(material.second->heightMap,material.second->heightMapWidth,material.second->heightMapHeight, material.second->heightMapChannel,material.second->heightMapMipLevels, newVkMaterial_Simple->heightImage,newVkMaterial_Simple->heightImageMemory);
+            CreateTextureImageView(newVkMaterial_Simple->heightImage,newVkMaterial_Simple->heightImageView, material.second->heightMapChannel,material.second->heightMapMipLevels);
 
             newVkMaterial_Simple->CreateDescriptorSetLayout();
             newVkMaterial_Simple->CreateDescriptorPool();
-            newVkMaterial_Simple->CreateDescriptorSets(uniformBuffers,textureSampler,newVkMaterial_Simple->normalImageView);
+            newVkMaterial_Simple->CreateDescriptorSets(uniformBuffers,textureSampler,newVkMaterial_Simple->normalImageView,newVkMaterial_Simple->heightImageView);
             newVkMaterial = std::dynamic_pointer_cast<VkMaterial>(newVkMaterial_Simple);
         }
         else if(material.first == "environment" || material.first == "mirror"){
@@ -2023,12 +2056,16 @@ void VulkanHelper::CreateMaterials(){
             newVkMaterial_Env->SetDevice(device);
 
             /* Create the texture for the normal. */
-            CreateTextureImage(material.second->normal,material.second->normalWidth,material.second->normalHeight, material.second->normalChannel,material.second->normalMipLevels, newVkMaterial_Env->normalImage,newVkMaterial_Env->normalImageMemory);
-            CreateTextureImageView(newVkMaterial_Env->normalImage,newVkMaterial_Env->normalImageView, material.second->normalChannel,material.second->normalMipLevels);
+            CreateTextureImage(material.second->normalMap,material.second->normalMapWidth,material.second->normalMapHeight, material.second->normalMapChannel,material.second->normalMipLevels, newVkMaterial_Env->normalImage,newVkMaterial_Env->normalImageMemory);
+            CreateTextureImageView(newVkMaterial_Env->normalImage,newVkMaterial_Env->normalImageView, material.second->normalMapChannel,material.second->normalMipLevels);
+
+            /* Create the texture for the height. */
+            CreateTextureImage(material.second->heightMap,material.second->heightMapWidth,material.second->heightMapHeight, material.second->heightMapChannel,material.second->heightMapMipLevels, newVkMaterial_Env->heightImage,newVkMaterial_Env->heightImageMemory);
+            CreateTextureImageView(newVkMaterial_Env->heightImage,newVkMaterial_Env->heightImageView, material.second->heightMapChannel,material.second->heightMapMipLevels);
 
             newVkMaterial_Env->CreateDescriptorSetLayout();
             newVkMaterial_Env->CreateDescriptorPool();
-            newVkMaterial_Env->CreateDescriptorSets(uniformBuffers,textureSampler,newVkMaterial_Env->normalImageView,envTextureImageView);
+            newVkMaterial_Env->CreateDescriptorSets(uniformBuffers,textureSampler,newVkMaterial_Env->normalImageView, newVkMaterial_Env->heightImageView, envTextureImageView);
             newVkMaterial = std::dynamic_pointer_cast<VkMaterial>(newVkMaterial_Env);
         }
         else if(material.first == "lambertian"){
@@ -2038,8 +2075,12 @@ void VulkanHelper::CreateMaterials(){
             std::shared_ptr<S72Object::Material_Lambertian> material_Lam = std::dynamic_pointer_cast<S72Object::Material_Lambertian>(material.second);
 
             /* Create the texture for the normal. */
-            CreateTextureImage(material.second->normal,material.second->normalWidth,material.second->normalHeight, material.second->normalChannel,material.second->normalMipLevels, Vk_lam->normalImage,Vk_lam->normalImageMemory);
-            CreateTextureImageView(Vk_lam->normalImage,Vk_lam->normalImageView, material.second->normalChannel,material.second->normalMipLevels);
+            CreateTextureImage(material.second->normalMap,material.second->normalMapWidth,material.second->normalMapHeight, material.second->normalMapChannel,material.second->normalMipLevels, Vk_lam->normalImage,Vk_lam->normalImageMemory);
+            CreateTextureImageView(Vk_lam->normalImage,Vk_lam->normalImageView, material.second->normalMapChannel,material.second->normalMipLevels);
+
+            /* Create the texture for the height. */
+            CreateTextureImage(material.second->heightMap,material.second->heightMapWidth,material.second->heightMapHeight, material.second->heightMapChannel,material.second->heightMapMipLevels, Vk_lam->heightImage,Vk_lam->heightImageMemory);
+            CreateTextureImageView(Vk_lam->heightImage,Vk_lam->heightImageView, material.second->heightMapChannel,material.second->heightMapMipLevels);
 
             /* Create the texture for the albedo. */
             CreateTextureImage(material_Lam->albedo,material_Lam->albedoWidth,material_Lam->albedoHeight, material_Lam->albedoChannel,material_Lam->albedoMipLevels, Vk_lam->albedoImage,Vk_lam->albedoImageMemory);
@@ -2047,7 +2088,7 @@ void VulkanHelper::CreateMaterials(){
 
             Vk_lam->CreateDescriptorSetLayout();
             Vk_lam->CreateDescriptorPool();
-            Vk_lam->CreateDescriptorSets(uniformBuffers,textureSampler, Vk_lam->normalImageView, lamTextureImageView);
+            Vk_lam->CreateDescriptorSets(uniformBuffers,textureSampler, Vk_lam->normalImageView, Vk_lam->heightImageView, lamTextureImageView);
             newVkMaterial = std::dynamic_pointer_cast<VkMaterial>(Vk_lam);
         }
         else if(material.first == "pbr"){
@@ -2057,8 +2098,12 @@ void VulkanHelper::CreateMaterials(){
             std::shared_ptr<S72Object::Material_PBR> material_PBR = std::dynamic_pointer_cast<S72Object::Material_PBR>(material.second);
 
             /* Create the texture for the normal. */
-            CreateTextureImage(material.second->normal,material.second->normalWidth,material.second->normalHeight, material.second->normalChannel,material.second->normalMipLevels, Vk_pbr->normalImage,Vk_pbr->normalImageMemory);
-            CreateTextureImageView(Vk_pbr->normalImage,Vk_pbr->normalImageView, material.second->normalChannel,material.second->normalMipLevels);
+            CreateTextureImage(material.second->normalMap,material.second->normalMapWidth,material.second->normalMapHeight, material.second->normalMapChannel,material.second->normalMipLevels, Vk_pbr->normalImage,Vk_pbr->normalImageMemory);
+            CreateTextureImageView(Vk_pbr->normalImage,Vk_pbr->normalImageView, material.second->normalMapChannel,material.second->normalMipLevels);
+
+            /* Create the texture for the height. */
+            CreateTextureImage(material.second->heightMap,material.second->heightMapWidth,material.second->heightMapHeight, material.second->heightMapChannel,material.second->heightMapMipLevels, Vk_pbr->heightImage,Vk_pbr->heightImageMemory);
+            CreateTextureImageView(Vk_pbr->heightImage,Vk_pbr->heightImageView, material.second->heightMapChannel,material.second->heightMapMipLevels);
 
             /* Create the texture for the albedo. */
             CreateTextureImage(material_PBR->albedo,material_PBR->albedoWidth,material_PBR->albedoHeight, material_PBR->albedoChannel,material_PBR->albedoMipLevels, Vk_pbr->albedoImage,Vk_pbr->albedoImageMemory);
@@ -2074,7 +2119,7 @@ void VulkanHelper::CreateMaterials(){
 
             Vk_pbr->CreateDescriptorSetLayout();
             Vk_pbr->CreateDescriptorPool();
-            Vk_pbr->CreateDescriptorSets(uniformBuffers,textureSampler, Vk_pbr->normalImageView, ggxTextureImageView);
+            Vk_pbr->CreateDescriptorSets(uniformBuffers,textureSampler, Vk_pbr->normalImageView, Vk_pbr->heightImageView, pbrTextureImageView,pbrBRDFImageView);
             newVkMaterial = std::dynamic_pointer_cast<VkMaterial>(Vk_pbr);
         }
 
@@ -2945,10 +2990,14 @@ void VulkanHelper::CleanUp()
     vkFreeMemory(device, lamTextureImageMemory, nullptr);
 
     for(auto i = 0; i < GGX_LEVELS; i++){
-        vkDestroyImageView(device, ggxTextureImageView[i], nullptr);
-        vkDestroyImage(device, ggxTextureImage[i], nullptr);
-        vkFreeMemory(device, ggxTextureImageMemory[i], nullptr);
+        vkDestroyImageView(device, pbrTextureImageView[i], nullptr);
+        vkDestroyImage(device, pbrTextureImage[i], nullptr);
+        vkFreeMemory(device, pbrTextureImageMemory[i], nullptr);
     }
+
+    vkDestroyImageView(device, pbrBRDFImageView, nullptr);
+    vkDestroyImage(device, pbrBRDFImage, nullptr);
+    vkFreeMemory(device, pbrBRDFImageMemory, nullptr);
 
     vkDestroySampler(device, textureSampler, nullptr);
 

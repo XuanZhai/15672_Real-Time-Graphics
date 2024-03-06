@@ -192,9 +192,13 @@ private:
     VkImageView lamTextureImageView = VK_NULL_HANDLE;
 
     /* Data for the ggx environment map. */
-    std::vector<VkImage> ggxTextureImage;
-    std::vector<VkDeviceMemory> ggxTextureImageMemory;
-    std::vector<VkImageView> ggxTextureImageView;
+    std::vector<VkImage> pbrTextureImage; 
+    std::vector<VkDeviceMemory> pbrTextureImageMemory;
+    std::vector<VkImageView> pbrTextureImageView;
+    
+    VkImage pbrBRDFImage;
+    VkDeviceMemory pbrBRDFImageMemory;
+    VkImageView pbrBRDFImageView;
 
     /* The texture sampler instance to sample the texture image */
     VkSampler textureSampler = VK_NULL_HANDLE;
@@ -391,6 +395,8 @@ private:
 
     /* Create the VkImage and the VkImageView for a cube map. */
     void CreateCubeTextureImageAndView(const std::string& filename, VkImage& image, VkDeviceMemory& imageMemory, VkImageView& imageView);
+
+    void CreateBRDFImageAndView(const std::string& filename);
 
     /* Create the three environment cube maps. */
     void CreateEnvironments();

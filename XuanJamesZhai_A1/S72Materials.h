@@ -19,11 +19,17 @@ namespace S72Object{
     class Material{
         public:
             std::string name;
-            std::string normal;
-            int normalHeight = 0;
-            int normalWidth = 0;
-            int normalChannel = 0;
+            std::string normalMap;
+            int normalMapHeight = 0;
+            int normalMapWidth = 0;
+            int normalMapChannel = 0;
             uint32_t normalMipLevels;
+
+            std::string heightMap;
+            int heightMapHeight = 0;
+            int heightMapWidth = 0;
+            int heightMapChannel = 0;
+            uint32_t heightMapMipLevels;
 
             /* Read a node and load all the info. */
             virtual void ProcessMaterial(const std::shared_ptr<ParserNode>& node);

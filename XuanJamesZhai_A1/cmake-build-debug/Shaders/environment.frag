@@ -15,7 +15,8 @@ layout(binding = 0) uniform UniformBufferObject{
 } ubo;
 
 layout(binding = 1) uniform sampler2D normalSampler;
-layout (binding = 2) uniform samplerCube cubeMapTexture;
+layout(binding = 2) uniform sampler2D heightSampler;
+layout (binding = 3) uniform samplerCube cubeMapTexture;
 
 
 vec3 toneMapReinhard(vec3 color, float exposure) {

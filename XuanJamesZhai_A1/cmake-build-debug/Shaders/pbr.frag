@@ -16,10 +16,13 @@ layout(binding = 0) uniform UniformBufferObject{
 } ubo;
 
 layout(binding = 1) uniform sampler2D normalSampler;
-layout(binding = 2) uniform sampler2D albedoSampler;
-layout(binding = 3) uniform sampler2D roughnessSampler;
-layout(binding = 4) uniform sampler2D metallicSampler;
-layout(binding = 5) uniform samplerCube cubeSampler[10];
+layout(binding = 2) uniform sampler2D heightSampler;
+layout(binding = 3) uniform sampler2D albedoSampler;
+layout(binding = 4) uniform sampler2D roughnessSampler;
+layout(binding = 5) uniform sampler2D metallicSampler;
+layout(binding = 6) uniform sampler2D brdfSampler;
+layout(binding = 7) uniform samplerCube cubeSampler[10];
+
 
 vec3 toneMapReinhard(vec3 color, float exposure) {
     return color / (color + vec3(1.0)) * exposure;
@@ -30,21 +33,8 @@ float SchlickFresnel(float cosTheta, vec3 F0) {
     return max(dot(F0, vec3(1.0 - cosTheta)), 0.0);
 }
 
-// Function to calculate the GGX (Trowbridge-Reitz) distribution function
-float DistributionGGX(float NdotH, float roughness) {
-    float a = roughness * roughness;
-    float a2 = a * a;
-    float NdotH2 = NdotH * NdotH;
 
-    float nom = a2;
-    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
-    denom = 3.14159 * denom * denom;
-
-    return nom / denom;
-}
-
-
-vec3 GetEnvBRDF(float roughness, vec3 R){
+vec3 GetEnv(float roughness, vec3 R){
     int lod = int(roughness*10);
     if(lod > 9) lod = 9;
     if(lod < 0) lod = 0;
@@ -52,9 +42,19 @@ vec3 GetEnvBRDF(float roughness, vec3 R){
     return texture(cubeSampler[lod], R).rgb;
 }
 
+vec2 GetBRDF(float roughness, float NoV){
 
-vec3 diffuse_brdf(vec3 color) {
-    return (1/3.14159) * color;
+    float roughnessLod = roughness*10;
+    float novLod = NoV*10;
+
+    if(roughnessLod > 9) roughnessLod = 9;
+    if(roughnessLod < 0) roughnessLod = 0;
+
+    if(novLod > 9) novLod = 9;
+    if(novLod < 0) novLod = 0;
+
+    vec2 tex = vec2(roughnessLod, novLod);
+    return texture(brdfSampler, tex).rg;
 }
 
 
@@ -73,26 +73,21 @@ void main() {
 
     // Sample pre-filtered map to get the roughness-dependent specular intensity
     float cosTheta = max(dot(R, V), 0.0);
-    vec3 envBRDF = GetEnvBRDF(roughness,R);
-
     // Fresnel term
     vec3 F0 = vec3(0.04); // Base reflectance for non-metals
     F0 = mix(F0, vec3(1.0), metallic);
-
     float F = SchlickFresnel(cosTheta, F0);
 
-    // Distribution function (GGX)
-    float D = DistributionGGX(cosTheta, roughness);
+    float NoV = max(0.0, min(1.0, dot(N,V)));
+    vec3 EnvColor = GetEnv( roughness, R );
+    vec2 EnvBRDF = GetBRDF( roughness, NoV );
 
-    // Final specular intensity
-    vec3 specular = F * D * envBRDF;
+    vec3 diffuse = texture(albedoSampler, fragTexCoord).xyz;
+    vec3 specular = EnvColor * ( F * EnvBRDF.x + EnvBRDF.y );
+    vec3 ambient = vec3(0.05); // Ambient color
 
-    // Final color
-    vec3 baseColor = texture(albedoSampler, fragTexCoord).xyz;
-    vec3 ambient = vec3(1.0); // Ambient color
-
-    vec3 color = (baseColor * (1.0 - F) * ambient + specular);
-
+    vec3 color = mix(diffuse, specular, metallic);
+    color += ambient;
 
     outColor = vec4(color,1.0);
 }

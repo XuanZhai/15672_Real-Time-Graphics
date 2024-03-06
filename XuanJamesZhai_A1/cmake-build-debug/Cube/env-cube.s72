@@ -21,7 +21,7 @@
 		"TEXCOORD": { "src":"env-cube.b72", "offset":40, "stride":52, "format":"R32G32_SFLOAT" },
 		"COLOR":    { "src":"env-cube.b72", "offset":48, "stride":52, "format":"R8G8B8A8_UNORM" }
 	},
-	"material":8
+	"material":7
 },
 {
 	"type":"MATERIAL",
@@ -32,21 +32,20 @@
 	"type":"MATERIAL",
 	"name":"environment",
 	"normalMap":{ "src":"normal.png" },
-	"displacementMap":{ "src":"displacement.png" },
 	"environment": { /* no parameters */ },
 },
 {
 	"type":"MATERIAL",
 	"name":"mirror",
-	"normalMap":{ "src":"normal.png" },
-	"displacementMap":{ "src":"displacement.png" },
+	"normalMap":{ "src":"bricks2_normal.png" },
+	"displacementMap":{ "src":"bricks2_disp.png" },
 	"mirror": { /* no parameters */ },
 },
 {
 	"type":"MATERIAL",
 	"name":"lambertian",
-	"normalMap":{ "src":"normal.png" },
-	"displacementMap":{ "src":"displacement.png" },
+	"normalMap":{ "src":"bricks2_normal.png" },
+	"displacementMap":{ "src":"bricks2_disp.png" },
 	"lambertian": {
 		"albedo": [0.5, 0.5, 0.85]
 	},
@@ -55,11 +54,10 @@
 	"type":"MATERIAL",
 	"name":"pbr",
 	"normalMap":{},
-	"displacementMap":{ "src":"displacement.png" },
 	"pbr":{
 		"albedo": [0.5, 0.5, 0.85],
-		"roughness": 0.9,
-		"metalness": 0.2
+		"roughness": 0.5,
+		"metalness": 0.9
 	},
 },
 {

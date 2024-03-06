@@ -20,6 +20,8 @@ class GGX : public Cube{
     /* The roughness input of the GGX sampling. from 0.0 to 1.0 */
     float roughness = 0.0f;
 
+    XZM::vec3** brdf = nullptr;
+
     /* The Van Der Corput sequence which mirrors a decimal binary representation around its decimal point. */
     static float RadicalInverse_VdC(unsigned int bits);
     /* The Hammersley Sequence for the low discrepancy sequence. */
@@ -27,13 +29,26 @@ class GGX : public Cube{
     /* Make a GGX sample based on the Hammersley Sequence. */
     [[nodiscard]] XZM::vec3 MakeSample(const std::pair<float,float>& Xi) const;
 
+
+    XZM::vec3 SumBrightDirection(const XZM::vec3& dir) override;
+
+    float GeometrySchlickGGX(float NdotV);
+    float GeometrySmith(const XZM::vec3& N, const XZM::vec3& V, const XZM::vec3& L);
+
 public:
     /* An override function for doing the GGX Monte-Carlo. */
     void Processing(uint32_t newNSamples, uint32_t outWidth, uint32_t outHeight) override;
     /* Process the Lambertian Monte-Carlo for a given output face. */
     void ProcessingFace(EFace face);
+
+    void ProcessBRDF();
+
+    void SaveBRDF();
+
     /* Save the output as a png file. */
     void SaveOutput();
+
+    ~GGX() override;
 };
 
 

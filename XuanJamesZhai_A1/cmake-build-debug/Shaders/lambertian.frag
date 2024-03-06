@@ -16,23 +16,67 @@ layout(binding = 0) uniform UniformBufferObject{
 } ubo;
 
 layout(binding = 1) uniform sampler2D normalSampler;
-layout(binding = 2) uniform sampler2D albedoSampler;
-layout(binding = 3) uniform samplerCube cubeSampler;
+layout(binding = 2) uniform sampler2D heightSampler;
+layout(binding = 3) uniform sampler2D albedoSampler;
+layout(binding = 4) uniform samplerCube cubeSampler;
 
 vec3 toneMapReinhard(vec3 color, float exposure) {
     return color / (color + vec3(1.0)) * exposure;
 }
 
+vec2 ParallaxMapping(vec2 texCoords, vec3 viewDir){
+    // number of depth layers
+    const float minLayers = 8.0;
+    const float maxLayers = 32.0;
+    float numLayers = mix(maxLayers, minLayers, max(dot(vec3(0.0, 0.0, 1.0), viewDir), 0.0));
+    // calculate the size of each layer
+    float layerDepth = 1.0 / numLayers;
+    // depth of current layer
+    float currentLayerDepth = 0.0;
+    // the amount to shift the texture coordinates per layer (from vector P)
+    vec2 P = viewDir.xy * 0.1;
+    vec2 deltaTexCoords = P / numLayers;
+
+    // get initial values
+    vec2  currentTexCoords     = texCoords;
+    float currentDepthMapValue = texture(heightSampler, currentTexCoords).r;
+
+    while(currentLayerDepth < currentDepthMapValue)
+    {
+        // shift texture coordinates along direction of P
+        currentTexCoords -= deltaTexCoords;
+        // get depthmap value at current texture coordinates
+        currentDepthMapValue = texture(heightSampler, currentTexCoords).r;
+        // get depth of next layer
+        currentLayerDepth += layerDepth;
+    }
+
+    // get texture coordinates before collision (reverse operations)
+    vec2 prevTexCoords = currentTexCoords + deltaTexCoords;
+
+    // get depth after and before collision for linear interpolation
+    float afterDepth  = currentDepthMapValue - currentLayerDepth;
+    float beforeDepth = texture(heightSampler, prevTexCoords).r - currentLayerDepth + layerDepth;
+
+    // interpolation of texture coordinates
+    float weight = afterDepth / (afterDepth - beforeDepth);
+    vec2 finalTexCoords = prevTexCoords * weight + currentTexCoords * (1.0 - weight);
+
+    return clamp(finalTexCoords,0,1);
+}
+
 void main() {
 
-    vec3 normal = texture(normalSampler, fragTexCoord).rgb;
+    vec3 viewDir = normalize(fragPosition-ubo.viewPos);
+    vec2 texCoord = ParallaxMapping(fragTexCoord,viewDir);
+
+    vec3 normal = texture(normalSampler, texCoord).rgb;
     normal = normal * 2.0 - 1.0;
     normal = normalize(TBN * normal);
 
-    vec3 viewDir = normalize(fragPosition-ubo.viewPos);
     vec3 reflectedDir = reflect(normalize(viewDir), normal);
 
-    vec3 baseColor = texture(albedoSampler, fragTexCoord).xyz;
+    vec3 baseColor = texture(albedoSampler, texCoord).xyz;
 
     vec3 lambert = toneMapReinhard(texture(cubeSampler, reflectedDir).xyz,1);
     //vec3 lambert = texture(cubeSampler, reflectedDir).xyz;

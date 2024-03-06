@@ -81,7 +81,7 @@ protected:
     /* Collect the brightest directions. */
     void ProcessBright();
     /* Given a direction, sum its project with the brightest directions. */
-    XZM::vec3 SumBrightDirection(const XZM::vec3& dir);
+    virtual XZM::vec3 SumBrightDirection(const XZM::vec3& dir);
     /* Project a given direction to the cube map, retrieve its color info. */
     XZM::vec3 Projection(const XZM::vec3& dir);
     /* Read a face data to a RGBE image. */

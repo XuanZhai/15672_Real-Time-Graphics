@@ -82,7 +82,7 @@ void Cube::ReadFile(const std::string &fileName) {
  * @brief Collect the brightest directions.
  */
 void Cube::ProcessBright(){
-    uint32_t bright = std::min< uint32_t >(cubeMapWidth*cubeMapHeight*6, 10000);
+    uint32_t bright = std::min< uint32_t >(cubeMapWidth*cubeMapHeight*6, 1000);
 
     std::vector<std::pair<float, Pixel_Ref>> pixelList;
     pixelList.resize(cubeMapWidth*cubeMapHeight*6);

@@ -54,6 +54,28 @@ XZM::vec3 GGX::MakeSample(const std::pair<float,float>& Xi) const{
 }
 
 
+XZM::vec3 GGX::SumBrightDirection(const XZM::vec3& dir){
+
+    XZM::vec3 ret = XZM::vec3();
+    float totalWeight = 0;
+
+    for (const auto& bd : brightDirections) {
+        float NoL = std::max(0.0f, std::min(1.0f, XZM::DotProduct(dir,bd.dir)));
+
+        if(NoL > 0.995) {
+            ret += (bd.light * NoL);
+            totalWeight += NoL;
+        }
+    }
+
+    //if(totalWeight != 0){
+        return ret;
+    //}
+    std::cout << "Here" << std::endl;
+    return ret;
+}
+
+
 /**
  * @brief An override function for doing the GGX Monte-Carlo.
  * @param newNSamples The number of samples.
@@ -74,6 +96,12 @@ void GGX::Processing(uint32_t newNSamples, uint32_t outWidth, uint32_t outHeight
             outMaps[face][row] = new XZM::vec3[outMapWidth];
         }
     }
+
+    brdf = new XZM::vec3*[10];
+    for(auto i = 0; i < 10; i++){
+        brdf[i] = new XZM::vec3[10];
+    }
+
     /* Create different output based on the roughness values. */
     for(int mip = 0; mip < 10; mip++) {
         /* Roughness is [0.0,1.0). */
@@ -88,7 +116,9 @@ void GGX::Processing(uint32_t newNSamples, uint32_t outWidth, uint32_t outHeight
 
         SaveOutput();
         ClearOutput();
+        ProcessBRDF();
     }
+    SaveBRDF();
 }
 
 
@@ -140,27 +170,98 @@ void GGX::ProcessingFace(EFace face) {
             XZM::vec3 N = XZM::Normalize(rc + sc * (2.0f * ((float) u + 0.5f) / (float) outMapHeight - 1.0f) +
                                          tc * (2.0f * ((float) v + 0.5f) / (float) outMapWidth - 1.0f));
             XZM::vec3 temp = (abs(N.data[2]) < 0.99f ? XZM::vec3(0.0f, 0.0f, 1.0f) : XZM::vec3(1.0f, 0.0f, 0.0f));
-            XZM::vec3 TX = XZM::Normalize(XZM::CrossProduct(N, temp));
-            XZM::vec3 TY = XZM::CrossProduct(N, TX);
+            XZM::vec3 TX = XZM::Normalize(XZM::CrossProduct(temp, N));
+            XZM::vec3 TY = XZM::Normalize(XZM::CrossProduct(N, TX));
+
+            XZM::vec3 V = N;
 
             XZM::vec3 acc = XZM::vec3(0.0f, 0.0f, 0.0f);
+            float totalWeight = 0;
 
             for (uint32_t i = 0; i < uint32_t(nSamples); ++i) {
                 /* Generate a sample based on the Hammersley sequence. */
                 auto Xi = Hammersley(i, nSamples);
                 XZM::vec3 sampleDir = MakeSample(Xi);
                 sampleDir = XZM::Normalize(XZM::vec3(TX * sampleDir.data[0] + TY * sampleDir.data[1] + N * sampleDir.data[2]));
-                /* Find its correspond cube map. */
-                acc += Projection(sampleDir);
+
+                XZM::vec3 L = XZM::Normalize(sampleDir *2 * XZM::DotProduct( V, sampleDir ) - V);
+                float NoL = std::max(0.0f, std::min(1.0f, XZM::DotProduct(N,L)));
+
+                if(NoL > 0){
+                    /* Find its correspond cube map. */
+                    acc += Projection(sampleDir) * NoL;
+                    totalWeight += NoL;
+                }
             }
             /* Average the result. */
-            acc = acc * (1.0f / float(nSamples));
-            /* Add the bright info. */
-            acc += SumBrightDirection(N);
+            acc = acc * (1.0f / totalWeight);
+            acc += (SumBrightDirection(N));
             outMaps[face][v][u] = acc;
+
+
         }
     }
     printf("GGX: Sampling face %d/6 and roughness %f Finished.\n",face+1,roughness);
+}
+
+
+float GGX::GeometrySchlickGGX(float NoV){
+    float a = roughness;
+    float k = (a * a) / 2.0f;
+
+    float nom   = NoV;
+    float denom = NoV * (1.0f - k) + k;
+
+    return nom / denom;
+}
+
+
+float GGX::GeometrySmith(const XZM::vec3& N, const XZM::vec3& V, const XZM::vec3& L){
+    float NoV = std::max(XZM::DotProduct(N, V), 0.0f);
+    float NoL = std::max(XZM::DotProduct(N, L), 0.0f);
+    float ggx2 = GeometrySchlickGGX(NoV);
+    float ggx1 = GeometrySchlickGGX(NoL);
+    return ggx1 * ggx2;
+}
+
+
+void GGX::ProcessBRDF(){
+
+    for(int i = 0; i < 10; i++){
+        float NoV = (float)i / 10;
+        XZM::vec3 V;
+        V.data[0] = sqrt( 1.0f - NoV * NoV ); // sin
+        V.data[1] = 0;
+        V.data[2] = NoV; // cos
+
+        float A = 0;
+        float B = 0;
+        XZM::vec3 N = XZM::vec3(0.0, 0.0, 1.0);
+        XZM::vec3 temp = (abs(N.data[2]) < 0.99f ? XZM::vec3(0.0f, 0.0f, 1.0f) : XZM::vec3(1.0f, 0.0f, 0.0f));
+        XZM::vec3 TX = XZM::Normalize(XZM::CrossProduct(temp, N));
+        XZM::vec3 TY = XZM::Normalize(XZM::CrossProduct(N, TX));
+
+        for(auto j = 0; j < nSamples; j++ ){
+            auto Xi = Hammersley( j, nSamples );
+            XZM::vec3 sampleDir = MakeSample(Xi);
+            sampleDir = XZM::Normalize(XZM::vec3(TX * sampleDir.data[0] + TY * sampleDir.data[1] + N * sampleDir.data[2]));
+            XZM::vec3 L = sampleDir * 2 * XZM::DotProduct( V, sampleDir ) - V;
+            float NoL = std::max(0.0f, std::min(1.0f, L.data[2]));
+            float NoH = std::max(0.0f, std::min(1.0f, sampleDir.data[2]));
+            float VoH = std::max(0.0f, std::min(1.0f, XZM::DotProduct(V,sampleDir)));
+
+            if( NoL > 0 ){
+                float G = GeometrySmith(N, V, L);
+                float G_Vis = (G * VoH) / (NoH * std::max(NoV,0.00001f));
+                float Fc = pow(1.0f - VoH, 5.0f);
+                A += (1.0f - Fc) * G_Vis;
+                B += Fc * G_Vis;
+            }
+        }
+        A /= float(nSamples);
+        B /= float(nSamples);
+        brdf[(size_t)(roughness*10)][i] = XZM::vec3(A,B,0);
+    }
 }
 
 
@@ -182,4 +283,34 @@ void GGX::SaveOutput() {
     stbi_write_png(outFileName.c_str(), (int)outMapWidth, (int)outMapHeight*6, 4, dst, (int)outMapWidth * 4);
 
     delete[] dst;
+}
+
+
+void GGX::SaveBRDF(){
+    auto* dst = new stbi_uc[10*10*3];
+
+    for(auto i = 0; i < 10; i++){
+        for(auto j = 0; j < 10; j++){
+            dst[i*30 + j*3    ] =  (stbi_uc)(255*brdf[i][j].data[0]);
+            dst[i*30 + j*3 + 1] = (stbi_uc)(255*brdf[i][j].data[1]);
+            dst[i*30 + j*3 + 2] = (stbi_uc)(255*brdf[i][j].data[2]);
+        }
+    }
+
+    /* Save to png. */
+    std::string outFileName = srcName + "_ggx_brdf.png";
+    stbi_write_png(outFileName.c_str(), 10, 10, 3, dst, 30);
+
+    delete[] dst;
+}
+
+GGX::~GGX() {
+    if(brdf == nullptr){
+        return;
+    }
+
+    for(auto i = 0; i < 10; i++){
+        delete[] brdf[i];
+    }
+    delete[] brdf;
 }

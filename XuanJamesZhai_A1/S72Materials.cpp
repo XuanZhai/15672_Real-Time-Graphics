@@ -18,16 +18,29 @@ void S72Object::Material::ProcessMaterial(const std::shared_ptr<ParserNode>& nod
         auto normalObject = node->GetObjectValue("normalMap");
         auto src = normalObject->GetObjectValue("src");
 
-        ReadPNG( S72Helper::s72fileName + "/../" + std::get<std::string>(src->data),normal,normalWidth,normalHeight,normalChannel,normalMipLevels);
+        ReadPNG( S72Helper::s72fileName + "/../" + std::get<std::string>(src->data),normalMap,normalMapWidth,normalMapHeight,normalMapChannel,normalMipLevels);
     }
     else{
-        normal = std::string() + (char) (0.5f * 256) + (char) (0.5f * 256) + (char) (255) + (char)(255);
-        normalWidth = 1;
-        normalHeight = 1;
-        normalChannel = 4;
+        normalMap = std::string() + (char) (0.5f * 256) + (char) (0.5f * 256) + (char) (255) + (char)(255);
+        normalMapWidth = 1;
+        normalMapHeight = 1;
+        normalMapChannel = 4;
         normalMipLevels = 1;
     }
 
+    if(node->GetObjectValue("displacementMap") != nullptr){
+        auto normalObject = node->GetObjectValue("displacementMap");
+        auto src = normalObject->GetObjectValue("src");
+
+        ReadPNG( S72Helper::s72fileName + "/../" + std::get<std::string>(src->data),heightMap,heightMapWidth,heightMapHeight,heightMapChannel,heightMapMipLevels);
+    }
+    else{
+        heightMap = std::string() + (char) (0 * 256);
+        heightMapWidth = 1;
+        heightMapHeight = 1;
+        heightMapChannel = 1;
+        heightMapMipLevels = 1;
+    }
 }
 
 

@@ -26,4 +26,8 @@ void VkMaterial::CleanUp() {
     vkDestroyImageView(device, normalImageView, nullptr);
     vkDestroyImage(device, normalImage, nullptr);
     vkFreeMemory(device, normalImageMemory, nullptr);
+
+    vkDestroyImageView(device, heightImageView, nullptr);
+    vkDestroyImage(device, heightImage, nullptr);
+    vkFreeMemory(device, heightImageMemory, nullptr);
 }

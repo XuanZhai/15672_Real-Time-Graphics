@@ -44,6 +44,12 @@ public:
 
     VkImageView normalImageView = VK_NULL_HANDLE;
 
+    VkImage heightImage = VK_NULL_HANDLE;
+
+    VkDeviceMemory heightImageMemory = VK_NULL_HANDLE;
+
+    VkImageView heightImageView = VK_NULL_HANDLE;
+
     /* Set the physical device. */
     void SetDevice(VkDevice newDevice);
 

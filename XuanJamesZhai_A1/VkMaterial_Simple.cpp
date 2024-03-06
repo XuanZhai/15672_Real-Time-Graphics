@@ -12,7 +12,7 @@
 void VkMaterial_Simple::CreateDescriptorSetLayout() {
 
     /* Set the binding info for ubo */
-    std::array<VkDescriptorSetLayoutBinding,2> bindings{};
+    std::array<VkDescriptorSetLayoutBinding,3> bindings{};
     bindings[0].binding = 0;
     bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;    // The type of descriptor is a uniform buffer object
     bindings[0].descriptorCount = 1;
@@ -25,6 +25,13 @@ void VkMaterial_Simple::CreateDescriptorSetLayout() {
     bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     bindings[1].pImmutableSamplers = nullptr;
     bindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;     // Use the image sampler in the fragment shader stage.
+
+    /* Set the height map sampler */
+    bindings[2].binding = 2;
+    bindings[2].descriptorCount = 1;
+    bindings[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    bindings[2].pImmutableSamplers = nullptr;
+    bindings[2].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;     // Use the image sampler in the fragment shader stage.
 
     /* Combine all the bindings into a single object */
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
@@ -45,13 +52,17 @@ void VkMaterial_Simple::CreateDescriptorPool() {
 
     /* Describe which descriptor types our descriptor sets are going to contain */
     /* The first is used for the uniform buffer. The second is used for the image sampler */
-    std::array<VkDescriptorPoolSize,2> poolSizes{};
+    std::array<VkDescriptorPoolSize,3> poolSizes{};
     poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
     poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
     /* Used for the normal map. */
     poolSizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
     poolSizes[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+
+    /* Used for the height map. */
+    poolSizes[2].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+    poolSizes[2].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
     /* Create the pool info for allocation */
     VkDescriptorPoolCreateInfo poolInfo{};
@@ -70,7 +81,7 @@ void VkMaterial_Simple::CreateDescriptorPool() {
  * @brief Create the descriptor set for the environment/mirror material.
  * @param uniformBuffers The UBO buffer..
  */
-void VkMaterial_Simple::CreateDescriptorSets(const std::vector<VkBuffer>& uniformBuffers,VkSampler const &textureSampler, const VkImageView& normalMap) {
+void VkMaterial_Simple::CreateDescriptorSets(const std::vector<VkBuffer>& uniformBuffers,VkSampler const &textureSampler, const VkImageView& normalMap, const VkImageView& heightMap) {
 
     /* Create one descriptor set for each frame in flight */
     std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, descriptorSetLayout);
@@ -97,7 +108,12 @@ void VkMaterial_Simple::CreateDescriptorSets(const std::vector<VkBuffer>& unifor
         normalMapInfo[0].imageView = normalMap;
         normalMapInfo[0].sampler = textureSampler;
 
-        std::array<VkWriteDescriptorSet,2> descriptorWrites{};
+        std::array<VkDescriptorImageInfo,1> heightMapInfo{};
+        heightMapInfo[0].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        heightMapInfo[0].imageView = heightMap;
+        heightMapInfo[0].sampler = textureSampler;
+
+        std::array<VkWriteDescriptorSet,3> descriptorWrites{};
 
         descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[0].dstSet = descriptorSets[i];
@@ -114,6 +130,14 @@ void VkMaterial_Simple::CreateDescriptorSets(const std::vector<VkBuffer>& unifor
         descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         descriptorWrites[1].descriptorCount = normalMapInfo.size();
         descriptorWrites[1].pImageInfo = normalMapInfo.data();
+
+        descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[2].dstSet = descriptorSets[i];
+        descriptorWrites[2].dstBinding = 2;
+        descriptorWrites[2].dstArrayElement = 0;
+        descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWrites[2].descriptorCount = heightMapInfo.size();
+        descriptorWrites[2].pImageInfo = heightMapInfo.data();
 
         vkUpdateDescriptorSets(device, descriptorWrites.size(), descriptorWrites.data(), 0, nullptr);
     }
