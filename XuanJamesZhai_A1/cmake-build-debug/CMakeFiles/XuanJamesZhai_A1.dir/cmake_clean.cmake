@@ -1,0 +1,41 @@
+file(REMOVE_RECURSE
+  "CMakeFiles/XuanJamesZhai_A1.dir/EventHelper.cpp.obj"
+  "CMakeFiles/XuanJamesZhai_A1.dir/EventHelper.cpp.obj.d"
+  "CMakeFiles/XuanJamesZhai_A1.dir/FrustumCulling.cpp.obj"
+  "CMakeFiles/XuanJamesZhai_A1.dir/FrustumCulling.cpp.obj.d"
+  "CMakeFiles/XuanJamesZhai_A1.dir/RenderHelper.cpp.obj"
+  "CMakeFiles/XuanJamesZhai_A1.dir/RenderHelper.cpp.obj.d"
+  "CMakeFiles/XuanJamesZhai_A1.dir/S72Helper.cpp.obj"
+  "CMakeFiles/XuanJamesZhai_A1.dir/S72Helper.cpp.obj.d"
+  "CMakeFiles/XuanJamesZhai_A1.dir/S72Materials.cpp.obj"
+  "CMakeFiles/XuanJamesZhai_A1.dir/S72Materials.cpp.obj.d"
+  "CMakeFiles/XuanJamesZhai_A1.dir/VkMaterial.cpp.obj"
+  "CMakeFiles/XuanJamesZhai_A1.dir/VkMaterial.cpp.obj.d"
+  "CMakeFiles/XuanJamesZhai_A1.dir/VkMaterial_EnvironmentMirror.cpp.obj"
+  "CMakeFiles/XuanJamesZhai_A1.dir/VkMaterial_EnvironmentMirror.cpp.obj.d"
+  "CMakeFiles/XuanJamesZhai_A1.dir/VkMaterial_Lambertian.cpp.obj"
+  "CMakeFiles/XuanJamesZhai_A1.dir/VkMaterial_Lambertian.cpp.obj.d"
+  "CMakeFiles/XuanJamesZhai_A1.dir/VkMaterial_PBR.cpp.obj"
+  "CMakeFiles/XuanJamesZhai_A1.dir/VkMaterial_PBR.cpp.obj.d"
+  "CMakeFiles/XuanJamesZhai_A1.dir/VkMaterial_Simple.cpp.obj"
+  "CMakeFiles/XuanJamesZhai_A1.dir/VkMaterial_Simple.cpp.obj.d"
+  "CMakeFiles/XuanJamesZhai_A1.dir/VkMesh.cpp.obj"
+  "CMakeFiles/XuanJamesZhai_A1.dir/VkMesh.cpp.obj.d"
+  "CMakeFiles/XuanJamesZhai_A1.dir/VulkanHelper.cpp.obj"
+  "CMakeFiles/XuanJamesZhai_A1.dir/VulkanHelper.cpp.obj.d"
+  "CMakeFiles/XuanJamesZhai_A1.dir/XZJParser.cpp.obj"
+  "CMakeFiles/XuanJamesZhai_A1.dir/XZJParser.cpp.obj.d"
+  "CMakeFiles/XuanJamesZhai_A1.dir/XZMath.cpp.obj"
+  "CMakeFiles/XuanJamesZhai_A1.dir/XZMath.cpp.obj.d"
+  "CMakeFiles/XuanJamesZhai_A1.dir/main.cpp.obj"
+  "CMakeFiles/XuanJamesZhai_A1.dir/main.cpp.obj.d"
+  "XuanJamesZhai_A1.exe"
+  "XuanJamesZhai_A1.exe.manifest"
+  "XuanJamesZhai_A1.lib"
+  "XuanJamesZhai_A1.pdb"
+)
+
+# Per-language clean rules from dependency scanning.
+foreach(lang CXX)
+  include(CMakeFiles/XuanJamesZhai_A1.dir/cmake_clean_${lang}.cmake OPTIONAL)
+endforeach()
