@@ -169,6 +169,38 @@ build CMakeFiles\XuanJamesZhai_A1.dir\VkMaterial_PBR.cpp.obj: CXX_COMPILER__Xuan
   TARGET_COMPILE_PDB = CMakeFiles\XuanJamesZhai_A1.dir\
   TARGET_PDB = XuanJamesZhai_A1.pdb
 
+build CMakeFiles\XuanJamesZhai_A1.dir\S72Material_Simple.cpp.obj: CXX_COMPILER__XuanJamesZhai_A1_Release F$:\Code\15672_Real-Time-Graphics\XuanJamesZhai_A1\S72Material_Simple.cpp || cmake_object_order_depends_target_XuanJamesZhai_A1
+  FLAGS = /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -MD -std:c++17
+  INCLUDES = -IC:\VulkanSDK\glfw-3.3.9.bin.WIN64\include -external:IC:\VulkanSDK\1.3.275.0\Include -external:W0
+  OBJECT_DIR = CMakeFiles\XuanJamesZhai_A1.dir
+  OBJECT_FILE_DIR = CMakeFiles\XuanJamesZhai_A1.dir
+  TARGET_COMPILE_PDB = CMakeFiles\XuanJamesZhai_A1.dir\
+  TARGET_PDB = XuanJamesZhai_A1.pdb
+
+build CMakeFiles\XuanJamesZhai_A1.dir\S72Material_EnvMirror.cpp.obj: CXX_COMPILER__XuanJamesZhai_A1_Release F$:\Code\15672_Real-Time-Graphics\XuanJamesZhai_A1\S72Material_EnvMirror.cpp || cmake_object_order_depends_target_XuanJamesZhai_A1
+  FLAGS = /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -MD -std:c++17
+  INCLUDES = -IC:\VulkanSDK\glfw-3.3.9.bin.WIN64\include -external:IC:\VulkanSDK\1.3.275.0\Include -external:W0
+  OBJECT_DIR = CMakeFiles\XuanJamesZhai_A1.dir
+  OBJECT_FILE_DIR = CMakeFiles\XuanJamesZhai_A1.dir
+  TARGET_COMPILE_PDB = CMakeFiles\XuanJamesZhai_A1.dir\
+  TARGET_PDB = XuanJamesZhai_A1.pdb
+
+build CMakeFiles\XuanJamesZhai_A1.dir\S72Material_Lambertian.cpp.obj: CXX_COMPILER__XuanJamesZhai_A1_Release F$:\Code\15672_Real-Time-Graphics\XuanJamesZhai_A1\S72Material_Lambertian.cpp || cmake_object_order_depends_target_XuanJamesZhai_A1
+  FLAGS = /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -MD -std:c++17
+  INCLUDES = -IC:\VulkanSDK\glfw-3.3.9.bin.WIN64\include -external:IC:\VulkanSDK\1.3.275.0\Include -external:W0
+  OBJECT_DIR = CMakeFiles\XuanJamesZhai_A1.dir
+  OBJECT_FILE_DIR = CMakeFiles\XuanJamesZhai_A1.dir
+  TARGET_COMPILE_PDB = CMakeFiles\XuanJamesZhai_A1.dir\
+  TARGET_PDB = XuanJamesZhai_A1.pdb
+
+build CMakeFiles\XuanJamesZhai_A1.dir\S72Material_PBR.cpp.obj: CXX_COMPILER__XuanJamesZhai_A1_Release F$:\Code\15672_Real-Time-Graphics\XuanJamesZhai_A1\S72Material_PBR.cpp || cmake_object_order_depends_target_XuanJamesZhai_A1
+  FLAGS = /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -MD -std:c++17
+  INCLUDES = -IC:\VulkanSDK\glfw-3.3.9.bin.WIN64\include -external:IC:\VulkanSDK\1.3.275.0\Include -external:W0
+  OBJECT_DIR = CMakeFiles\XuanJamesZhai_A1.dir
+  OBJECT_FILE_DIR = CMakeFiles\XuanJamesZhai_A1.dir
+  TARGET_COMPILE_PDB = CMakeFiles\XuanJamesZhai_A1.dir\
+  TARGET_PDB = XuanJamesZhai_A1.pdb
+
 
 # =============================================================================
 # Link build statements for EXECUTABLE target XuanJamesZhai_A1
@@ -177,7 +209,7 @@ build CMakeFiles\XuanJamesZhai_A1.dir\VkMaterial_PBR.cpp.obj: CXX_COMPILER__Xuan
 #############################################
 # Link the executable XuanJamesZhai_A1.exe
 
-build XuanJamesZhai_A1.exe: CXX_EXECUTABLE_LINKER__XuanJamesZhai_A1_Release CMakeFiles\XuanJamesZhai_A1.dir\main.cpp.obj CMakeFiles\XuanJamesZhai_A1.dir\XZJParser.cpp.obj CMakeFiles\XuanJamesZhai_A1.dir\VulkanHelper.cpp.obj CMakeFiles\XuanJamesZhai_A1.dir\S72Helper.cpp.obj CMakeFiles\XuanJamesZhai_A1.dir\XZMath.cpp.obj CMakeFiles\XuanJamesZhai_A1.dir\FrustumCulling.cpp.obj CMakeFiles\XuanJamesZhai_A1.dir\EventHelper.cpp.obj CMakeFiles\XuanJamesZhai_A1.dir\RenderHelper.cpp.obj CMakeFiles\XuanJamesZhai_A1.dir\VkMaterial.cpp.obj CMakeFiles\XuanJamesZhai_A1.dir\VkMesh.cpp.obj CMakeFiles\XuanJamesZhai_A1.dir\VkMaterial_Simple.cpp.obj CMakeFiles\XuanJamesZhai_A1.dir\VkMaterial_EnvironmentMirror.cpp.obj CMakeFiles\XuanJamesZhai_A1.dir\VkMaterial_Lambertian.cpp.obj CMakeFiles\XuanJamesZhai_A1.dir\S72Materials.cpp.obj CMakeFiles\XuanJamesZhai_A1.dir\VkMaterial_PBR.cpp.obj | C$:\VulkanSDK\1.3.275.0\Lib\vulkan-1.lib
+build XuanJamesZhai_A1.exe: CXX_EXECUTABLE_LINKER__XuanJamesZhai_A1_Release CMakeFiles\XuanJamesZhai_A1.dir\main.cpp.obj CMakeFiles\XuanJamesZhai_A1.dir\XZJParser.cpp.obj CMakeFiles\XuanJamesZhai_A1.dir\VulkanHelper.cpp.obj CMakeFiles\XuanJamesZhai_A1.dir\S72Helper.cpp.obj CMakeFiles\XuanJamesZhai_A1.dir\XZMath.cpp.obj CMakeFiles\XuanJamesZhai_A1.dir\FrustumCulling.cpp.obj CMakeFiles\XuanJamesZhai_A1.dir\EventHelper.cpp.obj CMakeFiles\XuanJamesZhai_A1.dir\RenderHelper.cpp.obj CMakeFiles\XuanJamesZhai_A1.dir\VkMaterial.cpp.obj CMakeFiles\XuanJamesZhai_A1.dir\VkMesh.cpp.obj CMakeFiles\XuanJamesZhai_A1.dir\VkMaterial_Simple.cpp.obj CMakeFiles\XuanJamesZhai_A1.dir\VkMaterial_EnvironmentMirror.cpp.obj CMakeFiles\XuanJamesZhai_A1.dir\VkMaterial_Lambertian.cpp.obj CMakeFiles\XuanJamesZhai_A1.dir\S72Materials.cpp.obj CMakeFiles\XuanJamesZhai_A1.dir\VkMaterial_PBR.cpp.obj CMakeFiles\XuanJamesZhai_A1.dir\S72Material_Simple.cpp.obj CMakeFiles\XuanJamesZhai_A1.dir\S72Material_EnvMirror.cpp.obj CMakeFiles\XuanJamesZhai_A1.dir\S72Material_Lambertian.cpp.obj CMakeFiles\XuanJamesZhai_A1.dir\S72Material_PBR.cpp.obj | C$:\VulkanSDK\1.3.275.0\Lib\vulkan-1.lib
   FLAGS = /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -MD
   LINK_FLAGS = /machine:x64 /INCREMENTAL:NO /subsystem:console
   LINK_LIBRARIES = glfw3.lib  C:\VulkanSDK\1.3.275.0\Lib\vulkan-1.lib  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib

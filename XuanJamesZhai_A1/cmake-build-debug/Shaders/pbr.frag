@@ -39,7 +39,7 @@ vec3 GetEnv(float roughness, vec3 R){
     if(lod > 9) lod = 9;
     if(lod < 0) lod = 0;
 
-    return texture(cubeSampler[lod], R).rgb;
+    return toneMapReinhard(texture(cubeSampler[lod], R).rgb,1);
 }
 
 vec2 GetBRDF(float roughness, float NoV){
@@ -58,23 +58,70 @@ vec2 GetBRDF(float roughness, float NoV){
 }
 
 
+/* Reference: https://learnopengl.com/Advanced-Lighting/Parallax-Mapping */
+vec2 ParallaxOcclusionMapping(vec2 texCoords, vec3 viewDir){
+    // number of depth layers
+    const float minLayers = 8.0;
+    const float maxLayers = 32.0;
+    float numLayers = mix(maxLayers, minLayers, max(dot(vec3(0.0, 0.0, 1.0), viewDir), 0.0));
+    // calculate the size of each layer
+    float layerDepth = 1.0 / numLayers;
+    // depth of current layer
+    float currentLayerDepth = 0.0;
+    // the amount to shift the texture coordinates per layer (from vector P)
+    vec2 P = viewDir.xy * 0.1;
+    vec2 deltaTexCoords = P / numLayers;
+
+    // get initial values
+    vec2  currentTexCoords     = texCoords;
+    float currentDepthMapValue = texture(heightSampler, currentTexCoords).r;
+
+    while(currentLayerDepth < currentDepthMapValue)
+    {
+        // shift texture coordinates along direction of P
+        currentTexCoords -= deltaTexCoords;
+        // get depthmap value at current texture coordinates
+        currentDepthMapValue = texture(heightSampler, currentTexCoords).r;
+        // get depth of next layer
+        currentLayerDepth += layerDepth;
+    }
+
+    // get texture coordinates before collision (reverse operations)
+    vec2 prevTexCoords = currentTexCoords + deltaTexCoords;
+
+    // get depth after and before collision for linear interpolation
+    float afterDepth  = currentDepthMapValue - currentLayerDepth;
+    float beforeDepth = texture(heightSampler, prevTexCoords).r - currentLayerDepth + layerDepth;
+
+    // interpolation of texture coordinates
+    float weight = afterDepth / (afterDepth - beforeDepth);
+    vec2 finalTexCoords = prevTexCoords * weight + currentTexCoords * (1.0 - weight);
+
+    return clamp(finalTexCoords,0,1);
+}
+
+
 void main() {
 
-    vec3 N = texture(normalSampler, fragTexCoord).rgb;
+    vec3 viewDir = normalize(fragPosition-ubo.viewPos) ;
+    vec2 texCoord = fragTexCoord;
+    texCoord.y = 1-texCoord.y;
+    texCoord = ParallaxOcclusionMapping(texCoord,viewDir);
+
+    vec3 N = texture(normalSampler, texCoord).rgb;
     N = N * 2.0 - 1.0;
     N = normalize(TBN * N);
 
     vec3 V = normalize(fragPosition-ubo.viewPos);
-    // Calculate the reflection vector
     vec3 R = reflect(-V, N);
 
-    float roughness = texture(roughnessSampler, fragTexCoord).r;
-    float metallic = texture(metallicSampler, fragTexCoord).r;
+    float roughness = texture(roughnessSampler, texCoord).r;
+    float metallic = texture(metallicSampler, texCoord).r;
 
     // Sample pre-filtered map to get the roughness-dependent specular intensity
     float cosTheta = max(dot(R, V), 0.0);
     // Fresnel term
-    vec3 F0 = vec3(0.04); // Base reflectance for non-metals
+    vec3 F0 = vec3(0.04);
     F0 = mix(F0, vec3(1.0), metallic);
     float F = SchlickFresnel(cosTheta, F0);
 
@@ -82,7 +129,7 @@ void main() {
     vec3 EnvColor = GetEnv( roughness, R );
     vec2 EnvBRDF = GetBRDF( roughness, NoV );
 
-    vec3 diffuse = texture(albedoSampler, fragTexCoord).xyz;
+    vec3 diffuse = texture(albedoSampler, texCoord).xyz;
     vec3 specular = EnvColor * ( F * EnvBRDF.x + EnvBRDF.y );
     vec3 ambient = vec3(0.05); // Ambient color
 

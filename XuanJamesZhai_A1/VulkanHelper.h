@@ -40,12 +40,12 @@
 
 
 /* A map of materials and its shader files. */
-const std::unordered_map<std::string, std::array<std::string,2>> shaderMap = {
-        {"simple", {"Shaders/simple.vert.spv","Shaders/simple.frag.spv"}},
-        {"environment", {"Shaders/environment.vert.spv","Shaders/environment.frag.spv"}},
-        {"mirror", {"Shaders/mirror.vert.spv","Shaders/mirror.frag.spv"}},
-        {"lambertian", {"Shaders/lambertian.vert.spv","Shaders/lambertian.frag.spv"}},
-        {"pbr", {"Shaders/pbr.vert.spv","Shaders/pbr.frag.spv"}}
+const std::unordered_map<S72Object::EMaterial, std::array<std::string,2>> shaderMap = {
+        {S72Object::EMaterial::simple, {"Shaders/simple.vert.spv","Shaders/simple.frag.spv"}},
+        {S72Object::EMaterial::environment, {"Shaders/environment.vert.spv","Shaders/environment.frag.spv"}},
+        {S72Object::EMaterial::mirror, {"Shaders/mirror.vert.spv","Shaders/mirror.frag.spv"}},
+        {S72Object::EMaterial::lambertian, {"Shaders/lambertian.vert.spv","Shaders/lambertian.frag.spv"}},
+        {S72Object::EMaterial::pbr, {"Shaders/pbr.vert.spv","Shaders/pbr.frag.spv"}}
 };
 
 const int GGX_LEVELS = 10;
@@ -176,7 +176,8 @@ private:
     std::vector<void*> uniformBuffersMapped;
 
     /* A map of VkMaterials hold all the material info in the GPU. */
-    std::unordered_map<std::string,std::shared_ptr<VkMaterial>> VkMaterials;
+    //std::unordered_map<S72Object::EMaterial, std::shared_ptr<VkMaterial>> VkMaterials;
+    std::map<std::shared_ptr<VkMaterial>,std::vector<std::shared_ptr<S72Object::Material>>> VkMaterials;
 
     /* The filename of the environment cube map. */
     std::string envFileName;
@@ -409,6 +410,8 @@ private:
 
     /* Create the image view to access and present the texture image. */
     void CreateTextureImageView(const VkImage& textureImage, VkImageView& textureImageView, int nChannels, uint32_t mipLevels);
+
+    void CreateMaterialImageView(const std::shared_ptr<S72Object::Material>&);
 
     /* Create the texture sampler to access the texture. */
     void CreateTextureSampler();

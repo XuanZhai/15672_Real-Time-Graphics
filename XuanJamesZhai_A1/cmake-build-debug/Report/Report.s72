@@ -1,0 +1,429 @@
+["s72-v1",
+{
+
+	"type":"CAMERA",
+	"name":"Camera",
+	"perspective":{
+		"aspect":1.77778,
+		"vfov":0.809784,
+		"near":0.1,
+		"far":100
+	}
+},
+{
+	"type":"NODE",
+	"name":"Camera",
+	"translation":[0,-12.0818,3.18315],
+	"rotation":[0.646949,0,0,0.762533],
+	"scale":[1,1,1],
+	"camera":1
+},
+{
+	"type":"NODE",
+	"name":"RotationCenter",
+	"translation":[0,0,0],
+	"rotation":[0,0,0,1],
+	"scale":[1,1,1]
+},
+{
+	"type":"NODE",
+	"name":"Cylinder.003",
+	"translation":[0,0,0],
+	"rotation":[0.707107,0,0,0.707107],
+	"scale":[1,1,1]
+},
+{
+	"type":"MATERIAL",
+	"name":"pbr: base",
+	"pbr":{
+		"albedo":[ 0.8005210161209106, 0.557878315448761, 0.789514422416687 ],
+		"roughness":0.20000000298023224,
+		"metalness":0.75
+	}
+},
+{
+	"type":"MESH",
+	"name":"Plane",
+	"topology":"TRIANGLE_LIST",
+	"count":6,
+	"attributes":{
+		"POSITION":{ "src":"Report.Plane.pnTtc.b72", "offset":0, "stride":52, "format":"R32G32B32_SFLOAT" },
+		"NORMAL":{ "src":"Report.Plane.pnTtc.b72", "offset":12, "stride":52, "format":"R32G32B32_SFLOAT" },
+		"TANGENT":{ "src":"Report.Plane.pnTtc.b72", "offset":24, "stride":52, "format":"R32G32B32A32_SFLOAT" },
+		"TEXCOORD":{ "src":"Report.Plane.pnTtc.b72", "offset":40, "stride":52, "format":"R32G32_SFLOAT" },
+		"COLOR":{ "src":"Report.Plane.pnTtc.b72", "offset":48, "stride":52, "format":"R8G8B8A8_UNORM" }
+	},
+	"material":5
+},
+{
+	"type":"NODE",
+	"name":"Plane",
+	"translation":[2.00766,-2.26217,-1.00925],
+	"rotation":[0,0,0,1],
+	"scale":[25,25,1],
+	"mesh":6
+},
+{
+	"type":"MESH",
+	"name":"Cube.001",
+	"topology":"TRIANGLE_LIST",
+	"count":36,
+	"attributes":{
+		"POSITION":{ "src":"Report.Cube.001.pnc.b72", "offset":0, "stride":28, "format":"R32G32B32_SFLOAT" },
+		"NORMAL":{ "src":"Report.Cube.001.pnc.b72", "offset":12, "stride":28, "format":"R32G32B32_SFLOAT" },
+		"COLOR":{ "src":"Report.Cube.001.pnc.b72", "offset":24, "stride":28, "format":"R8G8B8A8_UNORM" }
+	}
+},
+{
+	"type":"NODE",
+	"name":"Cube",
+	"translation":[-6,0,0],
+	"rotation":[0,0,0,1],
+	"scale":[1,1,1],
+	"mesh":8
+},
+{
+	"type":"MATERIAL",
+	"name":"environment: ball",
+	"normalMap":{ "src":"bricks2_normal.png" },
+	"displacementMap":{ "src":"bricks2_disp.png" },
+	"environment":{}
+},
+{
+	"type":"MESH",
+	"name":"Cube.002",
+	"topology":"TRIANGLE_LIST",
+	"count":36,
+	"attributes":{
+		"POSITION":{ "src":"Report.Cube.002.pnTtc.b72", "offset":0, "stride":52, "format":"R32G32B32_SFLOAT" },
+		"NORMAL":{ "src":"Report.Cube.002.pnTtc.b72", "offset":12, "stride":52, "format":"R32G32B32_SFLOAT" },
+		"TANGENT":{ "src":"Report.Cube.002.pnTtc.b72", "offset":24, "stride":52, "format":"R32G32B32A32_SFLOAT" },
+		"TEXCOORD":{ "src":"Report.Cube.002.pnTtc.b72", "offset":40, "stride":52, "format":"R32G32_SFLOAT" },
+		"COLOR":{ "src":"Report.Cube.002.pnTtc.b72", "offset":48, "stride":52, "format":"R8G8B8A8_UNORM" }
+	},
+	"material":10
+},
+{
+	"type":"NODE",
+	"name":"Cube.001",
+	"translation":[-3,0,0],
+	"rotation":[0,0,0,1],
+	"scale":[1,1,1],
+	"mesh":11
+},
+{
+	"type":"MATERIAL",
+	"name":"mirror: Material",
+	"normalMap":{ "src":"bricks2_normal.png" },
+	"displacementMap":{ "src":"bricks2_disp.png" },
+	"mirror":{}
+},
+{
+	"type":"MESH",
+	"name":"Cube.003",
+	"topology":"TRIANGLE_LIST",
+	"count":36,
+	"attributes":{
+		"POSITION":{ "src":"Report.Cube.003.pnTtc.b72", "offset":0, "stride":52, "format":"R32G32B32_SFLOAT" },
+		"NORMAL":{ "src":"Report.Cube.003.pnTtc.b72", "offset":12, "stride":52, "format":"R32G32B32_SFLOAT" },
+		"TANGENT":{ "src":"Report.Cube.003.pnTtc.b72", "offset":24, "stride":52, "format":"R32G32B32A32_SFLOAT" },
+		"TEXCOORD":{ "src":"Report.Cube.003.pnTtc.b72", "offset":40, "stride":52, "format":"R32G32_SFLOAT" },
+		"COLOR":{ "src":"Report.Cube.003.pnTtc.b72", "offset":48, "stride":52, "format":"R8G8B8A8_UNORM" }
+	},
+	"material":13
+},
+{
+	"type":"NODE",
+	"name":"Cube.002",
+	"translation":[0,0,0],
+	"rotation":[0,0,0,1],
+	"scale":[1,1,1],
+	"mesh":14
+},
+{
+	"type":"MATERIAL",
+	"name":"lambertian: rock",
+	"normalMap":{ "src":"normal_test.png" },
+	"displacementMap":{ "src":"disp_test.png" },
+	"lambertian":{
+		"albedo":[ 0.9, 0.5, 0.008 ]
+	}
+},
+{
+	"type":"MESH",
+	"name":"Cube.004",
+	"topology":"TRIANGLE_LIST",
+	"count":36,
+	"attributes":{
+		"POSITION":{ "src":"Report.Cube.004.pnTtc.b72", "offset":0, "stride":52, "format":"R32G32B32_SFLOAT" },
+		"NORMAL":{ "src":"Report.Cube.004.pnTtc.b72", "offset":12, "stride":52, "format":"R32G32B32_SFLOAT" },
+		"TANGENT":{ "src":"Report.Cube.004.pnTtc.b72", "offset":24, "stride":52, "format":"R32G32B32A32_SFLOAT" },
+		"TEXCOORD":{ "src":"Report.Cube.004.pnTtc.b72", "offset":40, "stride":52, "format":"R32G32_SFLOAT" },
+		"COLOR":{ "src":"Report.Cube.004.pnTtc.b72", "offset":48, "stride":52, "format":"R8G8B8A8_UNORM" }
+	},
+	"material":16
+},
+{
+	"type":"NODE",
+	"name":"Cube.003",
+	"translation":[3,0,0],
+	"rotation":[0,0,0,1],
+	"scale":[1,1,1],
+	"mesh":17
+},
+{
+	"type":"MESH",
+	"name":"Cube.005",
+	"topology":"TRIANGLE_LIST",
+	"count":36,
+	"attributes":{
+		"POSITION":{ "src":"Report.Cube.005.pnTtc.b72", "offset":0, "stride":52, "format":"R32G32B32_SFLOAT" },
+		"NORMAL":{ "src":"Report.Cube.005.pnTtc.b72", "offset":12, "stride":52, "format":"R32G32B32_SFLOAT" },
+		"TANGENT":{ "src":"Report.Cube.005.pnTtc.b72", "offset":24, "stride":52, "format":"R32G32B32A32_SFLOAT" },
+		"TEXCOORD":{ "src":"Report.Cube.005.pnTtc.b72", "offset":40, "stride":52, "format":"R32G32_SFLOAT" },
+		"COLOR":{ "src":"Report.Cube.005.pnTtc.b72", "offset":48, "stride":52, "format":"R8G8B8A8_UNORM" }
+	},
+	"material":5
+},
+{
+	"type":"NODE",
+	"name":"Cube.004",
+	"translation":[6,0,0],
+	"rotation":[0,0,0,1],
+	"scale":[1,1,1],
+	"mesh":19
+},
+{
+	"type":"MESH",
+	"name":"Plane.001",
+	"topology":"TRIANGLE_LIST",
+	"count":6,
+	"attributes":{
+		"POSITION":{ "src":"Report.Plane.001.pnTtc.b72", "offset":0, "stride":52, "format":"R32G32B32_SFLOAT" },
+		"NORMAL":{ "src":"Report.Plane.001.pnTtc.b72", "offset":12, "stride":52, "format":"R32G32B32_SFLOAT" },
+		"TANGENT":{ "src":"Report.Plane.001.pnTtc.b72", "offset":24, "stride":52, "format":"R32G32B32A32_SFLOAT" },
+		"TEXCOORD":{ "src":"Report.Plane.001.pnTtc.b72", "offset":40, "stride":52, "format":"R32G32_SFLOAT" },
+		"COLOR":{ "src":"Report.Plane.001.pnTtc.b72", "offset":48, "stride":52, "format":"R8G8B8A8_UNORM" }
+	},
+	"material":13
+},
+{
+	"type":"NODE",
+	"name":"Plane.001",
+	"translation":[0,4,4],
+	"rotation":[0.707107,0,0,0.707107],
+	"scale":[1,1,1],
+	"mesh":21
+},
+{
+	"type":"MESH",
+	"name":"Plane.002",
+	"topology":"TRIANGLE_LIST",
+	"count":6,
+	"attributes":{
+		"POSITION":{ "src":"Report.Plane.002.pnTtc.b72", "offset":0, "stride":52, "format":"R32G32B32_SFLOAT" },
+		"NORMAL":{ "src":"Report.Plane.002.pnTtc.b72", "offset":12, "stride":52, "format":"R32G32B32_SFLOAT" },
+		"TANGENT":{ "src":"Report.Plane.002.pnTtc.b72", "offset":24, "stride":52, "format":"R32G32B32A32_SFLOAT" },
+		"TEXCOORD":{ "src":"Report.Plane.002.pnTtc.b72", "offset":40, "stride":52, "format":"R32G32_SFLOAT" },
+		"COLOR":{ "src":"Report.Plane.002.pnTtc.b72", "offset":48, "stride":52, "format":"R8G8B8A8_UNORM" }
+	},
+	"material":16
+},
+{
+	"type":"NODE",
+	"name":"Plane.002",
+	"translation":[3,4,4],
+	"rotation":[0.707107,0,0,0.707107],
+	"scale":[1,1,1],
+	"mesh":23
+},
+{
+	"type":"MESH",
+	"name":"Plane.003",
+	"topology":"TRIANGLE_LIST",
+	"count":6,
+	"attributes":{
+		"POSITION":{ "src":"Report.Plane.003.pnTtc.b72", "offset":0, "stride":52, "format":"R32G32B32_SFLOAT" },
+		"NORMAL":{ "src":"Report.Plane.003.pnTtc.b72", "offset":12, "stride":52, "format":"R32G32B32_SFLOAT" },
+		"TANGENT":{ "src":"Report.Plane.003.pnTtc.b72", "offset":24, "stride":52, "format":"R32G32B32A32_SFLOAT" },
+		"TEXCOORD":{ "src":"Report.Plane.003.pnTtc.b72", "offset":40, "stride":52, "format":"R32G32_SFLOAT" },
+		"COLOR":{ "src":"Report.Plane.003.pnTtc.b72", "offset":48, "stride":52, "format":"R8G8B8A8_UNORM" }
+	},
+	"material":5
+},
+{
+	"type":"NODE",
+	"name":"Plane.003",
+	"translation":[6,4,4],
+	"rotation":[0.707107,0,0,0.707107],
+	"scale":[1,1,1],
+	"mesh":25
+},
+{
+	"type":"MESH",
+	"name":"Plane.004",
+	"topology":"TRIANGLE_LIST",
+	"count":6,
+	"attributes":{
+		"POSITION":{ "src":"Report.Plane.004.pnTtc.b72", "offset":0, "stride":52, "format":"R32G32B32_SFLOAT" },
+		"NORMAL":{ "src":"Report.Plane.004.pnTtc.b72", "offset":12, "stride":52, "format":"R32G32B32_SFLOAT" },
+		"TANGENT":{ "src":"Report.Plane.004.pnTtc.b72", "offset":24, "stride":52, "format":"R32G32B32A32_SFLOAT" },
+		"TEXCOORD":{ "src":"Report.Plane.004.pnTtc.b72", "offset":40, "stride":52, "format":"R32G32_SFLOAT" },
+		"COLOR":{ "src":"Report.Plane.004.pnTtc.b72", "offset":48, "stride":52, "format":"R8G8B8A8_UNORM" }
+	},
+	"material":10
+},
+{
+	"type":"NODE",
+	"name":"Plane.004",
+	"translation":[-3,4,4],
+	"rotation":[0.707107,0,0,0.707107],
+	"scale":[1,1,1],
+	"mesh":27
+},
+{
+	"type":"MESH",
+	"name":"Plane.005",
+	"topology":"TRIANGLE_LIST",
+	"count":6,
+	"attributes":{
+		"POSITION":{ "src":"Report.Plane.005.pnc.b72", "offset":0, "stride":28, "format":"R32G32B32_SFLOAT" },
+		"NORMAL":{ "src":"Report.Plane.005.pnc.b72", "offset":12, "stride":28, "format":"R32G32B32_SFLOAT" },
+		"COLOR":{ "src":"Report.Plane.005.pnc.b72", "offset":24, "stride":28, "format":"R8G8B8A8_UNORM" }
+	}
+},
+{
+	"type":"NODE",
+	"name":"Plane.005",
+	"translation":[-6,4,4],
+	"rotation":[0.707107,0,0,0.707107],
+	"scale":[1,1,1],
+	"mesh":29
+},
+{
+	"type":"MESH",
+	"name":"Sphere.010",
+	"topology":"TRIANGLE_LIST",
+	"count":761856,
+	"attributes":{
+		"POSITION":{ "src":"Report.Sphere.010.pnTtc.b72", "offset":0, "stride":52, "format":"R32G32B32_SFLOAT" },
+		"NORMAL":{ "src":"Report.Sphere.010.pnTtc.b72", "offset":12, "stride":52, "format":"R32G32B32_SFLOAT" },
+		"TANGENT":{ "src":"Report.Sphere.010.pnTtc.b72", "offset":24, "stride":52, "format":"R32G32B32A32_SFLOAT" },
+		"TEXCOORD":{ "src":"Report.Sphere.010.pnTtc.b72", "offset":40, "stride":52, "format":"R32G32_SFLOAT" },
+		"COLOR":{ "src":"Report.Sphere.010.pnTtc.b72", "offset":48, "stride":52, "format":"R8G8B8A8_UNORM" }
+	},
+	"material":10
+},
+{
+	"type":"NODE",
+	"name":"Sphere.001",
+	"translation":[-3,2,2],
+	"rotation":[0,0,0,1],
+	"scale":[1,1,1],
+	"mesh":31
+},
+{
+	"type":"MESH",
+	"name":"Sphere.011",
+	"topology":"TRIANGLE_LIST",
+	"count":47616,
+	"attributes":{
+		"POSITION":{ "src":"Report.Sphere.011.pnc.b72", "offset":0, "stride":28, "format":"R32G32B32_SFLOAT" },
+		"NORMAL":{ "src":"Report.Sphere.011.pnc.b72", "offset":12, "stride":28, "format":"R32G32B32_SFLOAT" },
+		"COLOR":{ "src":"Report.Sphere.011.pnc.b72", "offset":24, "stride":28, "format":"R8G8B8A8_UNORM" }
+	}
+},
+{
+	"type":"NODE",
+	"name":"Sphere.005",
+	"translation":[-6,2,2],
+	"rotation":[0,0,0,1],
+	"scale":[1,1,1],
+	"mesh":33
+},
+{
+	"type":"MESH",
+	"name":"Sphere.012",
+	"topology":"TRIANGLE_LIST",
+	"count":761856,
+	"attributes":{
+		"POSITION":{ "src":"Report.Sphere.012.pnTtc.b72", "offset":0, "stride":52, "format":"R32G32B32_SFLOAT" },
+		"NORMAL":{ "src":"Report.Sphere.012.pnTtc.b72", "offset":12, "stride":52, "format":"R32G32B32_SFLOAT" },
+		"TANGENT":{ "src":"Report.Sphere.012.pnTtc.b72", "offset":24, "stride":52, "format":"R32G32B32A32_SFLOAT" },
+		"TEXCOORD":{ "src":"Report.Sphere.012.pnTtc.b72", "offset":40, "stride":52, "format":"R32G32_SFLOAT" },
+		"COLOR":{ "src":"Report.Sphere.012.pnTtc.b72", "offset":48, "stride":52, "format":"R8G8B8A8_UNORM" }
+	},
+	"material":13
+},
+{
+	"type":"NODE",
+	"name":"Sphere.002",
+	"translation":[0,2,2],
+	"rotation":[0,0,0,1],
+	"scale":[1,1,1],
+	"mesh":35
+},
+{
+	"type":"MESH",
+	"name":"Sphere.013",
+	"topology":"TRIANGLE_LIST",
+	"count":47616,
+	"attributes":{
+		"POSITION":{ "src":"Report.Sphere.013.pnTtc.b72", "offset":0, "stride":52, "format":"R32G32B32_SFLOAT" },
+		"NORMAL":{ "src":"Report.Sphere.013.pnTtc.b72", "offset":12, "stride":52, "format":"R32G32B32_SFLOAT" },
+		"TANGENT":{ "src":"Report.Sphere.013.pnTtc.b72", "offset":24, "stride":52, "format":"R32G32B32A32_SFLOAT" },
+		"TEXCOORD":{ "src":"Report.Sphere.013.pnTtc.b72", "offset":40, "stride":52, "format":"R32G32_SFLOAT" },
+		"COLOR":{ "src":"Report.Sphere.013.pnTtc.b72", "offset":48, "stride":52, "format":"R8G8B8A8_UNORM" }
+	},
+	"material":16
+},
+{
+	"type":"NODE",
+	"name":"Sphere.003",
+	"translation":[3,2,2],
+	"rotation":[0,0,0,1],
+	"scale":[1,1,1],
+	"mesh":37
+},
+{
+	"type":"MESH",
+	"name":"Sphere.014",
+	"topology":"TRIANGLE_LIST",
+	"count":47616,
+	"attributes":{
+		"POSITION":{ "src":"Report.Sphere.014.pnTtc.b72", "offset":0, "stride":52, "format":"R32G32B32_SFLOAT" },
+		"NORMAL":{ "src":"Report.Sphere.014.pnTtc.b72", "offset":12, "stride":52, "format":"R32G32B32_SFLOAT" },
+		"TANGENT":{ "src":"Report.Sphere.014.pnTtc.b72", "offset":24, "stride":52, "format":"R32G32B32A32_SFLOAT" },
+		"TEXCOORD":{ "src":"Report.Sphere.014.pnTtc.b72", "offset":40, "stride":52, "format":"R32G32_SFLOAT" },
+		"COLOR":{ "src":"Report.Sphere.014.pnTtc.b72", "offset":48, "stride":52, "format":"R8G8B8A8_UNORM" }
+	},
+	"material":5
+},
+{
+	"type":"NODE",
+	"name":"Sphere.004",
+	"translation":[6,2,2],
+	"rotation":[0,0,0,1],
+	"scale":[1,1,1],
+	"mesh":39
+},
+{
+	"type":"DRIVER",
+	"name":"RotationCenter-rotation",
+	"node":3,
+	"channel":"rotation",
+	"times":[0.000,0.042,0.083,0.125,0.167,0.208,0.250,0.292,0.333,0.375,0.417,0.458,0.500,0.542,0.583,0.625,0.667,0.708,0.750,0.792,0.833,0.875,0.917,0.958,1.000,1.042,1.083,1.125,1.167,1.208,1.250,1.292,1.333,1.375,1.417,1.458,1.500,1.542,1.583,1.625,1.667,1.708,1.750,1.792,1.833,1.875,1.917,1.958,2.000,2.042,2.083,2.125,2.167,2.208,2.250,2.292,2.333,2.375,2.417,2.458,2.500,2.542,2.583,2.625,2.667,2.708,2.750,2.792,2.833,2.875,2.917,2.958,3.000,3.042,3.083,3.125,3.167,3.208,3.250,3.292,3.333,3.375,3.417,3.458,3.500,3.542,3.583,3.625,3.667,3.708,3.750,3.792,3.833,3.875,3.917,3.958,4.000,4.042,4.083,4.125,4.167,4.208,4.250,4.292,4.333,4.375,4.417,4.458,4.500,4.542,4.583,4.625,4.667,4.708,4.750,4.792,4.833,4.875,4.917,4.958,5.000,5.042,5.083,5.125,5.167,5.208,5.250,5.292,5.333,5.375,5.417,5.458,5.500,5.542,5.583,5.625,5.667,5.708,5.750,5.792,5.833,5.875,5.917,5.958,6.000,6.042,6.083,6.125,6.167,6.208,6.250,6.292,6.333,6.375,6.417,6.458,6.500,6.542,6.583,6.625,6.667,6.708,6.750,6.792,6.833,6.875,6.917,6.958,7.000,7.042,7.083,7.125,7.167,7.208,7.250,7.292,7.333,7.375,7.417,7.458,7.500,7.542,7.583,7.625,7.667,7.708,7.750,7.792,7.833,7.875,7.917,7.958,8.000,8.042,8.083,8.125,8.167,8.208,8.250,8.292,8.333,8.375,8.417,8.458,8.500,8.542,8.583,8.625,8.667,8.708,8.750,8.792,8.833,8.875,8.917,8.958,9.000,9.042,9.083,9.125,9.167,9.208,9.250,9.292,9.333,9.375,9.417,9.458,9.500,9.542,9.583,9.625,9.667,9.708,9.750,9.792,9.833,9.875,9.917,9.958,10.000],
+	"values":[0,0,0,1, 0,0,0.0130896,0.999914, 0,0,0.0261769,0.999657, 0,0,0.0392598,0.999229, 0,0,0.052336,0.99863, 0,0,0.0654031,0.997859, 0,0,0.0784591,0.996917, 0,0,0.0915016,0.995805, 0,0,0.104528,0.994522, 0,0,0.117537,0.993068, 0,0,0.130526,0.991445, 0,0,0.143493,0.989651, 0,0,0.156434,0.987688, 0,0,0.16935,0.985556, 0,0,0.182236,0.983255, 0,0,0.19509,0.980785, 0,0,0.207912,0.978148, 0,0,0.220697,0.975342, 0,0,0.233445,0.97237, 0,0,0.246153,0.969231, 0,0,0.258819,0.965926, 0,0,0.27144,0.962455, 0,0,0.284015,0.95882, 0,0,0.296542,0.95502, 0,0,0.309017,0.951056, 0,0,0.321439,0.94693, 0,0,0.333807,0.942642, 0,0,0.346117,0.938191, 0,0,0.358368,0.93358, 0,0,0.370557,0.92881, 0,0,0.382683,0.92388, 0,0,0.394744,0.918791, 0,0,0.406737,0.913545, 0,0,0.41866,0.908143, 0,0,0.430511,0.902585, 0,0,0.442289,0.896873, 0,0,0.453991,0.891007, 0,0,0.465614,0.884988, 0,0,0.477159,0.878817, 0,0,0.488621,0.872496, 0,0,0.5,0.866025, 0,0,0.511293,0.859406, 0,0,0.522499,0.85264, 0,0,0.533615,0.845728, 0,0,0.544639,0.838671, 0,0,0.55557,0.83147, 0,0,0.566406,0.824126, 0,0,0.577145,0.816642, 0,0,0.587785,0.809017, 0,0,0.598325,0.801254, 0,0,0.608761,0.793353, 0,0,0.619094,0.785317, 0,0,0.62932,0.777146, 0,0,0.639439,0.768842, 0,0,0.649448,0.760406, 0,0,0.659346,0.75184, 0,0,0.669131,0.743145, 0,0,0.678801,0.734323, 0,0,0.688355,0.725374, 0,0,0.697791,0.716302, 0,0,0.707107,0.707107, 0,0,0.716302,0.69779, 0,0,0.725374,0.688355, 0,0,0.734323,0.678801, 0,0,0.743145,0.669131, 0,0,0.75184,0.659346, 0,0,0.760406,0.649448, 0,0,0.768842,0.639439, 0,0,0.777146,0.62932, 0,0,0.785317,0.619094, 0,0,0.793353,0.608761, 0,0,0.801254,0.598325, 0,0,0.809017,0.587785, 0,0,0.816642,0.577145, 0,0,0.824126,0.566406, 0,0,0.83147,0.55557, 0,0,0.838671,0.544639, 0,0,0.845728,0.533615, 0,0,0.85264,0.522498, 0,0,0.859406,0.511293, 0,0,0.866025,0.5, 0,0,0.872496,0.488621, 0,0,0.878817,0.477159, 0,0,0.884988,0.465615, 0,0,0.891007,0.45399, 0,0,0.896873,0.442289, 0,0,0.902585,0.430511, 0,0,0.908143,0.41866, 0,0,0.913545,0.406737, 0,0,0.918791,0.394744, 0,0,0.92388,0.382683, 0,0,0.92881,0.370557, 0,0,0.93358,0.358368, 0,0,0.938191,0.346117, 0,0,0.942642,0.333807, 0,0,0.94693,0.321439, 0,0,0.951057,0.309017, 0,0,0.95502,0.296542, 0,0,0.95882,0.284015, 0,0,0.962455,0.271441, 0,0,0.965926,0.258819, 0,0,0.969231,0.246153, 0,0,0.97237,0.233445, 0,0,0.975342,0.220697, 0,0,0.978148,0.207912, 0,0,0.980785,0.19509, 0,0,0.983255,0.182236, 0,0,0.985556,0.169349, 0,0,0.987688,0.156434, 0,0,0.989651,0.143493, 0,0,0.991445,0.130526, 0,0,0.993068,0.117537, 0,0,0.994522,0.104528, 0,0,0.995805,0.0915016, 0,0,0.996917,0.0784591, 0,0,0.997859,0.0654031, 0,0,0.99863,0.052336, 0,0,0.999229,0.0392598, 0,0,0.999657,0.0261769, 0,0,0.999914,0.0130895, -0,-0,-1,4.37114e-08, -0,-0,-0.999914,0.0130897, -0,-0,-0.999657,0.0261771, -0,-0,-0.999229,0.0392598, -0,-0,-0.99863,0.0523359, -0,-0,-0.997859,0.0654032, -0,-0,-0.996917,0.0784592, -0,-0,-0.995805,0.0915016, -0,-0,-0.994522,0.104529, -0,-0,-0.993068,0.117538, -0,-0,-0.991445,0.130526, -0,-0,-0.989651,0.143493, -0,-0,-0.987688,0.156435, -0,-0,-0.985556,0.16935, -0,-0,-0.983255,0.182235, -0,-0,-0.980785,0.19509, -0,-0,-0.978148,0.207912, -0,-0,-0.975342,0.220697, -0,-0,-0.97237,0.233445, -0,-0,-0.969231,0.246153, -0,-0,-0.965926,0.258819, -0,-0,-0.962455,0.27144, -0,-0,-0.95882,0.284015, -0,-0,-0.95502,0.296542, -0,-0,-0.951056,0.309017, -0,-0,-0.94693,0.32144, -0,-0,-0.942641,0.333807, -0,-0,-0.938191,0.346117, -0,-0,-0.93358,0.358368, -0,-0,-0.92881,0.370557, -0,-0,-0.92388,0.382683, -0,-0,-0.918791,0.394744, -0,-0,-0.913545,0.406737, -0,-0,-0.908143,0.41866, -0,-0,-0.902585,0.430511, -0,-0,-0.896873,0.442289, -0,-0,-0.891006,0.453991, -0,-0,-0.884988,0.465615, -0,-0,-0.878817,0.477159, -0,-0,-0.872496,0.488621, -0,-0,-0.866025,0.5, -0,-0,-0.859406,0.511293, -0,-0,-0.85264,0.522499, -0,-0,-0.845728,0.533614, -0,-0,-0.838671,0.544639, -0,-0,-0.83147,0.55557, -0,-0,-0.824126,0.566406, -0,-0,-0.816642,0.577145, -0,-0,-0.809017,0.587785, -0,-0,-0.801254,0.598325, -0,-0,-0.793353,0.608761, -0,-0,-0.785317,0.619094, -0,-0,-0.777146,0.62932, -0,-0,-0.768842,0.639439, -0,-0,-0.760406,0.649448, -0,-0,-0.75184,0.659346, -0,-0,-0.743145,0.669131, -0,-0,-0.734323,0.678801, -0,-0,-0.725374,0.688355, -0,-0,-0.716302,0.697791, 0,0,-0.707107,0.707107, 0,0,-0.69779,0.716302, 0,0,-0.688355,0.725374, 0,0,-0.678801,0.734323, 0,0,-0.669131,0.743145, 0,0,-0.659346,0.75184, 0,0,-0.649448,0.760406, 0,0,-0.639439,0.768842, 0,0,-0.62932,0.777146, 0,0,-0.619094,0.785317, 0,0,-0.608761,0.793353, 0,0,-0.598325,0.801254, 0,0,-0.587785,0.809017, 0,0,-0.577145,0.816642, 0,0,-0.566406,0.824126, 0,0,-0.55557,0.83147, 0,0,-0.544639,0.838671, 0,0,-0.533614,0.845728, 0,0,-0.522499,0.85264, 0,0,-0.511293,0.859406, 0,0,-0.5,0.866025, 0,0,-0.488621,0.872496, 0,0,-0.477159,0.878817, 0,0,-0.465614,0.884988, 0,0,-0.45399,0.891007, 0,0,-0.442289,0.896873, 0,0,-0.430511,0.902585, 0,0,-0.41866,0.908143, 0,0,-0.406737,0.913545, 0,0,-0.394744,0.918791, 0,0,-0.382683,0.92388, 0,0,-0.370557,0.92881, 0,0,-0.358368,0.93358, 0,0,-0.346117,0.938191, 0,0,-0.333807,0.942642, 0,0,-0.321439,0.94693, 0,0,-0.309017,0.951057, 0,0,-0.296541,0.95502, 0,0,-0.284015,0.95882, 0,0,-0.27144,0.962455, 0,0,-0.258819,0.965926, 0,0,-0.246153,0.969231, 0,0,-0.233445,0.97237, 0,0,-0.220697,0.975342, 0,0,-0.207912,0.978148, 0,0,-0.19509,0.980785, 0,0,-0.182236,0.983255, 0,0,-0.169349,0.985556, 0,0,-0.156434,0.987688, 0,0,-0.143492,0.989651, 0,0,-0.130526,0.991445, 0,0,-0.117537,0.993069, 0,0,-0.104529,0.994522, 0,0,-0.0915017,0.995805, 0,0,-0.078459,0.996917, 0,0,-0.0654031,0.997859, 0,0,-0.0523358,0.99863, 0,0,-0.0392597,0.999229, 0,0,-0.0261767,0.999657, 0,0,-0.0130897,0.999914, 0,0,8.74228e-08,1],
+	"interpolation":"SLERP"
+},
+{
+	"type":"ENVIRONMENT",
+	"name":"sky",
+	"radiance": {"src":"src.png", "type":"cube", "format":"rgbe"}
+},
+{
+	"type":"SCENE",
+	"name":"C:/Code/Blender/RotatingSuzanneReport.blend",
+	"roots":[2, 3, 4, 7, 9, 12, 15, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40]
+}
+]

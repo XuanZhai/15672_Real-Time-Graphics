@@ -23,7 +23,9 @@ vec3 toneMapReinhard(vec3 color, float exposure) {
     return color / (color + vec3(1.0)) * exposure;
 }
 
-vec2 ParallaxMapping(vec2 texCoords, vec3 viewDir){
+
+/* Reference: https://learnopengl.com/Advanced-Lighting/Parallax-Mapping */
+vec2 ParallaxOcclusionMapping(vec2 texCoords, vec3 viewDir){
     // number of depth layers
     const float minLayers = 8.0;
     const float maxLayers = 32.0;
@@ -64,15 +66,16 @@ vec2 ParallaxMapping(vec2 texCoords, vec3 viewDir){
     return clamp(finalTexCoords,0,1);
 }
 
+
 void main() {
 
     vec3 viewDir = normalize(fragPosition-ubo.viewPos);
 
-    vec2 texCoord = ParallaxMapping(fragTexCoord,viewDir);
+    vec2 texCoord = ParallaxOcclusionMapping(fragTexCoord,viewDir);
 
     vec3 normal = texture(normalSampler, texCoord).rgb;
     normal = normal * 2.0 - 1.0;
-    normal = normalize(TBN * normal);
+    normal = normalize(normal);
 
     vec3 reflectedDir = reflect(normalize(viewDir), normalize(normal));
 

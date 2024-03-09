@@ -10,6 +10,7 @@
 #include <vector>
 #include <vulkan/vulkan.h>
 #include <unordered_map>
+#include <set>
 #include <chrono>
 
 #include "XZJParser.h"
@@ -19,6 +20,9 @@
 #include "S72Materials.h"
 
 namespace S72Object {
+
+    enum class EMaterial;
+
     /**
      * @brief A camera object listed in the s72 file.
      */
@@ -96,8 +100,7 @@ namespace S72Object {
      */
     class Mesh {
         private:
-            /* Node to the mesh object in the s72 file. */
-            std::shared_ptr<ParserNode> data = nullptr;
+            bool missingData = false;
 
             /* Load the mesh data from a b72 file given its path. */
             void SetSrc(const std::string &srcPath);
@@ -112,6 +115,9 @@ namespace S72Object {
             void SetTopology(const std::string &new_topology);
 
         public:
+            /* Node to the mesh object in the s72 file. */
+            std::shared_ptr<ParserNode> data = nullptr;
+
             /* Name will be used as the identifier of the mesh object. */
             std::string name;
             std::string src;
@@ -155,6 +161,8 @@ namespace S72Object {
 
             /* Given a mesh's b72 data, read and set the mesh's bounding box. */
             void ReadBoundingBox(std::stringstream &buffer);
+
+            void FillMissingData();
 
             /* For a given camera instance, update if the instances are culled. */
             void UpdateInstanceWithCulling(const std::shared_ptr<S72Object::Camera>& camera, const std::string& cullingMode);
@@ -222,9 +230,16 @@ public:
 
     std::string envFileName;
 
-    std::unordered_map<std::string, std::shared_ptr<S72Object::Material>> materials;
+    //std::unordered_map<std::string, std::shared_ptr<S72Object::Material>> materials;
 
-    std::unordered_map<std::string, std::vector<std::shared_ptr<S72Object::Mesh>>> meshesByMaterial;
+    std::unordered_map<S72Object::EMaterial, std::map<std::string, std::shared_ptr<S72Object::Material>>> materials;
+    //std::set<S72Object::Material> materials;
+
+    //std::unordered_map<std::string, std::vector<std::shared_ptr<S72Object::Mesh>>> meshesByMaterial;
+
+    //std::unordered_map<S72Object::EMaterial, std::map<std::string, std::vector<std::shared_ptr<S72Object::Mesh>>>> meshesByMaterial;
+
+    //std::unordered_map<std::shared_ptr<S72Object::Material>, std::vector<std::shared_ptr<S72Object::Mesh>>> meshesByMaterial;
 
     S72Helper();
     /* Read and parse a s72 file from a given path. */
@@ -247,6 +262,8 @@ public:
 
     /* Pause the animation if it is playing. */
     void StopAnimation();
+
+    static S72Object::EMaterial GetMaterialType(const ParserNode&);
 
     /* Extract the translation data as a vec3 from a ParserNode. */
     static XZM::vec3 FindTranslation(const ParserNode&);

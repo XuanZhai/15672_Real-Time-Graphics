@@ -5,10 +5,6 @@
 #define STB_IMAGE_IMPLEMENTATION
 
 #include "stb_image.h"
-#include "VkMaterial_Simple.h"
-#include "VkMaterial_EnvironmentMirror.h"
-#include "VkMaterial_Lambertian.h"
-#include "VkMaterial_PBR.h"
 #include <utility>
 
 
@@ -1598,53 +1594,112 @@ void VulkanHelper::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t i
     UpdateUniformBuffer(currentFrame);
 
     /* Loop through each material. */
-    for(const auto& material : VkMaterials){
+    for(const auto& VkMat : VkMaterials){
 
         /* Bind the pipeline. */
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, material.second->pipeline);
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, VkMat.first->pipeline);
 
-        /* Bind the descriptor sets */
-        uint32_t dynamicOffset = 0 * sizeof(UniformBufferObject);
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, material.second->pipelineLayout, 0, 1, &material.second->descriptorSets[currentFrame], 1,
-                                &dynamicOffset);
+        for(const auto& material : VkMat.second){
+//            if(VkMat.first->name == "simple"){
+//                auto VkMat_simple = std::dynamic_pointer_cast<VkMaterial_Simple>(VkMat.first);
+//                VkMat_simple->UpdateDescriptorSets((uint32_t)currentFrame, textureSampler,material->normalImageView,material->heightImageView);
+//            }
+//            else if(VkMat.first->name == "environment"){
+//                auto VkMat_environment = std::dynamic_pointer_cast<VkMaterial_EnvironmentMirror>(VkMat.first);
+//                VkMat_environment->UpdateDescriptorSets((uint32_t)currentFrame, textureSampler,material->normalImageView,material->heightImageView);
+//            }
+//            else if(VkMat.first->name == "lambertian"){
+//                auto VkMat_lambertian = std::dynamic_pointer_cast<VkMaterial_Lambertian>(VkMat.first);
+//                auto mat_lambertian = std::dynamic_pointer_cast<S72Object::Material_Lambertian>(material);
+//                VkMat_lambertian->UpdateDescriptorSets((uint32_t)currentFrame, textureSampler,mat_lambertian->normalImageView,mat_lambertian->heightImageView,mat_lambertian->albedoImageView);
+//            }
+//            else if(VkMat.first->name == "pbr"){
+//                auto VkMat_pbr = std::dynamic_pointer_cast<VkMaterial_PBR>(VkMat.first);
+//                auto mat_pbr = std::dynamic_pointer_cast<S72Object::Material_PBR>(material);
+//                VkMat_pbr->UpdateDescriptorSets((uint32_t)currentFrame, textureSampler,mat_pbr->normalImageView,mat_pbr->heightImageView,mat_pbr->albedoImageView,mat_pbr->roughnessImageView,mat_pbr->metallicImageView);
+//            }
 
-        /* Loop through all the meshes with that material. */
-        for(auto& mesh : s72Instance->meshesByMaterial[material.first]){
-            /* Update the visible instance list. */
-            if(currCamera->name == "Debug-Camera"){
-                mesh->UpdateInstanceWithCulling(s72Instance->cameras["User-Camera"], cullingMode);
-            }
-            else{
-                mesh->UpdateInstanceWithCulling(currCamera, cullingMode);
-            }
+            uint32_t dynamicOffset = 0 * sizeof(UniformBufferObject);
+            vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, VkMat.first->pipelineLayout, 0, 1, &material->descriptorSets[currentFrame], 1,
+                                    &dynamicOffset);
 
-            /* If no instance will be drawn, go to the next mesh. */
-            if(mesh->visibleInstances.empty()){
-                continue;
-            }
+            /* Loop through all the meshes with that material. */
+            for(auto& mesh : material->meshes){
+                /* Update the visible instance list. */
+                if(currCamera->name == "Debug-Camera"){
+                    mesh->UpdateInstanceWithCulling(s72Instance->cameras["User-Camera"], cullingMode);
+                }
+                else{
+                     mesh->UpdateInstanceWithCulling(currCamera, cullingMode);
+                }
 
-            /* Update the instance buffer with the new instance data. */
-            UpdateInstanceBuffer(*mesh);
+                /* If no instance will be drawn, go to the next mesh. */
+                if(mesh->visibleInstances.empty()){
+                    continue;
+                }
 
-            /* Bind its vertex buffer and set its info. */
-            VkBuffer newVertexBuffers[] = {  VkMeshes[mesh->name]->vertexBuffer , VkMeshes[mesh->name]->instanceBuffer};
-            VkDeviceSize offsets[] = { 0, 0 };
-            vkCmdBindVertexBuffers(commandBuffer, 0, 2, newVertexBuffers, offsets);
+                /* Update the instance buffer with the new instance data. */
+                 UpdateInstanceBuffer(*mesh);
 
-            newBindingDescription = CreateBindingDescription(*mesh);
-            newAttributeDescription = CreateAttributeDescription(*mesh);
+                /* Bind its vertex buffer and set its info. */
+                VkBuffer newVertexBuffers[] = {  VkMeshes[mesh->name]->vertexBuffer , VkMeshes[mesh->name]->instanceBuffer};
+                VkDeviceSize offsets[] = { 0, 0 };
+                vkCmdBindVertexBuffers(commandBuffer, 0, 2, newVertexBuffers, offsets);
 
-            vkCmdSetVertexInputExt(commandBuffer,static_cast<uint32_t>(newBindingDescription.size()),newBindingDescription.data(),static_cast<uint32_t>(newAttributeDescription.size()),newAttributeDescription.data());
-            vkCmdSetPrimitiveTopologyEXT(commandBuffer,mesh->topology);
+                newBindingDescription = CreateBindingDescription(*mesh);
+                newAttributeDescription = CreateAttributeDescription(*mesh);
 
-            /* Draw the mesh. */
-            if(mesh->isUseIndex){
-                vkCmdDrawIndexed(commandBuffer,mesh->indicesCount,(uint32_t)mesh->visibleInstances.size(),0,0,0);
-            }
-            else{
-                vkCmdDraw(commandBuffer, mesh->count, (uint32_t)mesh->visibleInstances.size(), 0, 0);
+                vkCmdSetVertexInputExt(commandBuffer,static_cast<uint32_t>(newBindingDescription.size()),newBindingDescription.data(),static_cast<uint32_t>(newAttributeDescription.size()),newAttributeDescription.data());
+                vkCmdSetPrimitiveTopologyEXT(commandBuffer,mesh->topology);
+
+                /* Draw the mesh. */
+                if(mesh->isUseIndex){
+                    vkCmdDrawIndexed(commandBuffer,mesh->indicesCount,(uint32_t)mesh->visibleInstances.size(),0,0,0);
+                }
+                else{
+                   vkCmdDraw(commandBuffer, mesh->count, (uint32_t)mesh->visibleInstances.size(), 0, 0);
+                }
             }
         }
+
+
+        /* Loop through all the meshes with that material. */
+        //for(auto& mesh : s72Instance->meshesByMaterial[material.]){
+            /* Update the visible instance list. */
+        //    if(currCamera->name == "Debug-Camera"){
+        //        mesh->UpdateInstanceWithCulling(s72Instance->cameras["User-Camera"], cullingMode);
+        //    }
+       //     else{
+       //         mesh->UpdateInstanceWithCulling(currCamera, cullingMode);
+       //     }
+
+            /* If no instance will be drawn, go to the next mesh. */
+        //    if(mesh->visibleInstances.empty()){
+        //        continue;
+        //    }
+
+            /* Update the instance buffer with the new instance data. */
+       //     UpdateInstanceBuffer(*mesh);
+
+            /* Bind its vertex buffer and set its info. */
+        //    VkBuffer newVertexBuffers[] = {  VkMeshes[mesh->name]->vertexBuffer , VkMeshes[mesh->name]->instanceBuffer};
+        //    VkDeviceSize offsets[] = { 0, 0 };
+        //    vkCmdBindVertexBuffers(commandBuffer, 0, 2, newVertexBuffers, offsets);
+
+        //    newBindingDescription = CreateBindingDescription(*mesh);
+         //   newAttributeDescription = CreateAttributeDescription(*mesh);
+
+        //    vkCmdSetVertexInputExt(commandBuffer,static_cast<uint32_t>(newBindingDescription.size()),newBindingDescription.data(),static_cast<uint32_t>(newAttributeDescription.size()),newAttributeDescription.data());
+         //   vkCmdSetPrimitiveTopologyEXT(commandBuffer,mesh->topology);
+
+            /* Draw the mesh. */
+        //    if(mesh->isUseIndex){
+        //        vkCmdDrawIndexed(commandBuffer,mesh->indicesCount,(uint32_t)mesh->visibleInstances.size(),0,0,0);
+        //    }
+         //   else{
+         //       vkCmdDraw(commandBuffer, mesh->count, (uint32_t)mesh->visibleInstances.size(), 0, 0);
+         //   }
+        //}
     }
 
     /* End the render pass */
@@ -2029,106 +2084,78 @@ void VulkanHelper::CreateEnvironments(){
  * @brief Create a list of VkMaterials based on the data from the s72Instance.
  */
 void VulkanHelper::CreateMaterials(){
-    for(auto& material : s72Instance->materials){
+
+    for(auto& materialTypes : s72Instance->materials){
+
         std::shared_ptr<VkMaterial> newVkMaterial = nullptr;
-        /* Create descriptor sets based on which material it is. */
-        if(material.first == "simple"){
-            std::shared_ptr<VkMaterial_Simple> newVkMaterial_Simple = std::make_shared<VkMaterial_Simple>();
-            newVkMaterial_Simple->name = material.first;
-            newVkMaterial_Simple->SetDevice(device);
-
-            /* Create the texture for the normal. */
-            CreateTextureImage(material.second->normalMap,material.second->normalMapWidth,material.second->normalMapHeight, material.second->normalMapChannel,material.second->normalMipLevels, newVkMaterial_Simple->normalImage,newVkMaterial_Simple->normalImageMemory);
-            CreateTextureImageView(newVkMaterial_Simple->normalImage,newVkMaterial_Simple->normalImageView, material.second->normalMapChannel,material.second->normalMipLevels);
-
-            /* Create the texture for the height. */
-            CreateTextureImage(material.second->heightMap,material.second->heightMapWidth,material.second->heightMapHeight, material.second->heightMapChannel,material.second->heightMapMipLevels, newVkMaterial_Simple->heightImage,newVkMaterial_Simple->heightImageMemory);
-            CreateTextureImageView(newVkMaterial_Simple->heightImage,newVkMaterial_Simple->heightImageView, material.second->heightMapChannel,material.second->heightMapMipLevels);
-
-            newVkMaterial_Simple->CreateDescriptorSetLayout();
-            newVkMaterial_Simple->CreateDescriptorPool();
-            newVkMaterial_Simple->CreateDescriptorSets(uniformBuffers,textureSampler,newVkMaterial_Simple->normalImageView,newVkMaterial_Simple->heightImageView);
-            newVkMaterial = std::dynamic_pointer_cast<VkMaterial>(newVkMaterial_Simple);
+        if(materialTypes.first == S72Object::EMaterial::simple) {
+            std::shared_ptr<VkMaterial_Simple> Vk_sim = std::make_shared<VkMaterial_Simple>();
+            Vk_sim->name = "simple";
+            Vk_sim->CreateDescriptorSetLayout(device);
+            //Vk_sim->CreateDescriptorPool();
+            //Vk_sim->CreateDescriptorSets(materialTypes.second.begin()->second,uniformBuffers,textureSampler);
+            newVkMaterial = std::dynamic_pointer_cast<VkMaterial>(Vk_sim);
         }
-        else if(material.first == "environment" || material.first == "mirror"){
-            std::shared_ptr<VkMaterial_EnvironmentMirror> newVkMaterial_Env = std::make_shared<VkMaterial_EnvironmentMirror>();
-            newVkMaterial_Env->name = material.first;
-            newVkMaterial_Env->SetDevice(device);
-
-            /* Create the texture for the normal. */
-            CreateTextureImage(material.second->normalMap,material.second->normalMapWidth,material.second->normalMapHeight, material.second->normalMapChannel,material.second->normalMipLevels, newVkMaterial_Env->normalImage,newVkMaterial_Env->normalImageMemory);
-            CreateTextureImageView(newVkMaterial_Env->normalImage,newVkMaterial_Env->normalImageView, material.second->normalMapChannel,material.second->normalMipLevels);
-
-            /* Create the texture for the height. */
-            CreateTextureImage(material.second->heightMap,material.second->heightMapWidth,material.second->heightMapHeight, material.second->heightMapChannel,material.second->heightMapMipLevels, newVkMaterial_Env->heightImage,newVkMaterial_Env->heightImageMemory);
-            CreateTextureImageView(newVkMaterial_Env->heightImage,newVkMaterial_Env->heightImageView, material.second->heightMapChannel,material.second->heightMapMipLevels);
-
-            newVkMaterial_Env->CreateDescriptorSetLayout();
-            newVkMaterial_Env->CreateDescriptorPool();
-            newVkMaterial_Env->CreateDescriptorSets(uniformBuffers,textureSampler,newVkMaterial_Env->normalImageView, newVkMaterial_Env->heightImageView, envTextureImageView);
-            newVkMaterial = std::dynamic_pointer_cast<VkMaterial>(newVkMaterial_Env);
+        else if(materialTypes.first == S72Object::EMaterial::environment || materialTypes.first == S72Object::EMaterial::mirror){
+            std::shared_ptr<VkMaterial_EnvironmentMirror> Vk_env = std::make_shared<VkMaterial_EnvironmentMirror>();
+            Vk_env->name = "environment";
+            Vk_env->CreateDescriptorSetLayout(device);
+            //Vk_env->CreateDescriptorPool();
+            //Vk_env->CreateDescriptorSets(materialTypes.second.begin()->second,uniformBuffers,textureSampler, envTextureImageView);
+            newVkMaterial = std::dynamic_pointer_cast<VkMaterial>(Vk_env);
         }
-        else if(material.first == "lambertian"){
+        else if(materialTypes.first == S72Object::EMaterial::lambertian){
             std::shared_ptr<VkMaterial_Lambertian> Vk_lam = std::make_shared<VkMaterial_Lambertian>();
-            Vk_lam->name = material.first;
-            Vk_lam->SetDevice(device);
-            std::shared_ptr<S72Object::Material_Lambertian> material_Lam = std::dynamic_pointer_cast<S72Object::Material_Lambertian>(material.second);
-
-            /* Create the texture for the normal. */
-            CreateTextureImage(material.second->normalMap,material.second->normalMapWidth,material.second->normalMapHeight, material.second->normalMapChannel,material.second->normalMipLevels, Vk_lam->normalImage,Vk_lam->normalImageMemory);
-            CreateTextureImageView(Vk_lam->normalImage,Vk_lam->normalImageView, material.second->normalMapChannel,material.second->normalMipLevels);
-
-            /* Create the texture for the height. */
-            CreateTextureImage(material.second->heightMap,material.second->heightMapWidth,material.second->heightMapHeight, material.second->heightMapChannel,material.second->heightMapMipLevels, Vk_lam->heightImage,Vk_lam->heightImageMemory);
-            CreateTextureImageView(Vk_lam->heightImage,Vk_lam->heightImageView, material.second->heightMapChannel,material.second->heightMapMipLevels);
-
-            /* Create the texture for the albedo. */
-            CreateTextureImage(material_Lam->albedo,material_Lam->albedoWidth,material_Lam->albedoHeight, material_Lam->albedoChannel,material_Lam->albedoMipLevels, Vk_lam->albedoImage,Vk_lam->albedoImageMemory);
-            CreateTextureImageView(Vk_lam->albedoImage,Vk_lam->albedoImageView, material_Lam->albedoChannel,material_Lam->albedoMipLevels);
-
-            Vk_lam->CreateDescriptorSetLayout();
-            Vk_lam->CreateDescriptorPool();
-            Vk_lam->CreateDescriptorSets(uniformBuffers,textureSampler, Vk_lam->normalImageView, Vk_lam->heightImageView, lamTextureImageView);
+            Vk_lam->name = "lambertian";
+            Vk_lam->CreateDescriptorSetLayout(device);
+            //Vk_lam->CreateDescriptorPool();
+            //Vk_lam->CreateDescriptorSets(materialTypes.second.begin()->second,uniformBuffers,textureSampler, lamTextureImageView);
             newVkMaterial = std::dynamic_pointer_cast<VkMaterial>(Vk_lam);
         }
-        else if(material.first == "pbr"){
+        else if(materialTypes.first == S72Object::EMaterial::pbr){
             std::shared_ptr<VkMaterial_PBR> Vk_pbr = std::make_shared<VkMaterial_PBR>();
-            Vk_pbr->name = material.first;
-            Vk_pbr->SetDevice(device);
-            std::shared_ptr<S72Object::Material_PBR> material_PBR = std::dynamic_pointer_cast<S72Object::Material_PBR>(material.second);
-
-            /* Create the texture for the normal. */
-            CreateTextureImage(material.second->normalMap,material.second->normalMapWidth,material.second->normalMapHeight, material.second->normalMapChannel,material.second->normalMipLevels, Vk_pbr->normalImage,Vk_pbr->normalImageMemory);
-            CreateTextureImageView(Vk_pbr->normalImage,Vk_pbr->normalImageView, material.second->normalMapChannel,material.second->normalMipLevels);
-
-            /* Create the texture for the height. */
-            CreateTextureImage(material.second->heightMap,material.second->heightMapWidth,material.second->heightMapHeight, material.second->heightMapChannel,material.second->heightMapMipLevels, Vk_pbr->heightImage,Vk_pbr->heightImageMemory);
-            CreateTextureImageView(Vk_pbr->heightImage,Vk_pbr->heightImageView, material.second->heightMapChannel,material.second->heightMapMipLevels);
-
-            /* Create the texture for the albedo. */
-            CreateTextureImage(material_PBR->albedo,material_PBR->albedoWidth,material_PBR->albedoHeight, material_PBR->albedoChannel,material_PBR->albedoMipLevels, Vk_pbr->albedoImage,Vk_pbr->albedoImageMemory);
-            CreateTextureImageView(Vk_pbr->albedoImage,Vk_pbr->albedoImageView, material_PBR->albedoChannel,material_PBR->albedoMipLevels);
-
-            /* Create the texture for the roughness. */
-            CreateTextureImage(material_PBR->roughness,material_PBR->roughnessWidth,material_PBR->roughnessHeight, 1,material_PBR->roughnessMipLevels, Vk_pbr->roughnessImage,Vk_pbr->roughnessImageMemory);
-            CreateTextureImageView(Vk_pbr->roughnessImage,Vk_pbr->roughnessImageView, 1,material_PBR->roughnessMipLevels);
-
-            /* Create the texture for the metallic. */
-            CreateTextureImage(material_PBR->metallic,material_PBR->metallicWidth,material_PBR->metallicHeight, 1,material_PBR->metallicMipLevels, Vk_pbr->metallicImage,Vk_pbr->metallicImageMemory);
-            CreateTextureImageView(Vk_pbr->metallicImage,Vk_pbr->metallicImageView, 1,material_PBR->metallicMipLevels);
-
-            Vk_pbr->CreateDescriptorSetLayout();
-            Vk_pbr->CreateDescriptorPool();
-            Vk_pbr->CreateDescriptorSets(uniformBuffers,textureSampler, Vk_pbr->normalImageView, Vk_pbr->heightImageView, pbrTextureImageView,pbrBRDFImageView);
+            Vk_pbr->name = "pbr";
+            Vk_pbr->CreateDescriptorSetLayout(device);
+            //Vk_pbr->CreateDescriptorPool();
+            //Vk_pbr->CreateDescriptorSets(materialTypes.second.begin()->second,uniformBuffers,textureSampler, pbrTextureImageView,pbrBRDFImageView);
             newVkMaterial = std::dynamic_pointer_cast<VkMaterial>(Vk_pbr);
         }
 
         /* Create the pipeline. */
-        std::string vertexShader = shaderMap.at(material.first)[0];
-        std::string fragShader = shaderMap.at(material.first)[1];
+        std::string vertexShader = shaderMap.at(materialTypes.first)[0];
+        std::string fragShader = shaderMap.at(materialTypes.first)[1];
         CreateGraphicsPipeline(vertexShader, fragShader,newVkMaterial->descriptorSetLayout,newVkMaterial->pipeline,newVkMaterial->pipelineLayout);
+        //VkMaterials[materialTypes.first] = newVkMaterial;
 
-        VkMaterials[material.first] = newVkMaterial;
+        std::vector<std::shared_ptr<S72Object::Material>> mats;
+        mats.reserve(materialTypes.second.size());
+        for(const auto& material : materialTypes.second){
+            CreateMaterialImageView(material.second);
+
+            if(materialTypes.first == S72Object::EMaterial::simple){
+                auto material_sim = std::dynamic_pointer_cast<S72Object::Material_Simple>(material.second);
+                material_sim->CreateDescriptorPool(device);
+                material_sim->CreateDescriptorSets(device,newVkMaterial->descriptorSetLayout,uniformBuffers,textureSampler);
+            }
+            else if(materialTypes.first == S72Object::EMaterial::environment || materialTypes.first == S72Object::EMaterial::mirror){
+                auto material_env = std::dynamic_pointer_cast<S72Object::Material_EnvMirror>(material.second);
+                material_env->CreateDescriptorPool(device);
+                material_env->CreateDescriptorSets(device,newVkMaterial->descriptorSetLayout,uniformBuffers,textureSampler,envTextureImageView);
+            }
+            else if(materialTypes.first == S72Object::EMaterial::lambertian){
+                auto material_lam = std::dynamic_pointer_cast<S72Object::Material_Lambertian>(material.second);
+                material_lam->CreateDescriptorPool(device);
+                material_lam->CreateDescriptorSets(device,newVkMaterial->descriptorSetLayout,uniformBuffers,textureSampler,lamTextureImageView);
+            }
+            else if(materialTypes.first == S72Object::EMaterial::pbr){
+                auto material_pbr = std::dynamic_pointer_cast<S72Object::Material_PBR>(material.second);
+                material_pbr->CreateDescriptorPool(device);
+                material_pbr->CreateDescriptorSets(device,newVkMaterial->descriptorSetLayout,uniformBuffers,textureSampler,pbrTextureImageView,pbrBRDFImageView);
+            }
+
+            mats.emplace_back(material.second);
+        }
+        VkMaterials.insert(std::make_pair(newVkMaterial,mats));
     }
 }
 
@@ -2204,6 +2231,40 @@ void VulkanHelper::CreateTextureImageView(const VkImage& textureImage, VkImageVi
     }
     else if(nChannels == 3 || nChannels == 4){
         textureImageView = CreateImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_ASPECT_COLOR_BIT,mipLevels, 1);
+    }
+}
+
+
+void VulkanHelper::CreateMaterialImageView(const std::shared_ptr<S72Object::Material>& sMaterial){
+
+    /* Create the texture for the normal. */
+    CreateTextureImage(sMaterial->normalMap, sMaterial->normalMapWidth, sMaterial->normalMapHeight, sMaterial->normalMapChannel, sMaterial->normalMipLevels, sMaterial->normalImage, sMaterial->normalImageMemory);
+    CreateTextureImageView(sMaterial->normalImage, sMaterial->normalImageView, sMaterial->normalMapChannel, sMaterial->normalMipLevels);
+
+    /* Create the texture for the height. */
+    CreateTextureImage(sMaterial->heightMap,sMaterial->heightMapWidth,sMaterial->heightMapHeight, sMaterial->heightMapChannel,sMaterial->heightMapMipLevels, sMaterial->heightImage,sMaterial->heightImageMemory);
+    CreateTextureImageView(sMaterial->heightImage,sMaterial->heightImageView, sMaterial->heightMapChannel,sMaterial->heightMapMipLevels);
+
+    if(sMaterial->type == S72Object::EMaterial::lambertian){
+        auto sMaterial_lam = std::dynamic_pointer_cast<S72Object::Material_Lambertian>(sMaterial);
+        /* Create the texture for the albedo. */
+        CreateTextureImage(sMaterial_lam->albedo,sMaterial_lam->albedoWidth,sMaterial_lam->albedoHeight, sMaterial_lam->albedoChannel,sMaterial_lam->albedoMipLevels, sMaterial_lam->albedoImage,sMaterial_lam->albedoImageMemory);
+        CreateTextureImageView(sMaterial_lam->albedoImage,sMaterial_lam->albedoImageView, sMaterial_lam->albedoChannel,sMaterial_lam->albedoMipLevels);
+
+    }
+    else if(sMaterial->type == S72Object::EMaterial::pbr){
+        auto sMaterial_pbr = std::dynamic_pointer_cast<S72Object::Material_PBR>(sMaterial);
+        /* Create the texture for the albedo. */
+        CreateTextureImage(sMaterial_pbr->albedo,sMaterial_pbr->albedoWidth,sMaterial_pbr->albedoHeight,sMaterial_pbr->albedoChannel,sMaterial_pbr->albedoMipLevels, sMaterial_pbr->albedoImage,sMaterial_pbr->albedoImageMemory);
+        CreateTextureImageView(sMaterial_pbr->albedoImage,sMaterial_pbr->albedoImageView, sMaterial_pbr->albedoChannel,sMaterial_pbr->albedoMipLevels);
+
+        /* Create the texture for the roughness. */
+        CreateTextureImage(sMaterial_pbr->roughness,sMaterial_pbr->roughnessWidth,sMaterial_pbr->roughnessHeight, 1,sMaterial_pbr->roughnessMipLevels, sMaterial_pbr->roughnessImage,sMaterial_pbr->roughnessImageMemory);
+        CreateTextureImageView(sMaterial_pbr->roughnessImage,sMaterial_pbr->roughnessImageView, 1,sMaterial_pbr->roughnessMipLevels);
+
+        /* Create the texture for the metallic. */
+        CreateTextureImage(sMaterial_pbr->metallic,sMaterial_pbr->metallicWidth,sMaterial_pbr->metallicHeight, 1,sMaterial_pbr->metallicMipLevels, sMaterial_pbr->metallicImage,sMaterial_pbr->metallicImageMemory);
+        CreateTextureImageView(sMaterial_pbr->metallicImage,sMaterial_pbr->metallicImageView, 1,sMaterial_pbr->metallicMipLevels);
     }
 }
 
@@ -3001,8 +3062,13 @@ void VulkanHelper::CleanUp()
 
     vkDestroySampler(device, textureSampler, nullptr);
 
-    for(auto& material : VkMaterials){
-        material.second->CleanUp();
+    for(auto& materialType : VkMaterials){
+
+        for(auto& material : materialType.second){
+            material->CleanUp(device);
+        }
+
+        materialType.first->CleanUp(device);
     }
 
     vkDestroyRenderPass(device, renderPass, nullptr);

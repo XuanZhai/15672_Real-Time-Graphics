@@ -15,17 +15,14 @@
 #include <array>
 #include "S72Helper.h"
 
-
 /**
  * @brief A Vulkan-side material base object. Contains the pipeline and the descriptor info.
  */
 class VkMaterial {
 
 protected:
-    /* The device it is working one. */
-    VkDevice device = VK_NULL_HANDLE;
 
-    VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
+    bool operator < (const VkMaterial& newVkMat) const;
 
 public:
     std::string name;
@@ -36,32 +33,51 @@ public:
 
     VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
 
-    std::vector<VkDescriptorSet> descriptorSets;
-
-    VkImage normalImage = VK_NULL_HANDLE;
-
-    VkDeviceMemory normalImageMemory = VK_NULL_HANDLE;
-
-    VkImageView normalImageView = VK_NULL_HANDLE;
-
-    VkImage heightImage = VK_NULL_HANDLE;
-
-    VkDeviceMemory heightImageMemory = VK_NULL_HANDLE;
-
-    VkImageView heightImageView = VK_NULL_HANDLE;
-
-    /* Set the physical device. */
-    void SetDevice(VkDevice newDevice);
-
     /* Create the descriptor set layout. */
-    virtual void CreateDescriptorSetLayout() = 0;
-
-    /* Create the descriptor pool. */
-    virtual void CreateDescriptorPool() = 0;
+    virtual void CreateDescriptorSetLayout(const VkDevice& device) = 0;
 
     /* Destructor. */
-    virtual void CleanUp();
+    virtual void CleanUp(const VkDevice& device);
 };
+
+
+/**
+ * @brief A subclass of VkMaterial, used for the simple color material.
+ */
+class VkMaterial_Simple : public VkMaterial{
+public:
+    void CreateDescriptorSetLayout(const VkDevice& device) override;
+};
+
+
+/**
+ * @brief A subclass of VkMaterial, used for the environment and mirror material.
+ */
+class VkMaterial_EnvironmentMirror : public VkMaterial {
+
+public:
+    void CreateDescriptorSetLayout(const VkDevice& device) override;
+};
+
+
+/**
+ * @brief A subclass of VkMaterial, used for the environment and mirror material.
+ */
+class VkMaterial_Lambertian : public VkMaterial {
+
+public:
+
+    void CreateDescriptorSetLayout(const VkDevice& device) override;
+
+};
+
+
+class VkMaterial_PBR : public VkMaterial {
+public:
+
+    void CreateDescriptorSetLayout(const VkDevice& device) override;
+};
+
 
 
 #endif //XUANJAMESZHAI_A1_VKMATERIAL_H
