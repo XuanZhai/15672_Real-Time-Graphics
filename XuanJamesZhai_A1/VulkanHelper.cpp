@@ -3,8 +3,8 @@
 //
 #include "VulkanHelper.h"
 #define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
 
+#include "stb_image.h"
 #include <utility>
 
 
@@ -532,7 +532,7 @@ bool VulkanHelper::IsDeviceSuitable(VkPhysicalDevice newDevice)
 
 /**
 * @brief Verify that your graphics card is indeed capable of creating a swap chain.
-* @param[in] device: The physical device that's using.
+* @param[in] newDevice: The physical device that's using.
 * @return Return true if it is capable.
 */
 bool VulkanHelper::CheckDeviceExtensionSupport(VkPhysicalDevice newDevice)
@@ -764,7 +764,7 @@ void VulkanHelper::CreateHeadlessSwapChain(){
     headlessImageMemory.resize(imageCount);
 
     for(size_t i = 0; i < imageCount; i++){
-        CreateImage(windowWidth,windowHeight,1,VK_FORMAT_R8G8B8A8_UNORM,VK_IMAGE_TILING_OPTIMAL,VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,swapChainImages[i],headlessImageMemory[i]);
+        CreateImage(windowWidth,windowHeight,1,1,VK_FORMAT_R8G8B8A8_UNORM,VK_IMAGE_TILING_OPTIMAL,VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,swapChainImages[i],headlessImageMemory[i]);
     }
 
     swapChainImageFormat = VK_FORMAT_R8G8B8A8_UNORM;
@@ -773,26 +773,29 @@ void VulkanHelper::CreateHeadlessSwapChain(){
 
 
 /**
-* @brief Create an image view instance based on the image and its format.
-* @param[in] image: The image we are using.
-* @param[in] format: The format of the image view.
-* @param[in] aspectFlags: The aspect mask. Can be color or depth.
+ * @brief Create an image view instance based on the image and its format.
+ * @param[in] image: The image we are using.
+ * @param[in] format: The format of the image view.
+ * @param[in] aspectFlags: The aspect mask. Can be color or depth.
+ * @param[in] mipLevels: The mipmap level of the image view we are creating.
+ * @param[in] layerCount: The layer of the image; used to identify a cube map.
+ * @return The image view that is created.
 */
-VkImageView VulkanHelper::CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t newMipLevels)
+VkImageView VulkanHelper::CreateImageView(VkImage image, VkFormat format, VkImageViewType viewType, VkImageAspectFlags aspectFlags, uint32_t mipLevels, uint32_t layerCount)
 {
     VkImageViewCreateInfo viewInfo{};
     viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     viewInfo.image = image;
-    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.viewType = viewType;
     viewInfo.format = format;
 
     /* The subresourceRange field describes what the image’s purpose is and which part of the image should be accessed. */
     viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     viewInfo.subresourceRange.aspectMask = aspectFlags;
     viewInfo.subresourceRange.baseMipLevel = 0;
-    viewInfo.subresourceRange.levelCount = newMipLevels;
+    viewInfo.subresourceRange.levelCount = mipLevels;
     viewInfo.subresourceRange.baseArrayLayer = 0;
-    viewInfo.subresourceRange.layerCount = 1;
+    viewInfo.subresourceRange.layerCount = layerCount;
 
     /* Create the image view*/
     VkImageView imageView;
@@ -803,7 +806,6 @@ VkImageView VulkanHelper::CreateImageView(VkImage image, VkFormat format, VkImag
     return imageView;
 }
 
-
 /**
 * @brief Create the Image Views that will handle the images in the swap chain.
 */
@@ -812,7 +814,7 @@ void VulkanHelper::CreateImageViews()
     swapChainImageViews.resize(swapChainImages.size());
 
     for (uint32_t i = 0; i < swapChainImages.size(); i++) {
-        swapChainImageViews[i] = CreateImageView(swapChainImages[i], swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+        swapChainImageViews[i] = CreateImageView(swapChainImages[i], swapChainImageFormat, VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_ASPECT_COLOR_BIT, 1,1);
     }
 }
 
@@ -840,49 +842,18 @@ VkShaderModule VulkanHelper::CreateShaderModule(const std::vector<char>& code)
 
 
 /**
-* @brief Provide details about every descriptor binding and create the descriptor layout.
+ * @brief Read the shaders and create the graphics pipeline.
+ * @param[in] vertexFileName: The name of the vertex shader.
+ * @param[in] fragmentFileName: The name of the fragment shader.
+ * @param[in] descriptorSetLayout: The descriptor set layout we want to use.
+ * @param[out] graphicsPipeline: The pipeline we created at the end.
+ * @param[out] pipelineLayout: The pipeline layout we created at the end.
 */
-void VulkanHelper::CreateDescriptorSetLayout()
-{
-    /* Set the binding info */
-    VkDescriptorSetLayoutBinding uboLayoutBinding{};
-    uboLayoutBinding.binding = 0;
-    uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;    // The type of descriptor is a uniform buffer object
-    uboLayoutBinding.descriptorCount = 1;
-
-    uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-    uboLayoutBinding.pImmutableSamplers = nullptr;
-
-    /* Set the combined image sampler */
-    VkDescriptorSetLayoutBinding samplerLayoutBinding{};
-    samplerLayoutBinding.binding = 1;
-    samplerLayoutBinding.descriptorCount = 1;
-    samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    samplerLayoutBinding.pImmutableSamplers = nullptr;
-    samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;     // Use the image sampler in the fragment shader stage.
-
-    std::array<VkDescriptorSetLayoutBinding, 2> bindings = { uboLayoutBinding, samplerLayoutBinding };
-
-    /* Combine all the bindings into a single object */
-    VkDescriptorSetLayoutCreateInfo layoutInfo{};
-    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
-    layoutInfo.pBindings = bindings.data();
-
-    if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create descriptor set layout!");
-    }
-}
-
-
-/**
-* @brief Read the shaders and create the graphics pipeline.
-*/
-void VulkanHelper::CreateGraphicsPipeline()
+void VulkanHelper::CreateGraphicsPipeline(const std::string& vertexFileName, const std::string& fragmentFileName, const VkDescriptorSetLayout& descriptorSetLayout, VkPipeline& graphicsPipeline, VkPipelineLayout& pipelineLayout)
 {
     /* Read the file into a char array */
-    auto vertShaderCode = ReadFile(VERTEX_SHADER_PATH);
-    auto fragShaderCode = ReadFile(FRAGMENT_SHADER_PATH);
+    auto vertShaderCode = ReadFile(vertexFileName);
+    auto fragShaderCode = ReadFile(fragmentFileName);
 
     /* Create modules for shaders to wrap the file*/
     VkShaderModule vertShaderModule = CreateShaderModule(vertShaderCode);
@@ -1269,20 +1240,23 @@ void VulkanHelper::CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSi
 
 
 /**
- * @brief Create a list of vertex buffers. One for each mesh instance in the s72.
+ * @brief Fill the VkMesh list based on the data in the s72Instance.
  */
-void VulkanHelper::CreateVertexBuffers(){
+void VulkanHelper::CreateMeshes(){
     if(s72Instance == nullptr){
         throw std::runtime_error("Vertex Buffer Error: s72Instance is null.");
     }
 
-    vertexBufferMemories.resize(s72Instance->meshes.size());
-    vertexBuffers.resize(s72Instance->meshes.size());
-
-    size_t index = 0;
     for(const auto& mesh : s72Instance->meshes){
-        CreateVertexBuffer(*mesh.second,index);
-        index++;
+        VkMeshes[mesh.first] = std::make_shared<VkMesh>();
+        VkMeshes[mesh.first]->device = device;
+        CreateVertexBuffer(*mesh.second,*VkMeshes[mesh.first]);
+        /* Create the index buffer if it has the index info. */
+        if(mesh.second->isUseIndex){
+            VkMeshes[mesh.first]->isUseIndex = mesh.second->isUseIndex;
+            CreateIndexBuffer(*mesh.second,*VkMeshes[mesh.first]);
+        }
+        CreateInstanceBuffer(*VkMeshes[mesh.first]);
     }
 }
 
@@ -1290,12 +1264,12 @@ void VulkanHelper::CreateVertexBuffers(){
 /**
 * @brief Create the vertex buffer to store the vertex data.
 * @param[in] newMesh The mesh data which contains the vertices info.
-* @param[in] index The index of that mesh instance in the list.
+* @param[out] vkMesh The container which has the target vertex buffer.
 */
-void VulkanHelper::CreateVertexBuffer(const S72Object::Mesh& newMeshInstance, size_t index)
+void VulkanHelper::CreateVertexBuffer(const S72Object::Mesh& newMesh, VkMesh& vkMesh)
 {
     //VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
-    VkDeviceSize bufferSize = newMeshInstance.src.size();
+    VkDeviceSize bufferSize = newMesh.src.size();
 
     /* Create a staging buffer as temporary buffer and use a device local one as actual vertex buffer. */
     VkBuffer stagingBuffer;
@@ -1305,14 +1279,14 @@ void VulkanHelper::CreateVertexBuffer(const S72Object::Mesh& newMeshInstance, si
     /* Copy the vertex data to the buffer using memory copy */
     void* data;
     vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
-    memcpy(data, newMeshInstance.src.data(), (size_t)bufferSize);
+    memcpy(data, newMesh.src.data(), (size_t)bufferSize);
     vkUnmapMemory(device, stagingBufferMemory);
 
     /* The vertex buffer is now device local */
-    CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffers[index], vertexBufferMemories[index]);
+    CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vkMesh.vertexBuffer, vkMesh.vertexBufferMemory);
 
     /* Copy the buffer from the staging buffer to the device local vertex buffer */
-    CopyBuffer(stagingBuffer, vertexBuffers[index], bufferSize);
+    CopyBuffer(stagingBuffer, vkMesh.vertexBuffer, bufferSize);
 
     vkDestroyBuffer(device, stagingBuffer, nullptr);
     vkFreeMemory(device, stagingBufferMemory, nullptr);
@@ -1321,7 +1295,7 @@ void VulkanHelper::CreateVertexBuffer(const S72Object::Mesh& newMeshInstance, si
 
 /**
  * @brief For a binding description struct based on the info of a mesh instance.
- * @param newMeshInstance The mesh we are construct from.
+ * @param[in] newMeshInstance The mesh we are construct from.
  * @return newMeshInstance's binding description info.
  */
 std::array<VkVertexInputBindingDescription2EXT,2> VulkanHelper::CreateBindingDescription(const S72Object::Mesh& newMeshInstance){
@@ -1347,12 +1321,12 @@ std::array<VkVertexInputBindingDescription2EXT,2> VulkanHelper::CreateBindingDes
 
 /**
  * @brief Form an attribute description struct based on the info of a mesh instance.
- * @param newMeshInstance The mesh we are construct from.
+ * @param[in] newMeshInstance The mesh we are construct from.
  * @return newMeshInstance's attribute description info.
  */
-std::array<VkVertexInputAttributeDescription2EXT, 7> VulkanHelper::CreateAttributeDescription(const S72Object::Mesh& newMeshInstance){
+std::array<VkVertexInputAttributeDescription2EXT, 9> VulkanHelper::CreateAttributeDescription(const S72Object::Mesh& newMeshInstance){
 
-    std::array<VkVertexInputAttributeDescription2EXT, 7> attributeDescriptions{};
+    std::array<VkVertexInputAttributeDescription2EXT, 9> attributeDescriptions{};
 
     /* Attribute for the vertex data */
     attributeDescriptions[0].binding = 0;
@@ -1368,74 +1342,62 @@ std::array<VkVertexInputAttributeDescription2EXT, 7> VulkanHelper::CreateAttribu
     attributeDescriptions[1].offset = newMeshInstance.nOffset;
     attributeDescriptions[1].sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT;
 
-    /* Attribute for the color data */
+    /* Attribute for the tangent data */
     attributeDescriptions[2].binding = 0;
     attributeDescriptions[2].location = 2;
-    attributeDescriptions[2].format = newMeshInstance.cFormat;
-    attributeDescriptions[2].offset = newMeshInstance.cOffset;
+    attributeDescriptions[2].format = newMeshInstance.taFormat;
+    attributeDescriptions[2].offset = newMeshInstance.taOffset;
     attributeDescriptions[2].sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT;
 
-    /* Per instance data. */
-    attributeDescriptions[3].binding = 1;
+    /* Attribute for the texture coordinate data */
+    attributeDescriptions[3].binding = 0;
     attributeDescriptions[3].location = 3;
-    attributeDescriptions[3].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-    attributeDescriptions[3].offset = offsetof(S72Object::MeshInstance, model);
+    attributeDescriptions[3].format = newMeshInstance.teFormat;
+    attributeDescriptions[3].offset = newMeshInstance.teOffset;
     attributeDescriptions[3].sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT;
 
-    attributeDescriptions[4].binding = 1;
+    /* Attribute for the color data */
+    attributeDescriptions[4].binding = 0;
     attributeDescriptions[4].location = 4;
-    attributeDescriptions[4].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-    attributeDescriptions[4].offset = offsetof(S72Object::MeshInstance, model) + sizeof(float)*4;
+    attributeDescriptions[4].format = newMeshInstance.cFormat;
+    attributeDescriptions[4].offset = newMeshInstance.cOffset;
     attributeDescriptions[4].sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT;
 
+    /* Per instance data. */
     attributeDescriptions[5].binding = 1;
     attributeDescriptions[5].location = 5;
     attributeDescriptions[5].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-    attributeDescriptions[5].offset = offsetof(S72Object::MeshInstance, model) + sizeof(float)*8;
+    attributeDescriptions[5].offset = offsetof(S72Object::MeshInstance, model);
     attributeDescriptions[5].sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT;
 
     attributeDescriptions[6].binding = 1;
     attributeDescriptions[6].location = 6;
     attributeDescriptions[6].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-    attributeDescriptions[6].offset = offsetof(S72Object::MeshInstance, model) + sizeof(float)*12;
+    attributeDescriptions[6].offset = offsetof(S72Object::MeshInstance, model) + sizeof(float)*4;
     attributeDescriptions[6].sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT;
+
+    attributeDescriptions[7].binding = 1;
+    attributeDescriptions[7].location = 7;
+    attributeDescriptions[7].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    attributeDescriptions[7].offset = offsetof(S72Object::MeshInstance, model) + sizeof(float)*8;
+    attributeDescriptions[7].sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT;
+
+    attributeDescriptions[8].binding = 1;
+    attributeDescriptions[8].location = 8;
+    attributeDescriptions[8].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    attributeDescriptions[8].offset = offsetof(S72Object::MeshInstance, model) + sizeof(float)*12;
+    attributeDescriptions[8].sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT;
 
     return attributeDescriptions;
 }
 
 
 /**
- * @brief Create a list of index buffers. One for each mesh that uses the indices to draw.
- */
-void VulkanHelper::CreateIndexBuffers() {
-    if(s72Instance == nullptr){
-        throw std::runtime_error("Index Buffer Error: s72Instance is null.");
-    }
-
-    indexBufferMemories.resize(s72Instance->meshes.size());
-    indexBuffers.resize(s72Instance->meshes.size());
-    isUseIndices.resize(s72Instance->meshes.size());
-
-    size_t index = 0;
-    for(const auto& mesh : s72Instance->meshes){
-        if(mesh.second->useIndices) {
-            CreateIndexBuffer(*mesh.second, index);
-            isUseIndices[index] = true;
-        }
-        else{
-            isUseIndices[index] = false;
-        }
-        index++;
-    }
-}
-
-
-/**
  * @brief Create the index buffer to store the index relations.
- * @param newMesh The mesh object.
- * @param index The index of the mesh in the array.
+ * @param[in] newMesh The mesh object.
+ * @param[out] vkMesh The container which has the target index buffer.
  */
-void VulkanHelper::CreateIndexBuffer(const S72Object::Mesh& newMesh, size_t index)
+void VulkanHelper::CreateIndexBuffer(const S72Object::Mesh& newMesh, VkMesh& vkMesh)
 {
     VkDeviceSize bufferSize = newMesh.indicesSrc.size();
 
@@ -1449,9 +1411,9 @@ void VulkanHelper::CreateIndexBuffer(const S72Object::Mesh& newMesh, size_t inde
     vkUnmapMemory(device, stagingBufferMemory);
 
     /* One difference is set its usage to INDEX_BUFFER */
-    CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffers[index], indexBufferMemories[index]);
+    CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vkMesh.indexBuffer, vkMesh.indexBufferMemory);
 
-    CopyBuffer(stagingBuffer, indexBuffers[index], bufferSize);
+    CopyBuffer(stagingBuffer, vkMesh.indexBuffer, bufferSize);
 
     vkDestroyBuffer(device, stagingBuffer, nullptr);
     vkFreeMemory(device, stagingBufferMemory, nullptr);
@@ -1459,51 +1421,35 @@ void VulkanHelper::CreateIndexBuffer(const S72Object::Mesh& newMesh, size_t inde
 
 
 /**
- * @brief Create a list of dynamic instance buffers. One has the instance info like the model matrix.
- */
-void VulkanHelper::CreateInstanceBuffers(){
-    if(s72Instance == nullptr){
-        throw std::runtime_error("Index Buffer Error: s72Instance is null.");
-    }
-
-    instanceBuffers.resize(s72Instance->meshes.size());
-    instanceBufferMemories.resize(s72Instance->meshes.size());
-
-    size_t index = 0;
-    for (auto it = s72Instance->meshes.begin(); it != s72Instance->meshes.end(); it++){
-        CreateInstanceBuffer(index);
-        index++;
-    }
-}
-
-
-/**
  * @brief Create a single dynamic instance buffer for a mesh.
- * @param index The index of the instance in the array.
+ * @param[out] vkMesh The container which has the target instance buffer.
  */
-void VulkanHelper::CreateInstanceBuffer(size_t index){
+void VulkanHelper::CreateInstanceBuffer(VkMesh& vkMesh){
     VkDeviceSize bufferSize = s72Instance->instanceCount * sizeof(S72Object::MeshInstance);
-    CreateBuffer(bufferSize,VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, instanceBuffers[index],instanceBufferMemories[index]);
+    CreateBuffer(bufferSize,VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vkMesh.instanceBuffer,vkMesh.instanceBufferMemory);
 }
 
 
 /**
  * @brief Update an instance buffer with the new instance data.
  * @param newMesh The mesh object which has the instance data.
- * @param index The index of the instance in the array.
  */
-void VulkanHelper::UpdateInstanceBuffer(const S72Object::Mesh& newMesh, size_t index){
+void VulkanHelper::UpdateInstanceBuffer(const S72Object::Mesh& newMesh){
     // Map dynamic instance buffer memory
     void* mappedData;
     VkDeviceSize bufferSize = s72Instance->instanceCount * sizeof(S72Object::MeshInstance);
 
-    vkMapMemory(device, instanceBufferMemories[index], 0, bufferSize, 0, &mappedData);
+    if(!VkMeshes.count(newMesh.name)){
+        throw std::runtime_error("Cannot find the vkMesh!");
+    }
+
+    vkMapMemory(device, VkMeshes[newMesh.name]->instanceBufferMemory, 0, bufferSize, 0, &mappedData);
 
     // Copy visible instance data to the mapped memory
     memcpy(mappedData, newMesh.visibleInstances.data(), newMesh.visibleInstances.size() * sizeof(S72Object::MeshInstance));
 
     // Unmap dynamic instance buffer memory
-    vkUnmapMemory(device, instanceBufferMemories[index]);
+    vkUnmapMemory(device, VkMeshes[newMesh.name]->instanceBufferMemory);
 }
 
 
@@ -1513,7 +1459,7 @@ void VulkanHelper::UpdateInstanceBuffer(const S72Object::Mesh& newMesh, size_t i
 void VulkanHelper::CreateUniformBuffers()
 {
     /* We use a large uniform buffer to store all mesh instance's ubo data */
-    VkDeviceSize bufferSize = sizeof(UniformBufferObject) * s72Instance->meshes.size();
+    VkDeviceSize bufferSize = sizeof(UniformBufferObject);
 
     uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
     uniformBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
@@ -1528,9 +1474,10 @@ void VulkanHelper::CreateUniformBuffers()
 
 
 /**
-* @brief Update the uniform buffer on the current image with given ubo data.
+ * @brief Update the uniform buffer on the current image with given ubo data.
+ * @param[in] currentImage: The index of the image based on the frame index.
 */
-void VulkanHelper::UpdateUniformBuffer(uint32_t currentImage, const S72Object::Mesh& mesh, size_t instanceIndex, size_t totalIndex)
+void VulkanHelper::UpdateUniformBuffer(uint32_t currentImage)
 {
     /* Define the model, view and projection transformations in the uniform buffer object.*/
     UniformBufferObject ubo{};
@@ -1538,92 +1485,13 @@ void VulkanHelper::UpdateUniformBuffer(uint32_t currentImage, const S72Object::M
     //ubo = mesh.instances.at(instanceIndex);
     ubo.view = currCamera->viewMatrix;
     ubo.proj = currCamera->projMatrix;;
+    ubo.viewPos = currCamera->cameraPos;
 
     /* Flip the Y-Dir */
     ubo.proj.data[1][1] *= -1;
 
     /* Copy the data to the current uniform buffer */
-    memcpy((void*)((char*)uniformBuffersMapped[currentImage] + (uint32_t)totalIndex*sizeof(UniformBufferObject)), &ubo, sizeof(ubo));
-}
-
-
-/**
-* @brief Create a pool to allocate descriptor sets.
-*/
-void VulkanHelper::CreateDescriptorPool()
-{
-    /* Describe which descriptor types our descriptor sets are going to contain */
-    /* The first is used for the uniform buffer. The second is used for the image sampler */
-    std::array<VkDescriptorPoolSize, 1> poolSizes{};
-    poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-    poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-    //poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    //poolSizes[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-
-    /* Create the pool info for allocation */
-    VkDescriptorPoolCreateInfo poolInfo{};
-    poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
-    poolInfo.pPoolSizes = poolSizes.data();
-    poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-
-    if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create descriptor pool!");
-    }
-}
-
-
-/**
-* @brief Create descriptor sets, one for each frame.
-*/
-void VulkanHelper::CreateDescriptorSets()
-{
-    /* Create one descriptor set for each frame in flight */
-    std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, descriptorSetLayout);
-    VkDescriptorSetAllocateInfo allocInfo{};
-    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    allocInfo.descriptorPool = descriptorPool;
-    allocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-    allocInfo.pSetLayouts = layouts.data();
-
-    descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
-    if (vkAllocateDescriptorSets(device, &allocInfo, descriptorSets.data()) != VK_SUCCESS) {
-        throw std::runtime_error("failed to allocate descriptor sets!");
-    }
-
-    /* Configure each descriptor set */
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        VkDescriptorBufferInfo bufferInfo{};
-        bufferInfo.buffer = uniformBuffers[i];
-        bufferInfo.offset = 0;
-        bufferInfo.range = sizeof(UniformBufferObject);
-
-        /* Bind the actual image and sampler resources to the descriptors. */
-        //VkDescriptorImageInfo imageInfo{};
-        //imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        //imageInfo.imageView = textureImageView;
-        //imageInfo.sampler = textureSampler;
-
-        std::array<VkWriteDescriptorSet, 1> descriptorWrites{};
-
-        descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrites[0].dstSet = descriptorSets[i];
-        descriptorWrites[0].dstBinding = 0;
-        descriptorWrites[0].dstArrayElement = 0;
-        descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-        descriptorWrites[0].descriptorCount = 1;
-        descriptorWrites[0].pBufferInfo = &bufferInfo;
-
-        //descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        //descriptorWrites[1].dstSet = descriptorSets[i];
-        //descriptorWrites[1].dstBinding = 1;
-        //descriptorWrites[1].dstArrayElement = 0;
-        //descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        //descriptorWrites[1].descriptorCount = 1;
-        //descriptorWrites[1].pImageInfo = &imageInfo;
-
-        vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
-    }
+    memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 }
 
 
@@ -1670,7 +1538,7 @@ void VulkanHelper::CreateCommandBuffers()
 * @param[in] imageIndex: The index of the current swap chain image we want to write to
 */
 void VulkanHelper::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex)
-{
+{ 
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     beginInfo.flags = 0; // Optional
@@ -1701,9 +1569,6 @@ void VulkanHelper::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t i
     /* Begin the render pass*/
     vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-    /* Bind the command buffer with the pipeline*/
-    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-
     /* Since We set the viewport and scissor state for this pipeline to be dynamic. */
     /* Here we need to set it now */
     VkViewport viewport{};
@@ -1721,54 +1586,63 @@ void VulkanHelper::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t i
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
     std::array<VkVertexInputBindingDescription2EXT,2> newBindingDescription{};
-    std::array<VkVertexInputAttributeDescription2EXT, 7> newAttributeDescription{};
+    std::array<VkVertexInputAttributeDescription2EXT, 9> newAttributeDescription{};
     auto vkCmdSetVertexInputExt = (PFN_vkCmdSetVertexInputEXT)vkGetDeviceProcAddr(device, "vkCmdSetVertexInputEXT");
     auto vkCmdSetPrimitiveTopologyEXT = (PFN_vkCmdSetPrimitiveTopologyEXT)( vkGetDeviceProcAddr( device, "vkCmdSetPrimitiveTopologyEXT" ) );
 
-    uint32_t m_index = 0;
-    /* Loop through each mesh in the list. */
-    for(auto& mesh : s72Instance->meshes){
+    /* Since the uniform buffer is one for every object, we update it globally. */
+    UpdateUniformBuffer(currentFrame);
 
-        /* Update the visible instance list. */
-        if(currCamera->name == "Debug-Camera"){
-            mesh.second->UpdateInstanceWithCulling(s72Instance->cameras["User-Camera"], cullingMode);
+    /* Loop through each material. */
+    for(const auto& VkMat : VkMaterials){
+
+        /* Bind the pipeline. */
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, VkMat.first->pipeline);
+
+        /* Loop through all the material types. */
+        for(const auto& material : VkMat.second){
+            uint32_t dynamicOffset = 0 * sizeof(UniformBufferObject);
+            vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, VkMat.first->pipelineLayout, 0, 1, &material->descriptorSets[currentFrame], 1,
+                                    &dynamicOffset);
+
+            /* Loop through all the meshes with that material. */
+            for(auto& mesh : material->meshes){
+                /* Update the visible instance list. */
+                if(currCamera->name == "Debug-Camera"){
+                    mesh->UpdateInstanceWithCulling(s72Instance->cameras["User-Camera"], cullingMode);
+                }
+                else{
+                     mesh->UpdateInstanceWithCulling(currCamera, cullingMode);
+                }
+
+                /* If no instance will be drawn, go to the next mesh. */
+                if(mesh->visibleInstances.empty()){
+                    continue;
+                }
+
+                /* Update the instance buffer with the new instance data. */
+                 UpdateInstanceBuffer(*mesh);
+
+                /* Bind its vertex buffer and set its info. */
+                VkBuffer newVertexBuffers[] = {  VkMeshes[mesh->name]->vertexBuffer , VkMeshes[mesh->name]->instanceBuffer};
+                VkDeviceSize offsets[] = { 0, 0 };
+                vkCmdBindVertexBuffers(commandBuffer, 0, 2, newVertexBuffers, offsets);
+
+                newBindingDescription = CreateBindingDescription(*mesh);
+                newAttributeDescription = CreateAttributeDescription(*mesh);
+
+                vkCmdSetVertexInputExt(commandBuffer,static_cast<uint32_t>(newBindingDescription.size()),newBindingDescription.data(),static_cast<uint32_t>(newAttributeDescription.size()),newAttributeDescription.data());
+                vkCmdSetPrimitiveTopologyEXT(commandBuffer,mesh->topology);
+
+                /* Draw the mesh. */
+                if(mesh->isUseIndex){
+                    vkCmdDrawIndexed(commandBuffer,mesh->indicesCount,(uint32_t)mesh->visibleInstances.size(),0,0,0);
+                }
+                else{
+                   vkCmdDraw(commandBuffer, mesh->count, (uint32_t)mesh->visibleInstances.size(), 0, 0);
+                }
+            }
         }
-        else{
-            mesh.second->UpdateInstanceWithCulling(currCamera, cullingMode);
-        }
-
-        /* If no instance will be drawn, go to the next mesh. */
-        if(mesh.second->visibleInstances.empty()){
-            m_index++;
-            continue;
-        }
-
-        /* Update the instance buffer with the new instance data. */
-        UpdateInstanceBuffer(*mesh.second,m_index);
-
-        /* Bind its vertex buffer and set its info. */
-        VkBuffer newVertexBuffers[] = { vertexBuffers[m_index] , instanceBuffers[m_index]};
-        VkDeviceSize offsets[] = { 0, 0 };
-        vkCmdBindVertexBuffers(commandBuffer, 0, 2, newVertexBuffers, offsets);
-
-        newBindingDescription = CreateBindingDescription(*mesh.second);
-        newAttributeDescription = CreateAttributeDescription(*mesh.second);
-
-        vkCmdSetVertexInputExt(commandBuffer,static_cast<uint32_t>(newBindingDescription.size()),newBindingDescription.data(),static_cast<uint32_t>(newAttributeDescription.size()),newAttributeDescription.data());
-        vkCmdSetPrimitiveTopologyEXT(commandBuffer,mesh.second->topology);
-
-        /* Bind the descriptor sets */
-        uint32_t dynamicOffset = m_index * sizeof(UniformBufferObject);
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 1, &dynamicOffset);
-        UpdateUniformBuffer(currentFrame, *mesh.second, 0, m_index);
-
-        if(mesh.second->useIndices){
-            vkCmdDrawIndexed(commandBuffer,mesh.second->indicesCount,(uint32_t)mesh.second->visibleInstances.size(),0,0,0);
-         }
-        else{
-            vkCmdDraw(commandBuffer, mesh.second->count, (uint32_t)mesh.second->visibleInstances.size(), 0, 0);
-        }
-        m_index++;
     }
 
     /* End the render pass */
@@ -1782,17 +1656,20 @@ void VulkanHelper::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t i
 
 
 /**
-* @brief Create the image instance.
-* @param[in] width: The image's width.
-* @param[in] height: The image's height.
-* @param[in] format: Image's format
-* @param[in] tiling: Image's tiling mode
-* @param[in] usage: The image's usage type.
-* @param[in] properties: The image's property.
-* @param[out] image: The image instance.
-* @param[out] imageMemory: The memory used to allocate the image.
+ * @brief Create the image instance.
+ * @param[in] width: The image's width.
+ * @param[in] height: The image's height.
+ * @param[in] mipLevels: The image's mipmap level.
+ * @param[in] arrayLayer: The number of layers for the image.
+ * @param[in] format: Image's format
+ * @param[in] tiling: Image's tiling mode
+ * @param[in] usage: The image's usage type.
+ * @param[in] flag: The image's special flag.
+ * @param[in] properties: The image's property.
+ * @param[out] image: The image instance.
+ * @param[out] imageMemory: The memory used to allocate the image.
 */
-void VulkanHelper::CreateImage(uint32_t width, uint32_t height, uint32_t newMipLevels, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory)
+void VulkanHelper::CreateImage(uint32_t width, uint32_t height, uint32_t mipLevels, uint32_t arrayLayer, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkImageCreateFlags flags, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory)
 {
     /* Set the info for the texture */
     VkImageCreateInfo imageInfo{};
@@ -1801,8 +1678,8 @@ void VulkanHelper::CreateImage(uint32_t width, uint32_t height, uint32_t newMipL
     imageInfo.extent.width = static_cast<uint32_t>(width);
     imageInfo.extent.height = static_cast<uint32_t>(height);
     imageInfo.extent.depth = 1;
-    imageInfo.mipLevels = newMipLevels;                                // Mipmap level is 1
-    imageInfo.arrayLayers = 1;
+    imageInfo.mipLevels = mipLevels;                                // Mipmap level is 1
+    imageInfo.arrayLayers = arrayLayer;
 
     imageInfo.format = format;
     imageInfo.tiling = tiling;
@@ -1810,7 +1687,7 @@ void VulkanHelper::CreateImage(uint32_t width, uint32_t height, uint32_t newMipL
     imageInfo.usage = usage;
     imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;              // Used for multi-sampling
-    imageInfo.flags = 0; // Optional
+    imageInfo.flags = flags; // Optional
 
     if (vkCreateImage(device, &imageInfo, nullptr, &image) != VK_SUCCESS) {
         throw std::runtime_error("failed to create image!");
@@ -1875,13 +1752,67 @@ void VulkanHelper::CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t wi
 
 
 /**
-* @brief Transit the image's layout with a new layout using a pipeline barrier.
-* @param[in] image: The image that is affected and the specific part of the image.
-* @param[in] format: The format of the image TODO!!!!!!!!!!!
-* @param[in] oldLayout: The old layout we have.
-* @param[in] newLayout: The new layout we determine.
+ * @brief Copy a VkBuffer to a VkImage. (Used for a cube map image)
+ * @param[in] buffer: The buffer we are copying from.
+ * @param[in] image: The image we are copying to.
+ * @param[in] width: The image's width.
+ * @param[in] height: The image's height.
+ * @param[in] nChannel: The image's number of channels.
+ */
+void VulkanHelper::CopyBufferToImageCube(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height,uint32_t nChannel){
+    VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
+
+    std::vector<VkBufferImageCopy> regions;
+    uint64_t offset = 0;
+
+    /* Set the order of the cube map. MAY CHANGE HERE. */
+    std::array<uint32_t,6> faceOrder{0,1,2,3,4,5};
+    //std::array<uint32_t,6> faceOrder{5,4,2,3,1,0};
+
+    /* Loop through each face. */
+    for(uint32_t face = 0; face < 6; face++) {
+        VkBufferImageCopy region{};
+        region.bufferOffset = offset;
+
+        region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        region.imageSubresource.mipLevel = 0;
+        region.imageSubresource.baseArrayLayer = faceOrder[face];
+        region.imageSubresource.layerCount = 1;
+
+        region.imageOffset = {0, 0, 0};
+        region.imageExtent = {
+                width,
+                height,
+                1
+        };
+
+        offset += width * height * nChannel * sizeof(float);
+        regions.emplace_back(region);
+    }
+
+    vkCmdCopyBufferToImage(
+            commandBuffer,
+            buffer,
+            image,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            static_cast<uint32_t>(regions.size()),
+            regions.data()
+    );
+
+    EndSingleTimeCommands(commandBuffer);
+}
+
+
+
+/**
+ * @brief Transit the image's layout with a new layout using a pipeline barrier.
+ * @param[in] image: The image that is affected and the specific part of the image.
+ * @param[in] layerCount: The number of layers of the image.
+ * @param[in] oldLayout: The old layout we have.
+ * @param[in] newLayout: The new layout we determine.
+ * @param[in] mipLevels: The image's mip map levels.
 */
-void VulkanHelper::TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t newMipLevels) {
+void VulkanHelper::TransitionImageLayout(VkImage image, uint32_t layerCount, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels) {
     VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
 
     VkImageMemoryBarrier barrier{};
@@ -1896,9 +1827,9 @@ void VulkanHelper::TransitionImageLayout(VkImage image, VkFormat format, VkImage
     barrier.image = image;
     barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     barrier.subresourceRange.baseMipLevel = 0;
-    barrier.subresourceRange.levelCount = newMipLevels;
+    barrier.subresourceRange.levelCount = mipLevels;
     barrier.subresourceRange.baseArrayLayer = 0;
-    barrier.subresourceRange.layerCount = 1;
+    barrier.subresourceRange.layerCount = layerCount;
 
     /* Set the barrier access mask */
     VkPipelineStageFlags sourceStage;
@@ -1938,21 +1869,251 @@ void VulkanHelper::TransitionImageLayout(VkImage image, VkFormat format, VkImage
 
 
 /**
-* @brief Create the texture image with a given texture.
-*/
-void VulkanHelper::CreateTextureImage()
-{
-    /* Load the texture image */
+ * @brief Convert a RGBE image to a RGB float image.
+ * @param[in] src The source RGBE image.
+ * @param[in] dst The target RGB float image.
+ * @param[in] texWidth The image width.
+ * @param[in] texHeight The image height.
+ */
+void VulkanHelper::ProcessRGBEImage(const unsigned char* src, float*& dst, int texWidth, int texHeight){
+
+    int numPixel = texWidth * texHeight;
+
+    for(int i = 0; i < numPixel*4; i+=4){
+        auto r = static_cast<float>(src[i]);
+        auto g = static_cast<float>(src[i+1]);
+        auto b = static_cast<float>(src[i+2]);
+        auto e = static_cast<int>(src[i+3]);
+
+        /* If it is 0. */
+        if(r == 0 && g == 0 && b == 0 && e == 0){
+            dst[i] = 0;
+            dst[i+1] = 0;
+            dst[i+2] = 0;
+            dst[i+3] = 1;
+            continue;
+        }
+
+        r = (r+0.5f)/256;
+        g = (g+0.5f)/256;
+        b = (b+0.5f)/256;
+        e = e - 128;
+
+        dst[i] = ldexp(r,e);
+        dst[i+1] = ldexp(g,e);
+        dst[i+2] = ldexp(b,e);
+        dst[i+3] = 1;
+    }
+}
+
+
+/**
+ * @brief Create a VkImage and VkImageView for a RGBE cube map.
+ * @param[in] filename The input file name.
+ * @param[out] image The target VkImage.
+ * @param[out] imageMemory  The target VkImage Memory.
+ * @param[out] imageView  The target VkImageView.
+ */
+void VulkanHelper::CreateCubeTextureImageAndView(const std::string& filename, VkImage& image, VkDeviceMemory& imageMemory, VkImageView& imageView){
+
     int texWidth, texHeight, texChannels;
-    stbi_uc* pixels = stbi_load(TEXTURE_PATH.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-    VkDeviceSize imageSize = texWidth * texHeight * 4;      // 4 means 4 bytes for pixel.
+    unsigned char* pixelRGBE = stbi_load(filename.c_str(), &texWidth, &texHeight, &texChannels, 4);
 
-    /* Determine the LOD */
-    mipLevels = static_cast<uint32_t>(std::floor(std::log2(max(texWidth, texHeight)))) + 1;
-
-    if (!pixels) {
+    if (!pixelRGBE) {
         throw std::runtime_error("failed to load texture image!");
     }
+
+    VkDeviceSize imageSize = texWidth * texHeight * texChannels;
+
+    /* Allocate memory for the float RGB image. */
+    auto* pixelRBG = new float[imageSize];
+    /* Convert to a float RGB image. */
+    ProcessRGBEImage(pixelRGBE,pixelRBG,texWidth,texHeight);
+
+    /* Get the height for each face. */
+    texHeight /= 6;
+
+    uint32_t envMipLevels = static_cast<uint32_t>(std::floor(std::log2(max(texWidth, texHeight)))) + 1;
+
+    /* Create a buffer to store the image data */
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+
+    CreateBuffer(imageSize*sizeof(float), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+
+    /* Copy the image to the buffer */
+    void* data;
+    vkMapMemory(device, stagingBufferMemory, 0, imageSize*sizeof(float), 0, &data);
+    memcpy(data, pixelRBG, static_cast<size_t>(imageSize)*sizeof(float));
+    vkUnmapMemory(device, stagingBufferMemory);
+
+    stbi_image_free(pixelRGBE);
+    delete[] pixelRBG;
+
+    CreateImage(texWidth, texHeight, envMipLevels, 6,VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, image, imageMemory);
+
+    /* Copy the staging buffer to the texture image */
+    TransitionImageLayout(image, 6, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, envMipLevels);
+    CopyBufferToImageCube(stagingBuffer, image, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), static_cast<uint32_t>(texChannels));
+
+    /* Clear the stage buffer */
+    vkDestroyBuffer(device, stagingBuffer, nullptr);
+    vkFreeMemory(device, stagingBufferMemory, nullptr);
+
+    GenerateMipmaps(image, VK_FORMAT_R8G8B8A8_SRGB, texWidth, texHeight, envMipLevels, 6);
+
+    /* Create the image view. */
+    imageView = CreateImageView(image, VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_VIEW_TYPE_CUBE, VK_IMAGE_ASPECT_COLOR_BIT, envMipLevels, 6);
+}
+
+
+/**
+ * @brief Create the VkImage and the VkImageView for pre-compute BRDF LUT.
+ * @param[in] The LUT file path and name.
+ */
+void VulkanHelper::CreateBRDFImageAndView(const std::string& filename){
+
+    int texWidth;
+    int texHeight;
+    int texChannel;
+    auto src = stbi_load(filename.c_str(),&texWidth,&texHeight,&texChannel,0);
+
+    std::string str_src;
+    str_src.reserve(texWidth*texHeight*4);
+
+    for(auto i = 0; i < texWidth; i++){
+        for(auto j = 0; j < texHeight; j++){
+            str_src.push_back((char)src[i*texHeight*3 + j*3    ]);
+            str_src.push_back((char)src[i*texHeight*3 + j*3 + 1]);
+            str_src.push_back((char)src[i*texHeight*3 + j*3 + 2]);
+            str_src.push_back((char)1);
+        }
+    }
+
+    CreateTextureImage(str_src,10,10,4,1,pbrBRDFImage,pbrBRDFImageMemory);
+    CreateTextureImageView(pbrBRDFImage,pbrBRDFImageView,4,1);
+
+    stbi_image_free(src);
+}
+
+
+/**
+ * @brief Create the environment cube maps.
+ */
+void VulkanHelper::CreateEnvironments(){
+    if(s72Instance == nullptr || s72Instance->envFileName.empty()){
+        throw std::runtime_error("failed to get the environment cube map info from s72!");
+    }
+
+    /* Create the environment map. */
+    CreateCubeTextureImageAndView(s72Instance->envFileName, envTextureImage,envTextureImageMemory,envTextureImageView);
+
+    /* Create the lambertian map. */
+    std::string lamFileName = s72Instance->envFileName + "_lam.png";
+    CreateCubeTextureImageAndView(lamFileName,lamTextureImage,lamTextureImageMemory,lamTextureImageView);
+
+    /* Create the ggx map. */
+    pbrTextureImage.resize(GGX_LEVELS);
+    pbrTextureImageMemory.resize(GGX_LEVELS);
+    pbrTextureImageView.resize(GGX_LEVELS);
+    for(int i = 0; i < GGX_LEVELS; i++){
+        std::string ggxFileName = s72Instance->envFileName + "_ggx_" + std::to_string(i) + ".png";
+        CreateCubeTextureImageAndView(ggxFileName,pbrTextureImage[i],pbrTextureImageMemory[i],pbrTextureImageView[i]);
+    }
+
+    std::string brdfFileName = s72Instance->envFileName + "_ggx_brdf.png";
+    CreateBRDFImageAndView(brdfFileName);
+
+}
+
+
+/**
+ * @brief Create a list of VkMaterials based on the data from the s72Instance.
+ */
+void VulkanHelper::CreateMaterials(){
+
+    for(auto& materialTypes : s72Instance->materials){
+
+        /* Create the descriptor set layout for each material. */
+        std::shared_ptr<VkMaterial> newVkMaterial = nullptr;
+        if(materialTypes.first == S72Object::EMaterial::simple) {
+            std::shared_ptr<VkMaterial_Simple> Vk_sim = std::make_shared<VkMaterial_Simple>();
+            Vk_sim->name = "simple";
+            Vk_sim->CreateDescriptorSetLayout(device);
+            newVkMaterial = std::dynamic_pointer_cast<VkMaterial>(Vk_sim);
+        }
+        else if(materialTypes.first == S72Object::EMaterial::environment || materialTypes.first == S72Object::EMaterial::mirror){
+            std::shared_ptr<VkMaterial_EnvironmentMirror> Vk_env = std::make_shared<VkMaterial_EnvironmentMirror>();
+            Vk_env->name = "environment";
+            Vk_env->CreateDescriptorSetLayout(device);
+            newVkMaterial = std::dynamic_pointer_cast<VkMaterial>(Vk_env);
+        }
+        else if(materialTypes.first == S72Object::EMaterial::lambertian){
+            std::shared_ptr<VkMaterial_Lambertian> Vk_lam = std::make_shared<VkMaterial_Lambertian>();
+            Vk_lam->name = "lambertian";
+            Vk_lam->CreateDescriptorSetLayout(device);
+            newVkMaterial = std::dynamic_pointer_cast<VkMaterial>(Vk_lam);
+        }
+        else if(materialTypes.first == S72Object::EMaterial::pbr){
+            std::shared_ptr<VkMaterial_PBR> Vk_pbr = std::make_shared<VkMaterial_PBR>();
+            Vk_pbr->name = "pbr";
+            Vk_pbr->CreateDescriptorSetLayout(device);
+            newVkMaterial = std::dynamic_pointer_cast<VkMaterial>(Vk_pbr);
+        }
+
+        /* Create the pipeline. */
+        std::string vertexShader = shaderMap.at(materialTypes.first)[0];
+        std::string fragShader = shaderMap.at(materialTypes.first)[1];
+        CreateGraphicsPipeline(vertexShader, fragShader,newVkMaterial->descriptorSetLayout,newVkMaterial->pipeline,newVkMaterial->pipelineLayout);
+
+        std::vector<std::shared_ptr<S72Object::Material>> mats;
+        mats.reserve(materialTypes.second.size());
+
+        /* For each material for that type, create its descriptor sets. */
+        for(const auto& material : materialTypes.second){
+            CreateMaterialImageView(material.second);
+            if(materialTypes.first == S72Object::EMaterial::simple){
+                auto material_sim = std::dynamic_pointer_cast<S72Object::Material_Simple>(material.second);
+                material_sim->CreateDescriptorPool(device);
+                material_sim->CreateDescriptorSets(device,newVkMaterial->descriptorSetLayout,uniformBuffers,textureSampler);
+            }
+            else if(materialTypes.first == S72Object::EMaterial::environment || materialTypes.first == S72Object::EMaterial::mirror){
+                auto material_env = std::dynamic_pointer_cast<S72Object::Material_EnvMirror>(material.second);
+                material_env->CreateDescriptorPool(device);
+                material_env->CreateDescriptorSets(device,newVkMaterial->descriptorSetLayout,uniformBuffers,textureSampler,envTextureImageView);
+            }
+            else if(materialTypes.first == S72Object::EMaterial::lambertian){
+                auto material_lam = std::dynamic_pointer_cast<S72Object::Material_Lambertian>(material.second);
+                material_lam->CreateDescriptorPool(device);
+                material_lam->CreateDescriptorSets(device,newVkMaterial->descriptorSetLayout,uniformBuffers,textureSampler,lamTextureImageView);
+            }
+            else if(materialTypes.first == S72Object::EMaterial::pbr){
+                auto material_pbr = std::dynamic_pointer_cast<S72Object::Material_PBR>(material.second);
+                material_pbr->CreateDescriptorPool(device);
+                material_pbr->CreateDescriptorSets(device,newVkMaterial->descriptorSetLayout,uniformBuffers,textureSampler,pbrTextureImageView,pbrBRDFImageView);
+            }
+
+            mats.emplace_back(material.second);
+        }
+        VkMaterials.insert(std::make_pair(newVkMaterial,mats));
+    }
+}
+
+
+/**
+ * @brief Create a 2D texture image.
+ * @param[in] src The data of the image as a string.
+ * @param[in] texWidth The image's width.
+ * @param[in] texHeight The image's height.
+ * @param[in] nChannels The image's number of channels.
+ * @param[in] mipLevels The image's mipmap levels.
+ * @param[out] textureImage The target image.
+ * @param[out] textureImageMemory The target image memory.
+ */
+void VulkanHelper::CreateTextureImage(const std::string& src, int texWidth, int texHeight, int nChannels, uint32_t mipLevels, VkImage& textureImage, VkDeviceMemory& textureImageMemory)
+{
+
+    VkDeviceSize imageSize = texWidth * texHeight * nChannels;      // 4 means 4 bytes for pixel.
 
     /* Create a buffer to store the image data */
     VkBuffer stagingBuffer;
@@ -1963,35 +2124,92 @@ void VulkanHelper::CreateTextureImage()
     /* Copy the image to the buffer */
     void* data;
     vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
-    memcpy(data, pixels, static_cast<size_t>(imageSize));
+    memcpy(data, src.data(), static_cast<size_t>(imageSize));
     vkUnmapMemory(device, stagingBufferMemory);
 
-    stbi_image_free(pixels);
+    /* Different number of channels may use different format. */
+    if(nChannels == 1){
+        CreateImage(texWidth, texHeight, mipLevels, 1, VK_FORMAT_R8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory);
 
-    CreateImage(texWidth, texHeight, mipLevels, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory);
+    }
+    else if(nChannels == 4 || nChannels == 3){
+        CreateImage(texWidth, texHeight, mipLevels, 1, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory);
+    }
+    else{
+        throw std::runtime_error("Cannot find the format with desired number of channels! ");
+    }
 
     /* Copy the staging buffer to the texture image */
-    TransitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels);
+    TransitionImageLayout(textureImage, 1, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels);
     CopyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
-
-    /* Change texture image's layout for the shade access */
-    //transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, mipLevels);
 
     /* Clear the stage buffer */
     vkDestroyBuffer(device, stagingBuffer, nullptr);
     vkFreeMemory(device, stagingBufferMemory, nullptr);
 
-    GenerateMipmaps(textureImage, VK_FORMAT_R8G8B8A8_SRGB, texWidth, texHeight, mipLevels);
+    if(nChannels == 1){
+        GenerateMipmaps(textureImage, VK_FORMAT_R8_UNORM, texWidth, texHeight, mipLevels,1);
+    }
+    else if(nChannels == 3 || nChannels == 4){
+        GenerateMipmaps(textureImage, VK_FORMAT_R8G8B8A8_SRGB, texWidth, texHeight, mipLevels,1);
+    }
 }
 
 
 /**
-* @brief Create the image view to access and present the texture image.
-*/
-void VulkanHelper::CreateTextureImageView()
+ * @brief Create the image view of a texture based on the image.
+ * @param[in] textureImage The input image.
+ * @param[out] textureImageView The target image view.
+ * @param[in] nChannels The image's number of channels.
+ * @param[in] mipLevels The image's mipmap levels.
+ */
+void VulkanHelper::CreateTextureImageView(const VkImage& textureImage, VkImageView& textureImageView, int nChannels, uint32_t mipLevels)
 {
     /* Create the texture image view */
-    textureImageView = CreateImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT,mipLevels);
+    if(nChannels == 1){
+        textureImageView = CreateImageView(textureImage, VK_FORMAT_R8_UNORM, VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_ASPECT_COLOR_BIT,mipLevels, 1);
+    }
+    else if(nChannels == 3 || nChannels == 4){
+        textureImageView = CreateImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_ASPECT_COLOR_BIT,mipLevels, 1);
+    }
+}
+
+
+/**
+ * @brief Given A S72 Material, Create its VkImage and VkImageView.
+ * @param sMaterial The S72 Material.
+ */
+void VulkanHelper::CreateMaterialImageView(const std::shared_ptr<S72Object::Material>& sMaterial){
+
+    /* Create the texture for the normal. */
+    CreateTextureImage(sMaterial->normalMap, sMaterial->normalMapWidth, sMaterial->normalMapHeight, sMaterial->normalMapChannel, sMaterial->normalMipLevels, sMaterial->normalImage, sMaterial->normalImageMemory);
+    CreateTextureImageView(sMaterial->normalImage, sMaterial->normalImageView, sMaterial->normalMapChannel, sMaterial->normalMipLevels);
+
+    /* Create the texture for the height. */
+    CreateTextureImage(sMaterial->heightMap,sMaterial->heightMapWidth,sMaterial->heightMapHeight, sMaterial->heightMapChannel,sMaterial->heightMapMipLevels, sMaterial->heightImage,sMaterial->heightImageMemory);
+    CreateTextureImageView(sMaterial->heightImage,sMaterial->heightImageView, sMaterial->heightMapChannel,sMaterial->heightMapMipLevels);
+
+    if(sMaterial->type == S72Object::EMaterial::lambertian){
+        auto sMaterial_lam = std::dynamic_pointer_cast<S72Object::Material_Lambertian>(sMaterial);
+        /* Create the texture for the albedo. */
+        CreateTextureImage(sMaterial_lam->albedo,sMaterial_lam->albedoWidth,sMaterial_lam->albedoHeight, sMaterial_lam->albedoChannel,sMaterial_lam->albedoMipLevels, sMaterial_lam->albedoImage,sMaterial_lam->albedoImageMemory);
+        CreateTextureImageView(sMaterial_lam->albedoImage,sMaterial_lam->albedoImageView, sMaterial_lam->albedoChannel,sMaterial_lam->albedoMipLevels);
+
+    }
+    else if(sMaterial->type == S72Object::EMaterial::pbr){
+        auto sMaterial_pbr = std::dynamic_pointer_cast<S72Object::Material_PBR>(sMaterial);
+        /* Create the texture for the albedo. */
+        CreateTextureImage(sMaterial_pbr->albedo,sMaterial_pbr->albedoWidth,sMaterial_pbr->albedoHeight,sMaterial_pbr->albedoChannel,sMaterial_pbr->albedoMipLevels, sMaterial_pbr->albedoImage,sMaterial_pbr->albedoImageMemory);
+        CreateTextureImageView(sMaterial_pbr->albedoImage,sMaterial_pbr->albedoImageView, sMaterial_pbr->albedoChannel,sMaterial_pbr->albedoMipLevels);
+
+        /* Create the texture for the roughness. */
+        CreateTextureImage(sMaterial_pbr->roughness,sMaterial_pbr->roughnessWidth,sMaterial_pbr->roughnessHeight, 1,sMaterial_pbr->roughnessMipLevels, sMaterial_pbr->roughnessImage,sMaterial_pbr->roughnessImageMemory);
+        CreateTextureImageView(sMaterial_pbr->roughnessImage,sMaterial_pbr->roughnessImageView, 1,sMaterial_pbr->roughnessMipLevels);
+
+        /* Create the texture for the metallic. */
+        CreateTextureImage(sMaterial_pbr->metallic,sMaterial_pbr->metallicWidth,sMaterial_pbr->metallicHeight, 1,sMaterial_pbr->metallicMipLevels, sMaterial_pbr->metallicImage,sMaterial_pbr->metallicImageMemory);
+        CreateTextureImageView(sMaterial_pbr->metallicImage,sMaterial_pbr->metallicImageView, 1,sMaterial_pbr->metallicMipLevels);
+    }
 }
 
 
@@ -2095,7 +2313,6 @@ VkFormat VulkanHelper::FindSupportedFormat(const std::vector<VkFormat>& candidat
             return format;
         }
     }
-
     throw std::runtime_error("failed to find supported format!");
 }
 
@@ -2131,8 +2348,8 @@ void VulkanHelper::CreateDepthResources()
     VkFormat depthFormat = FindDepthFormat();
 
     /* Create the image with the given format */
-    CreateImage(swapChainExtent.width, swapChainExtent.height, 1,depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage, depthImageMemory);
-    depthImageView = CreateImageView(depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT,1);
+    CreateImage(swapChainExtent.width, swapChainExtent.height, 1,1,depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage, depthImageMemory);
+    depthImageView = CreateImageView(depthImage, depthFormat, VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_ASPECT_DEPTH_BIT,1, 1);
 }
 
 
@@ -2320,13 +2537,14 @@ void VulkanHelper::RecreateSwapChain()
 
 /**
 * @brif Generate the mipmaps through the command buffer.
-* @param[in] image: The texture image.
-* @param[in] imageFormat: The format of the texture.
-* @param[in] texWidth: The texture width.
-* @param[in] texHeight: The texture height.
-* @param[in] mipLevels: The LOD of the texture.
+ * @param[in] image: The texture image.
+ * @param[in] imageFormat: The format of the texture.
+ * @param[in] texWidth: The texture width.
+ * @param[in] texHeight: The texture height.
+ * @param[in] mipLevels: The LOD of the texture.
+ * @param[in] layerCount: The number of layers for each image.
 */
-void VulkanHelper::GenerateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t newMipLevels) {
+void VulkanHelper::GenerateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels, uint32_t layerCount) {
 
     /* Check if image format supports linear blitting */
     VkFormatProperties formatProperties;
@@ -2345,14 +2563,14 @@ void VulkanHelper::GenerateMipmaps(VkImage image, VkFormat imageFormat, int32_t 
     barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     barrier.subresourceRange.baseArrayLayer = 0;
-    barrier.subresourceRange.layerCount = 1;
+    barrier.subresourceRange.layerCount = layerCount;
     barrier.subresourceRange.levelCount = 1;
 
     int32_t mipWidth = texWidth;
     int32_t mipHeight = texHeight;
 
     /* Record each of the VkCmdBlitImage commands */
-    for (uint32_t i = 1; i < newMipLevels; i++) {
+    for (uint32_t i = 1; i < mipLevels; i++) {
         barrier.subresourceRange.baseMipLevel = i - 1;
         barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
         barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
@@ -2372,13 +2590,13 @@ void VulkanHelper::GenerateMipmaps(VkImage image, VkFormat imageFormat, int32_t 
         blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
         blit.srcSubresource.mipLevel = i - 1;
         blit.srcSubresource.baseArrayLayer = 0;
-        blit.srcSubresource.layerCount = 1;
+        blit.srcSubresource.layerCount = layerCount;
         blit.dstOffsets[0] = { 0, 0, 0 };
         blit.dstOffsets[1] = { mipWidth > 1 ? mipWidth / 2 : 1, mipHeight > 1 ? mipHeight / 2 : 1, 1 };
         blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
         blit.dstSubresource.mipLevel = i;
         blit.dstSubresource.baseArrayLayer = 0;
-        blit.dstSubresource.layerCount = 1;
+        blit.dstSubresource.layerCount = layerCount;
 
         vkCmdBlitImage(commandBuffer,
                        image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
@@ -2402,7 +2620,7 @@ void VulkanHelper::GenerateMipmaps(VkImage image, VkFormat imageFormat, int32_t 
         if (mipHeight > 1) mipHeight /= 2;
     }
 
-    barrier.subresourceRange.baseMipLevel = newMipLevels - 1;
+    barrier.subresourceRange.baseMipLevel = mipLevels - 1;
     barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
     barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
@@ -2442,20 +2660,18 @@ void VulkanHelper::InitVulkan()
 
     CreateImageViews();
     CreateRenderPass();
-    CreateDescriptorSetLayout();
-    CreateGraphicsPipeline();
+
     CreateCommandPool();
     CreateDepthResources();
     CreateFrameBuffers();
-    //CreateTextureImage();
-    //CreateTextureImageView();
-    //CreateTextureSampler();
-    CreateVertexBuffers();
-    CreateIndexBuffers();
-    CreateInstanceBuffers();
+
+    CreateTextureSampler();
+    CreateEnvironments();
+
+    CreateMeshes();
     CreateUniformBuffers();
-    CreateDescriptorPool();
-    CreateDescriptorSets();
+
+    CreateMaterials();
     CreateCommandBuffers();
     CreateSyncObjects();
 }
@@ -2764,32 +2980,41 @@ void VulkanHelper::CleanUp()
         vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
     }
 
-    for(size_t i = 0; i < vertexBuffers.size(); i++){
-        vkDestroyBuffer(device, vertexBuffers[i], nullptr);
-        vkFreeMemory(device, vertexBufferMemories[i], nullptr);
+    for(auto& mesh : VkMeshes){
+        mesh.second->CleanUp();
     }
 
-    for(size_t i = 0; i < indexBuffers.size(); i++){
-        if(!isUseIndices[i]) continue;
-        vkDestroyBuffer(device, indexBuffers[i], nullptr);
-        vkFreeMemory(device, indexBufferMemories[i], nullptr);
+    vkDestroyImageView(device, envTextureImageView, nullptr);
+    vkDestroyImage(device, envTextureImage, nullptr);
+    vkFreeMemory(device, envTextureImageMemory, nullptr);
+
+    vkDestroyImageView(device, lamTextureImageView, nullptr);
+    vkDestroyImage(device, lamTextureImage, nullptr);
+    vkFreeMemory(device, lamTextureImageMemory, nullptr);
+
+    for(auto i = 0; i < GGX_LEVELS; i++){
+        vkDestroyImageView(device, pbrTextureImageView[i], nullptr);
+        vkDestroyImage(device, pbrTextureImage[i], nullptr);
+        vkFreeMemory(device, pbrTextureImageMemory[i], nullptr);
     }
 
-    for(size_t i = 0; i < instanceBuffers.size(); i++){
-        vkDestroyBuffer(device, instanceBuffers[i], nullptr);
-        vkFreeMemory(device, instanceBufferMemories[i], nullptr);
-    }
+    vkDestroyImageView(device, pbrBRDFImageView, nullptr);
+    vkDestroyImage(device, pbrBRDFImage, nullptr);
+    vkFreeMemory(device, pbrBRDFImageMemory, nullptr);
 
     vkDestroySampler(device, textureSampler, nullptr);
-    vkDestroyImageView(device, textureImageView, nullptr);
-    vkDestroyImage(device, textureImage, nullptr);
-    vkFreeMemory(device, textureImageMemory, nullptr);
 
-    vkDestroyDescriptorPool(device, descriptorPool, nullptr);
-    vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
-    vkDestroyPipeline(device, graphicsPipeline, nullptr);
+    for(auto& materialType : VkMaterials){
+        /* Clean the material's data. */
+        for(auto& material : materialType.second){
+            material->CleanUp(device);
+        }
+        /* Clean the material types' data. */
+        materialType.first->CleanUp(device);
+    }
+
     vkDestroyRenderPass(device, renderPass, nullptr);
-    vkDestroyPipelineLayout(device, pipelineLayout, nullptr);   // Destroy the pipeline layout
+
     vkDestroyCommandPool(device, commandPool, nullptr);     // Command buffer will be freed when the pool is freed
 
     vkDestroyDevice(device, nullptr);       // Destroy the logical device

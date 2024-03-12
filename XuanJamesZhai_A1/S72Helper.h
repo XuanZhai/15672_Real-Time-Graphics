@@ -10,13 +10,19 @@
 #include <vector>
 #include <vulkan/vulkan.h>
 #include <unordered_map>
+#include <set>
 #include <chrono>
 
 #include "XZJParser.h"
 #include "XZMath.h"
 #include "FrustumCulling.h"
+#include "VkMaterial.h"
+#include "S72Materials.h"
 
 namespace S72Object {
+
+    enum class EMaterial;
+
     /**
      * @brief A camera object listed in the s72 file.
      */
@@ -24,10 +30,6 @@ namespace S72Object {
         private:
             /* Node to the camera object in the s72 file. */
             std::shared_ptr<ParserNode> data = nullptr;
-
-            XZM::vec3 cameraPos;
-            /* The normalized vector the camera is facing. */
-            XZM::vec3 cameraDir;
 
             /* Fundamental data for a camera, use to build the projection matrix. */
             float aspect;
@@ -37,6 +39,10 @@ namespace S72Object {
         public:
             XZM::mat4 viewMatrix;
             XZM::mat4 projMatrix;
+
+            /* The normalized vector the camera is facing. */
+            XZM::vec3 cameraDir;
+            XZM::vec3 cameraPos;
 
             std::string name = "Camera";
 
@@ -94,8 +100,8 @@ namespace S72Object {
      */
     class Mesh {
         private:
-            /* Node to the mesh object in the s72 file. */
-            std::shared_ptr<ParserNode> data = nullptr;
+            /* If the mesh has tangent and texture coordinate data in S72. */
+            bool missingData = false;
 
             /* Load the mesh data from a b72 file given its path. */
             void SetSrc(const std::string &srcPath);
@@ -110,6 +116,9 @@ namespace S72Object {
             void SetTopology(const std::string &new_topology);
 
         public:
+            /* Node to the mesh object in the s72 file. */
+            std::shared_ptr<ParserNode> data = nullptr;
+
             /* Name will be used as the identifier of the mesh object. */
             std::string name;
             std::string src;
@@ -119,14 +128,18 @@ namespace S72Object {
             /* Position, Normal, and Color Vulkan formats */
             VkFormat pFormat;
             VkFormat nFormat;
+            VkFormat taFormat;
+            VkFormat teFormat;
             VkFormat cFormat;
             /* Position, Normal, and Color Vulkan offsets */
             uint32_t pOffset = 0;
             uint32_t nOffset = 0;
+            uint32_t taOffset = 0;
+            uint32_t teOffset = 0;
             uint32_t cOffset = 0;
 
             /* If we use indexed drawing and its index data. */
-            bool useIndices = false;
+            bool isUseIndex = false;
             std::string indicesSrc;
             uint32_t indicesCount = 0;
 
@@ -139,6 +152,9 @@ namespace S72Object {
             /* An AABB bounding box for the mesh. */
             AABB boundingBox;
 
+            /* The name of the material it has. */
+            std::string material;
+
             /* Construct a mesh based on the node. */
             explicit Mesh(std::shared_ptr<ParserNode> &node);
 
@@ -147,6 +163,9 @@ namespace S72Object {
 
             /* Given a mesh's b72 data, read and set the mesh's bounding box. */
             void ReadBoundingBox(std::stringstream &buffer);
+
+            /* If the mesh misses Tangent and Texture Coordinate, we need to fill it with default values. */
+            void FillMissingData();
 
             /* For a given camera instance, update if the instances are culled. */
             void UpdateInstanceWithCulling(const std::shared_ptr<S72Object::Camera>& camera, const std::string& cullingMode);
@@ -175,8 +194,10 @@ namespace S72Object {
             std::variant<XZM::vec3, XZM::quat> GetCurrentValue(float currTime);
 
             /* Check If the given node uses the driver. If true, return the channel. */
-            std::string HasMatchNodeAndChannel(const std::shared_ptr<ParserNode> &node) const;
-        };
+            [[nodiscard]] std::string HasMatchNodeAndChannel(const std::shared_ptr<ParserNode> &node) const;
+    };
+
+    class Material;
 }
 
 
@@ -210,6 +231,12 @@ public:
     /* A list of Drivers. */
     std::vector<std::shared_ptr<S72Object::Driver>> drivers;
 
+    /* The name of the environment cube map. */
+    std::string envFileName;
+
+    /* A map of material types, each has its sub materials. */
+    std::unordered_map<S72Object::EMaterial, std::map<std::string, std::shared_ptr<S72Object::Material>>> materials;
+
     S72Helper();
     /* Read and parse a s72 file from a given path. */
     void ReadS72(const std::string &filename);
@@ -231,6 +258,8 @@ public:
 
     /* Pause the animation if it is playing. */
     void StopAnimation();
+
+    static S72Object::EMaterial GetMaterialType(const ParserNode&);
 
     /* Extract the translation data as a vec3 from a ParserNode. */
     static XZM::vec3 FindTranslation(const ParserNode&);

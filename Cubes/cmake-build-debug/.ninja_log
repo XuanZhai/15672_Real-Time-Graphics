@@ -1,0 +1,7 @@
+# ninja log v5
+12	2243	7317181999934781	CMakeFiles/Cubes.dir/Lambertian.cpp.obj	41cc8e9e58c3c585
+11	875	7312227054309329	CMakeFiles/Cubes.dir/XZMath.cpp.obj	6275504a58f1eba6
+2262	3070	7317182005240017	Cubes.exe	89bc768a663c1d67
+1	2247	7317181999984791	CMakeFiles/Cubes.dir/main.cpp.obj	e6213d62467b445f
+2	1118	7314266270502089	CMakeFiles/Cubes.dir/Cube.cpp.obj	8ff6f7c99d082ae4
+8	2262	7317182000124779	CMakeFiles/Cubes.dir/GGX.cpp.obj	87ab6d241e4ab088

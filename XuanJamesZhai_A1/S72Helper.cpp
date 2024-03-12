@@ -24,7 +24,9 @@ std::unordered_map<std::string, VkPrimitiveTopology> topologyMap = {
 
 std::unordered_map<std::string,VkFormat> formatMap = {
         {"R32G32B32_SFLOAT", VK_FORMAT_R32G32B32_SFLOAT},
-        {"R8G8B8A8_UNORM",VK_FORMAT_R8G8B8_UNORM}
+        {"R8G8B8A8_UNORM",VK_FORMAT_R8G8B8_UNORM},
+        {"R32G32B32A32_SFLOAT", VK_FORMAT_R32G32B32A32_SFLOAT},
+        {"R32G32_SFLOAT", VK_FORMAT_R32G32_SFLOAT}
 };
 
 
@@ -38,7 +40,7 @@ std::string S72Helper::s72fileName;
  * @brief Default Constructor
  */
 S72Object::Camera::Camera() {
-    cameraPos = XZM::vec3(12.493f,-3.00024f,3.50548f);
+    cameraPos = XZM::vec3(0,-10,0);
     cameraDir = XZM::Normalize(XZM::vec3(0,0,0)-cameraPos);
     aspect = 1.7778f;
     v_fov = 0.287167f;
@@ -206,6 +208,8 @@ S72Object::Mesh::Mesh(std::shared_ptr<ParserNode>& node){
 
     pFormat = VK_FORMAT_R32G32B32_SFLOAT;
     nFormat = VK_FORMAT_R32G32B32_SFLOAT;
+    taFormat = VK_FORMAT_R32G32B32A32_SFLOAT;
+    teFormat = VK_FORMAT_R32G32_SFLOAT;
     cFormat = VK_FORMAT_R8G8B8A8_UNORM;
 }
 
@@ -230,6 +234,8 @@ void S72Object::Mesh::ProcessMesh(){
 
     std::shared_ptr<ParserNode> position = attributes->GetObjectValue("POSITION");
     std::shared_ptr<ParserNode> normal = attributes->GetObjectValue("NORMAL");
+    std::shared_ptr<ParserNode> tangent = attributes->GetObjectValue("TANGENT");
+    std::shared_ptr<ParserNode> texcoord = attributes->GetObjectValue("TEXCOORD");
     std::shared_ptr<ParserNode> color = attributes->GetObjectValue("COLOR");
 
     std::shared_ptr<ParserNode> new_src = position->GetObjectValue("src");
@@ -246,18 +252,41 @@ void S72Object::Mesh::ProcessMesh(){
 
     name = std::get<std::string>(new_name->data);
     count = (uint32_t) std::get<float>(new_count->data);
-
     stride = (uint32_t) std::get<float>(new_stride->data);
+
     pOffset = (uint32_t) std::get<float>(new_pOffset->data);
     nOffset = (uint32_t) std::get<float>(new_nOffset->data);
     cOffset = (uint32_t) std::get<float>(new_cOffset->data);
 
-    SetSrc(std::get<std::string>(new_src->data));
     SetTopology(std::get<std::string>(new_topology->data));
 
     SetFormat(0,std::get<std::string>(new_pFormat->data));
     SetFormat(1,std::get<std::string>(new_nFormat->data));
-    SetFormat(2,std::get<std::string>(new_cFormat->data));
+    SetFormat(4,std::get<std::string>(new_cFormat->data));
+
+    if(tangent == nullptr){
+        stride = 52;
+        taOffset = 24;
+        teOffset = 40;
+        cOffset = 48;
+        SetFormat(2,"R32G32B32A32_SFLOAT");
+        SetFormat(3,"R32G32_SFLOAT");
+        missingData = true;
+    }
+    else{
+        std::shared_ptr<ParserNode> new_taOffset = tangent->GetObjectValue("offset");
+        std::shared_ptr<ParserNode> new_taFormat = tangent->GetObjectValue("format");
+
+        std::shared_ptr<ParserNode> new_teOffset = texcoord->GetObjectValue("offset");
+        std::shared_ptr<ParserNode> new_teFormat = texcoord->GetObjectValue("format");
+
+        taOffset = (uint32_t) std::get<float>(new_taOffset->data);
+        teOffset = (uint32_t) std::get<float>(new_teOffset->data);
+        SetFormat(2,std::get<std::string>(new_taFormat->data));
+        SetFormat(3,std::get<std::string>(new_teFormat->data));
+    }
+
+    SetSrc(std::get<std::string>(new_src->data));
 
     if((*pnMap).count("indices")){
         std::shared_ptr<ParserNode> indices = data->GetObjectValue("indices");
@@ -267,7 +296,7 @@ void S72Object::Mesh::ProcessMesh(){
 
         indicesCount = (uint32_t) std::get<float>(indicesOffsets->data);
         SetIndicesSrc(std::get<std::string>(new_indicesSrc->data));
-        useIndices = true;
+        isUseIndex = true;
     }
 }
 
@@ -294,6 +323,10 @@ void S72Object::Mesh::SetSrc(const std::string& srcPath){
     ReadBoundingBox(buffer);
 
     src = buffer.str();
+
+    if(missingData){
+        FillMissingData();
+    }
 }
 
 
@@ -332,7 +365,12 @@ void S72Object::Mesh::SetFormat(size_t channel, const std::string& format){
 
     if(channel == 0) pFormat = formatMap[format];
     else if(channel == 1) nFormat = formatMap[format];
-    else cFormat = formatMap[format];
+    else if(channel == 2) taFormat = formatMap[format];
+    else if(channel == 3) teFormat = formatMap[format];
+    else if(channel == 4) cFormat = formatMap[format];
+    else{
+        throw std::runtime_error("Set Mesh Error: Does not find a correspond format. ");
+    }
 }
 
 
@@ -351,6 +389,34 @@ void S72Object::Mesh::SetTopology(const std::string& new_topology){
 
 
 /**
+ * @brief If the mesh misses Tangent and Texture Coordinate, we need to fill it with default values.
+ */
+void S72Object::Mesh::FillMissingData(){
+    std::string newSRC;
+    newSRC.reserve(count*stride);
+
+    auto frontSize = taOffset;
+    auto backSize = stride - cOffset;
+    uint64_t idx = 0;
+    uint64_t total = count*(frontSize + backSize);
+
+    /* Default values are all 0s. It's not matter since we'll never use them in the simple material. */
+    std::string emptyTangent = std::string(16,'\0') ;
+    std::string emptyTexCoord = std::string(8,'\0');
+
+    while(idx < total){
+        newSRC.append(src.substr(idx, frontSize));
+        newSRC.append(emptyTangent);
+        newSRC.append(emptyTexCoord);
+        newSRC.append(src.substr(idx+frontSize, backSize));
+        idx += (frontSize + backSize);
+    }
+
+    src = newSRC;
+}
+
+
+/**
  * @brief Read the b72 file. Loop through each vertex position and construct the bounding box.
  * @param buffer The b72 file stored in a string stream buffer.
  */
@@ -360,22 +426,16 @@ void S72Object::Mesh::ReadBoundingBox(std::stringstream& buffer){
 
     /* The size of the position, normal, and color are determined by the offsets. */
     long long posSize = (nOffset - pOffset) / 3;
-    long long normSize = (cOffset-nOffset) / 3;
-    long long colorSize = (stride - cOffset) / 4;
+    long long posGap = stride - nOffset;
+
+    std::shared_ptr<char> garbage(new char[posGap]);
 
     for(size_t i = 0; i < count; i++){
         buffer.read(reinterpret_cast<char*>(&currPos.data[0]), posSize);
         buffer.read(reinterpret_cast<char*>(&currPos.data[1]), posSize);
         buffer.read(reinterpret_cast<char*>(&currPos.data[2]), posSize);
 
-        buffer.read(reinterpret_cast<char*>(&currNormal.data[0]), normSize);
-        buffer.read(reinterpret_cast<char*>(&currNormal.data[1]), normSize);
-        buffer.read(reinterpret_cast<char*>(&currNormal.data[2]), normSize);
-
-        buffer.read(reinterpret_cast<char*>(&currColor.data[0]), colorSize);
-        buffer.read(reinterpret_cast<char*>(&currColor.data[1]), colorSize);
-        buffer.read(reinterpret_cast<char*>(&currColor.data[2]), colorSize);
-        buffer.read(reinterpret_cast<char*>(&currColor.data[2]), colorSize);
+        buffer.read(garbage.get(), posGap);
 
         /* Update the min/max position in different axis. */
         boundingBox.b_min.data[0] = std::min(currPos.data[0], boundingBox.b_min.data[0]);
@@ -502,6 +562,7 @@ std::string S72Object::Driver::HasMatchNodeAndChannel(const std::shared_ptr<Pars
 }
 
 
+
 /* =============================================== S72Helper ======================================================== */
 
 
@@ -528,6 +589,14 @@ S72Helper::S72Helper(){
     debugCamera->SetCameraData(1.7778f,0.287167f,0.1f,1000);
 
     cameras.insert(std::make_pair(debugCamera->name,debugCamera));
+
+    std::shared_ptr<S72Object::Material> material_Simple = std::make_shared<S72Object::Material_Simple>();
+    material_Simple->ProcessMaterial(nullptr);
+    std::shared_ptr<S72Object::Material> material = std::dynamic_pointer_cast<S72Object::Material>(material_Simple);
+
+    material->type = S72Object::EMaterial::simple;
+    material->name = "XZDefault";
+    materials[material->type].insert(std::make_pair(material->name, material));
 }
 
 
@@ -579,17 +648,71 @@ void S72Helper::ReconstructRoot() {
 
             drivers.emplace_back(newDriver);
         }
+        else if(std::get<std::string>(node->GetObjectValue("type")->data) == "ENVIRONMENT"){
+            auto radNode = node->GetObjectValue("radiance");
+            envFileName = S72Helper::s72fileName + "/../" + std::get<std::string>(radNode->GetObjectValue("src")->data);
+        }
+        else if(std::get<std::string>(node->GetObjectValue("type")->data) == "MATERIAL"){
+            std::shared_ptr<S72Object::Material> material = nullptr;
+            std::string materialName = std::get<std::string>(node->GetObjectValue("name")->data);
+            S72Object::EMaterial type = GetMaterialType(*node);
+
+            /* Read the material data. */
+            if(type == S72Object::EMaterial::simple){
+                std::shared_ptr<S72Object::Material> material_Simple = std::make_shared<S72Object::Material_Simple>();
+                material_Simple->ProcessMaterial(node);
+                material = std::dynamic_pointer_cast<S72Object::Material>(material_Simple);
+            }
+            else if(type == S72Object::EMaterial::environment || type == S72Object::EMaterial::mirror){
+                std::shared_ptr<S72Object::Material> material_Simple = std::make_shared<S72Object::Material_EnvMirror>();
+                material_Simple->ProcessMaterial(node);
+                material = std::dynamic_pointer_cast<S72Object::Material>(material_Simple);
+            }
+            else if(type == S72Object::EMaterial::lambertian){
+                std::shared_ptr<S72Object::Material_Lambertian> material_Lam = std::make_shared<S72Object::Material_Lambertian>();
+                material_Lam->ProcessMaterial(node);
+                material = std::dynamic_pointer_cast<S72Object::Material>(material_Lam);
+            }
+            else if(type == S72Object::EMaterial::pbr){
+                std::shared_ptr<S72Object::Material_PBR> material_PBR = std::make_shared<S72Object::Material_PBR>();
+                material_PBR->ProcessMaterial(node);
+                material = std::dynamic_pointer_cast<S72Object::Material>(material_PBR);
+            }
+            material->type = type;
+            material->name = materialName;
+            materials[type].insert(std::make_pair(material->name, material));
+        }
         index++;
     }
 
     /* Recursively reconstruct its children and reset the root node */
     ReconstructNode(newRoot, XZM::mat4());
-    root = newRoot;
 
     /* Loop through all the meshes and construct their data. */
     for(auto& mesh : meshes){
         mesh.second->ProcessMesh();
+
+        std::string matName = "simple";
+        S72Object::EMaterial matType = S72Object::EMaterial::simple;
+        if (mesh.second->data->GetObjectValue("material") != nullptr) {
+            size_t matIndex = (size_t) std::get<float>(mesh.second->data->GetObjectValue("material")->data);
+            std::shared_ptr<ParserNode> matNode = std::get<ParserNode::PNVector>(root->data)[matIndex];
+
+            matName = std::get<std::string>(matNode->GetObjectValue("name")->data);
+            matType = GetMaterialType(*matNode);
+
+            auto matRef = materials[matType][matName];
+            matRef->meshes.emplace_back(mesh.second);
+        }
+        else{
+            matName = "XZDefault";
+            matType = S72Object::EMaterial::simple;
+            auto matRef = materials[matType][matName];
+            matRef->meshes.emplace_back(mesh.second);
+        }
     }
+
+    root = newRoot;
 }
 
 
@@ -631,8 +754,8 @@ void S72Helper::ReconstructNode(std::shared_ptr<ParserNode> newNode, XZM::mat4 n
     else if(type == "MESH"){
             std::string meshName = std::get<std::string>(newNode->GetObjectValue("name")->data);
             /* Insert into the mesh list, use a red-black tree so that it is unique. */
-            if(!meshes.count(meshName)){
-                meshes.insert(std::make_pair(meshName,std::make_shared<S72Object::Mesh>(newNode)));
+            if(!meshes.count(meshName)) {
+                meshes.insert(std::make_pair(meshName, std::make_shared<S72Object::Mesh>(newNode)));
             }
             /* Add that instance to the mesh's instance list, also update the total instance count. */
             meshes[meshName]->instances.emplace_back(newMat);
@@ -793,17 +916,50 @@ void S72Helper::UpdateObject(const std::shared_ptr<ParserNode>& newNode, XZM::ma
 }
 
 
+/**
+ * @brief Set play animation to true, also reset the timer.
+ */
 void S72Helper::StartAnimation(){
     isPlayingAnimation = true;
 
-// Convert float duration to steady_clock duration
+    // Convert float duration to steady_clock duration
     auto durationInSecondsSteady = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::duration<float>(currDuration));
     animStartTimePoint = std::chrono::system_clock::now() - durationInSecondsSteady;
 }
 
 
+/**
+ * @brief Set play animation to false.
+ */
 void S72Helper::StopAnimation(){
     isPlayingAnimation = false;
+}
+
+
+/**
+ * @brief Given a Material Parser Node, identify its material type.
+ * @param newNode The Material Parser Node.
+ * @return The Material type.
+ */
+S72Object::EMaterial S72Helper::GetMaterialType(const ParserNode& newNode){
+    ParserNode::PNMap pnMap = std::get<ParserNode::PNMap>(newNode.data);
+
+    S72Object::EMaterial material = S72Object::EMaterial::simple;
+
+    if(pnMap.count("environment")){
+        material = S72Object::EMaterial::environment;
+    }
+    else if(pnMap.count("mirror")){
+        material = S72Object::EMaterial::mirror;
+    }
+    else if(pnMap.count("lambertian")){
+        material = S72Object::EMaterial::lambertian;
+    }
+    else if(pnMap.count("pbr")){
+        material = S72Object::EMaterial::pbr;
+    }
+
+    return material;
 }
 
 
