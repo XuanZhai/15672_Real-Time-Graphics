@@ -4,6 +4,11 @@
 #include "S72Materials.h"
 #include "VulkanHelper.h"
 
+
+/**
+ * @brief Allocate the descriptor pool for the descriptor sets.
+ * @param device The physical device.
+ */
 void S72Object::Material_Simple::CreateDescriptorPool(const VkDevice& device){
 
     /* Describe which descriptor types our descriptor sets are going to contain */
@@ -33,6 +38,13 @@ void S72Object::Material_Simple::CreateDescriptorPool(const VkDevice& device){
 }
 
 
+/**
+ * @brief Create the descriptor sets for the Simple Material.
+ * @param device The physical device.
+ * @param descriptorSetLayout The descriptor set layout.
+ * @param uniformBuffers The uniform buffer.
+ * @param textureSampler The texture sampler.
+ */
 void S72Object::Material_Simple::CreateDescriptorSets(const VkDevice& device, const VkDescriptorSetLayout& descriptorSetLayout, const std::vector<VkBuffer>& uniformBuffers,VkSampler const &textureSampler){
 
     /* Create one descriptor set for each frame in flight */
@@ -80,7 +92,7 @@ void S72Object::Material_Simple::CreateDescriptorSets(const VkDevice& device, co
         descriptorWrites[1].dstBinding = 1;
         descriptorWrites[1].dstArrayElement = 0;
         descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrites[1].descriptorCount = normalMapInfo.size();
+        descriptorWrites[1].descriptorCount = static_cast<uint32_t>(normalMapInfo.size());
         descriptorWrites[1].pImageInfo = normalMapInfo.data();
 
         descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -88,10 +100,10 @@ void S72Object::Material_Simple::CreateDescriptorSets(const VkDevice& device, co
         descriptorWrites[2].dstBinding = 2;
         descriptorWrites[2].dstArrayElement = 0;
         descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrites[2].descriptorCount = heightMapInfo.size();
+        descriptorWrites[2].descriptorCount = static_cast<uint32_t>(heightMapInfo.size());
         descriptorWrites[2].pImageInfo = heightMapInfo.data();
 
-        vkUpdateDescriptorSets(device, descriptorWrites.size(), descriptorWrites.data(), 0, nullptr);
+        vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
     }
 }
 

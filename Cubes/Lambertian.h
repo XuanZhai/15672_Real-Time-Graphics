@@ -18,6 +18,8 @@ class Lambertian : public Cube{
 
     /* Sample a direction. */
     static XZM::vec3 MakeSample();
+    /* Importance sampling toward the bright directions. */
+    XZM::vec3 SumBrightDirection(const XZM::vec3& dir) override;
 
 public:
     /* An override function for doing the Lambertian Monte-Carlo. */

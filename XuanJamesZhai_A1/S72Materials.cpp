@@ -6,6 +6,11 @@
 #include "stb_image.h"
 
 
+/**
+ * @brief Overload < operator used for the map container.
+ * @param newMat The compared material.
+ * @return If this is smaller.
+ */
 bool S72Object::Material::operator < (const Material& newMat) const{
     if(this->type != newMat.type){
         return this->type < newMat.type;
@@ -14,9 +19,11 @@ bool S72Object::Material::operator < (const Material& newMat) const{
 }
 
 
-void S72Object::Material::CreateDescriptorPool(const VkDevice& device){
-
-}
+/**
+ * @brief Default create pool function.
+ * @param device The physical device.
+ */
+void S72Object::Material::CreateDescriptorPool(const VkDevice& device){}
 
 
 /**
@@ -39,7 +46,7 @@ void S72Object::Material::ProcessMaterial(const std::shared_ptr<ParserNode>& nod
         ReadPNG( S72Helper::s72fileName + "/../" + std::get<std::string>(src->data),normalMap,normalMapWidth,normalMapHeight,normalMapChannel,normalMipLevels);
     }
     else{
-        normalMap = std::string() + (char) (0.5f * 256) + (char) (0.5f * 256) + (char) (255) + (char)(255);
+        normalMap = std::string() + (char) (128u) + (char) (128u) + (char) (255u) + (char)(255u);
         normalMapWidth = 1;
         normalMapHeight = 1;
         normalMapChannel = 4;
@@ -62,6 +69,15 @@ void S72Object::Material::ProcessMaterial(const std::shared_ptr<ParserNode>& nod
 }
 
 
+/**
+ * @brief Read a PNG from a file path.
+ * @param filename The file path and name.
+ * @param src The target container for the image.
+ * @param width The image width.
+ * @param height The image height.
+ * @param nChannels The image number of channels.
+ * @param mipLevels The image's mip map level.s
+ */
 void S72Object::Material::ReadPNG(const std::string& filename, std::string& src, int& width, int& height, int& nChannels, uint32_t& mipLevels){
 
     unsigned char* image = stbi_load(filename.c_str(), &width, &height, &nChannels, 0);
@@ -83,7 +99,7 @@ void S72Object::Material::ReadPNG(const std::string& filename, std::string& src,
                 src.push_back((char)image[index]);
                 src.push_back((char)image[index+1]);
                 src.push_back((char)image[index+2]);
-                src.push_back((char)(255));
+                src.push_back((char)(255u));
                 index+=3;
             }
         }
@@ -94,6 +110,10 @@ void S72Object::Material::ReadPNG(const std::string& filename, std::string& src,
 }
 
 
+/**
+ * @brief Deallocate and free the memory of the normal/displacement data, as well as the pool.
+ * @param device The physical device.
+ */
 void S72Object::Material::CleanUp(const VkDevice& device){
     vkDestroyImageView(device, normalImageView, nullptr);
     vkDestroyImage(device, normalImage, nullptr);

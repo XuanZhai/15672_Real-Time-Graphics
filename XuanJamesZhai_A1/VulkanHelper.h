@@ -48,6 +48,7 @@ const std::unordered_map<S72Object::EMaterial, std::array<std::string,2>> shader
         {S72Object::EMaterial::pbr, {"Shaders/pbr.vert.spv","Shaders/pbr.frag.spv"}}
 };
 
+/* The number of PBR environment maps. */
 const int GGX_LEVELS = 10;
 
 /* How many frames should be processed concurrently */
@@ -176,7 +177,6 @@ private:
     std::vector<void*> uniformBuffersMapped;
 
     /* A map of VkMaterials hold all the material info in the GPU. */
-    //std::unordered_map<S72Object::EMaterial, std::shared_ptr<VkMaterial>> VkMaterials;
     std::map<std::shared_ptr<VkMaterial>,std::vector<std::shared_ptr<S72Object::Material>>> VkMaterials;
 
     /* The filename of the environment cube map. */
@@ -192,11 +192,12 @@ private:
     VkDeviceMemory lamTextureImageMemory = VK_NULL_HANDLE;
     VkImageView lamTextureImageView = VK_NULL_HANDLE;
 
-    /* Data for the ggx environment map. */
+    /* Data for the pre-compute PBR environment map. */
     std::vector<VkImage> pbrTextureImage; 
     std::vector<VkDeviceMemory> pbrTextureImageMemory;
     std::vector<VkImageView> pbrTextureImageView;
-    
+
+    /* Data for pre-compute BRDF. */
     VkImage pbrBRDFImage;
     VkDeviceMemory pbrBRDFImageMemory;
     VkImageView pbrBRDFImageView;
@@ -397,6 +398,7 @@ private:
     /* Create the VkImage and the VkImageView for a cube map. */
     void CreateCubeTextureImageAndView(const std::string& filename, VkImage& image, VkDeviceMemory& imageMemory, VkImageView& imageView);
 
+    /* Create the VkImage and the VkImageView for pre-compute BRDF LUT. */
     void CreateBRDFImageAndView(const std::string& filename);
 
     /* Create the three environment cube maps. */
@@ -411,7 +413,8 @@ private:
     /* Create the image view to access and present the texture image. */
     void CreateTextureImageView(const VkImage& textureImage, VkImageView& textureImageView, int nChannels, uint32_t mipLevels);
 
-    void CreateMaterialImageView(const std::shared_ptr<S72Object::Material>&);
+    /* Given A S72 Material, Create its VkImage and VkImageView. */
+    void CreateMaterialImageView(const std::shared_ptr<S72Object::Material>& newMat);
 
     /* Create the texture sampler to access the texture. */
     void CreateTextureSampler();

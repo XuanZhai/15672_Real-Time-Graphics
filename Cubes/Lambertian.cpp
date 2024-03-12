@@ -32,6 +32,27 @@ XZM::vec3 Lambertian::MakeSample(){
 
 
 /**
+ * @brief Importance sampling around the bright directions/
+ * @param dir The direction of the surface normal.
+ * @return The accumulated result.
+ */
+XZM::vec3 Lambertian::SumBrightDirection(const XZM::vec3& dir) {
+    XZM::vec3 ret = XZM::vec3();
+    float totalWeight = 0;
+
+    for (const auto& bd : brightDirections) {
+        float NoL = std::max(0.0f, std::min(1.0f, XZM::DotProduct(dir,bd.dir)));
+
+        if(NoL > 0.995) {
+            ret += (bd.light * NoL);
+            totalWeight += NoL;
+        }
+    }
+    return ret;
+}
+
+
+/**
  * @brief An override function for doing the Lambertian Monte-Carlo.
  * @param newNSamples The number of samples to take.
  * @param outWidth The output image width.
@@ -113,18 +134,27 @@ void Lambertian::ProcessingFace(EFace face) {
             XZM::vec3 TX = XZM::Normalize(XZM::CrossProduct(N, temp));
             XZM::vec3 TY = XZM::CrossProduct(N, TX);
 
+            XZM::vec3 V = N;
             XZM::vec3 acc = XZM::vec3(0.0f, 0.0f, 0.0f);
+            float totalWeight = 0;
+
             for (uint32_t i = 0; i < uint32_t(nSamples); ++i) {
                 /* Randomly make a sample. */
                 XZM::vec3 sampleDir = MakeSample();
                 sampleDir = XZM::Normalize(XZM::vec3(TX * sampleDir.data[0] + TY * sampleDir.data[1] + N * sampleDir.data[2]));
-                /* Find its correspond cube map. */
-                acc += Projection(sampleDir);
+
+                XZM::vec3 L = XZM::Normalize(sampleDir *2 * XZM::DotProduct( V, sampleDir ) - V);
+                float NoL = std::max(0.0f, std::min(1.0f, XZM::DotProduct(N,L)));
+
+                if(NoL > 0){
+                    /* Find its correspond cube map. */
+                    acc += Projection(sampleDir) * NoL;
+                    totalWeight += NoL;
+                }
             }
             /* Average the result. */
-            acc = acc * (1.0f / float(nSamples));
-            /* Add the bright info. */
-            acc += SumBrightDirection(N);
+            acc = acc * (1.0f / totalWeight);
+            acc += (SumBrightDirection(N));
             outMaps[face][v][u] = acc;
         }
     }

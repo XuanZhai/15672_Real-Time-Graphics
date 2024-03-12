@@ -54,6 +54,11 @@ XZM::vec3 GGX::MakeSample(const std::pair<float,float>& Xi) const{
 }
 
 
+/**
+ * @brief Importance sampling around the bright directions/
+ * @param dir The direction of the surface normal.
+ * @return The accumulated result.
+ */
 XZM::vec3 GGX::SumBrightDirection(const XZM::vec3& dir){
 
     XZM::vec3 ret = XZM::vec3();
@@ -67,11 +72,6 @@ XZM::vec3 GGX::SumBrightDirection(const XZM::vec3& dir){
             totalWeight += NoL;
         }
     }
-
-    //if(totalWeight != 0){
-        return ret;
-    //}
-    std::cout << "Here" << std::endl;
     return ret;
 }
 
@@ -205,7 +205,12 @@ void GGX::ProcessingFace(EFace face) {
 }
 
 
-float GGX::GeometrySchlickGGX(float NoV){
+/**
+ * @brief Calculate the Schlick-GGX geometry function.
+ * @param NoV Dot product of normal and view direction.
+ * @return BRDF convolution.
+ */
+float GGX::GeometrySchlickGGX(float NoV) const{
     float a = roughness;
     float k = (a * a) / 2.0f;
 
@@ -216,6 +221,13 @@ float GGX::GeometrySchlickGGX(float NoV){
 }
 
 
+/**
+ * @brief Calculate part of the G term of the BRDF.
+ * @param N The normal.
+ * @param V The view direction.
+ * @param L The light direction.
+ * @return The G term.
+ */
 float GGX::GeometrySmith(const XZM::vec3& N, const XZM::vec3& V, const XZM::vec3& L){
     float NoV = std::max(XZM::DotProduct(N, V), 0.0f);
     float NoL = std::max(XZM::DotProduct(N, L), 0.0f);
@@ -225,6 +237,9 @@ float GGX::GeometrySmith(const XZM::vec3& N, const XZM::vec3& V, const XZM::vec3
 }
 
 
+/**
+ * @brief Pre-compute the BRDF.
+ */
 void GGX::ProcessBRDF(){
 
     for(int i = 0; i < 10; i++){
@@ -286,6 +301,9 @@ void GGX::SaveOutput() {
 }
 
 
+/**
+ * @brief Save the pre-compute BRDF to a LUT.
+ */
 void GGX::SaveBRDF(){
     auto* dst = new stbi_uc[10*10*3];
 
@@ -303,6 +321,7 @@ void GGX::SaveBRDF(){
 
     delete[] dst;
 }
+
 
 GGX::~GGX() {
     if(brdf == nullptr){

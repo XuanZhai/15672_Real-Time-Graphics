@@ -29,10 +29,11 @@ class GGX : public Cube{
     /* Make a GGX sample based on the Hammersley Sequence. */
     [[nodiscard]] XZM::vec3 MakeSample(const std::pair<float,float>& Xi) const;
 
-
+    /* Bright Importance Sampling. */
     XZM::vec3 SumBrightDirection(const XZM::vec3& dir) override;
 
-    float GeometrySchlickGGX(float NdotV);
+    /* Compute the G-Term. */
+    float GeometrySchlickGGX(float NdotV) const;
     float GeometrySmith(const XZM::vec3& N, const XZM::vec3& V, const XZM::vec3& L);
 
 public:
@@ -40,11 +41,10 @@ public:
     void Processing(uint32_t newNSamples, uint32_t outWidth, uint32_t outHeight) override;
     /* Process the Lambertian Monte-Carlo for a given output face. */
     void ProcessingFace(EFace face);
-
+    /* Pre-compute the BRDF. */
     void ProcessBRDF();
-
+    /* Save the integrated BRDF to a LUT. */
     void SaveBRDF();
-
     /* Save the output as a png file. */
     void SaveOutput();
 

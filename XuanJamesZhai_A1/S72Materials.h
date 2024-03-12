@@ -12,6 +12,7 @@
 
 namespace S72Object{
 
+    /* The material types. */
     enum class EMaterial{
         simple,
         environment,
@@ -21,7 +22,8 @@ namespace S72Object{
     };
 
     /**
-     * @brief The S72-side material object. Contain all the data in the .72 files.
+     * @brief The S72-side material object. Contain all the data in the .72 files,
+     * as well as the descriptor sets.
      */
     class Material{
         public:
@@ -50,21 +52,25 @@ namespace S72Object{
             VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
             std::vector<VkDescriptorSet> descriptorSets;
 
+            /* A list of meshes that use this material. */
             std::vector<std::shared_ptr<S72Object::Mesh>> meshes;
 
+            /* Overload < operator used for the map container. */
             bool operator < (const Material& newMat) const;
-
             /* Read a node and load all the info. */
             virtual void ProcessMaterial(const std::shared_ptr<ParserNode>& node);
-
+            /* Read a PNG from a file path. */
             static void ReadPNG(const std::string& filename, std::string& src, int& width, int& height, int& nChannels, uint32_t& mipLevels);
-
+            /* Default create pool function. */
             virtual void CreateDescriptorPool(const VkDevice& device);
-
+            /* Deallocate and free the memory of the normal/displacement data, as well as the pool. */
             virtual void CleanUp(const VkDevice& device);
     };
 
 
+    /**
+     * @brief Overload material for the Simple Material type.
+     */
     class Material_Simple : public Material{
     public:
         void CreateDescriptorPool(const VkDevice& device) override;
@@ -73,6 +79,9 @@ namespace S72Object{
     };
 
 
+    /**
+    * @brief Overload material for the Environment/Mirror Material type.
+    */
     class Material_EnvMirror : public Material{
     public:
         void CreateDescriptorPool(const VkDevice& device) override;
@@ -105,12 +114,13 @@ namespace S72Object{
                                       const std::vector<VkBuffer> &uniformBuffers,VkSampler const &textureSampler,
                                       const VkImageView& cubeMap);
 
-
-
             void CleanUp(const VkDevice& device) override;
     };
 
 
+    /**
+    * @brief Overload material for the PBR Material type.
+    */
     class Material_PBR : public Material {
         public:
             std::string albedo;
@@ -148,7 +158,6 @@ namespace S72Object{
             void CreateDescriptorSets(const VkDevice& device, const VkDescriptorSetLayout& descriptorSetLayout,
                                       const std::vector<VkBuffer>& uniformBuffers, const VkSampler& textureSampler,
                                       const std::vector<VkImageView>& cubeMaps, const VkImageView& brdfLUT);
-
 
             void CleanUp(const VkDevice& device) override;
     };

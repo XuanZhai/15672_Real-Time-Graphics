@@ -7,10 +7,10 @@
 
 /**
  * @brief Create the descriptor pool for the material.
+ * @param device The physical device.
  */
 void S72Object::Material_EnvMirror::CreateDescriptorPool(const VkDevice& device){
     /* Describe which descriptor types our descriptor sets are going to contain */
-    /* The first is used for the uniform buffer. The second is used for the image sampler */
     std::array<VkDescriptorPoolSize,4> poolSizes{};
 
     poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
@@ -40,6 +40,8 @@ void S72Object::Material_EnvMirror::CreateDescriptorPool(const VkDevice& device)
 
 /**
  * @brief Create the descriptor set for the environment/mirror material.
+ * @param device The physical device.
+ * @param descriptorSetLayout The descriptor set layout.
  * @param uniformBuffers The UBO buffer.
  * @param textureSampler The sampler for the texture.
  * @param cubeMap The environment cube map.
@@ -95,7 +97,7 @@ void S72Object::Material_EnvMirror::CreateDescriptorSets(const VkDevice& device,
         descriptorWrites[1].dstBinding = 1;
         descriptorWrites[1].dstArrayElement = 0;
         descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrites[1].descriptorCount = normalMapInfo.size();
+        descriptorWrites[1].descriptorCount = static_cast<uint32_t>(normalMapInfo.size());
         descriptorWrites[1].pImageInfo = normalMapInfo.data();
 
         descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -103,7 +105,7 @@ void S72Object::Material_EnvMirror::CreateDescriptorSets(const VkDevice& device,
         descriptorWrites[2].dstBinding = 2;
         descriptorWrites[2].dstArrayElement = 0;
         descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrites[2].descriptorCount = heightMapInfo.size();
+        descriptorWrites[2].descriptorCount = static_cast<uint32_t>(heightMapInfo.size());
         descriptorWrites[2].pImageInfo = heightMapInfo.data();
 
         descriptorWrites[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -111,9 +113,9 @@ void S72Object::Material_EnvMirror::CreateDescriptorSets(const VkDevice& device,
         descriptorWrites[3].dstBinding = 3;
         descriptorWrites[3].dstArrayElement = 0;
         descriptorWrites[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrites[3].descriptorCount = cubeMapInfo.size();
+        descriptorWrites[3].descriptorCount = static_cast<uint32_t>(cubeMapInfo.size());
         descriptorWrites[3].pImageInfo = cubeMapInfo.data();
 
-        vkUpdateDescriptorSets(device, descriptorWrites.size(), descriptorWrites.data(), 0, nullptr);
+        vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
     }
 }

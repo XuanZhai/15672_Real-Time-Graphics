@@ -72,6 +72,7 @@ protected:
     /* Used multi-threading to process each face. */
     std::array<std::thread,6> threads;
 
+    /* The output of the cube map. */
     std::array<XZM::vec3**,6> outMaps;
     uint32_t outMapWidth = 0;
     uint32_t outMapHeight = 0;

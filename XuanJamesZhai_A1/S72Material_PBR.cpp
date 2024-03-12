@@ -5,6 +5,10 @@
 #include "VulkanHelper.h"
 
 
+/**
+ * @brief Given a PBR S72 Material node, Read its data into the instance.
+ * @param node The PBR S72 Material node.
+ */
 void S72Object::Material_PBR::ProcessMaterial(const std::shared_ptr<ParserNode>& node){
 
     Material::ProcessMaterial(node);
@@ -24,7 +28,7 @@ void S72Object::Material_PBR::ProcessMaterial(const std::shared_ptr<ParserNode>&
         float g = std::get<float>(color[1]->data);
         float b = std::get<float>(color[2]->data);
 
-        albedo = std::string() + (char) (r * 256) + (char) (g * 256) + (char) (b * 256) + (char)(255);
+        albedo = std::string() + (char) (r * 256) + (char) (g * 256) + (char) (b * 256) + (char)(255u);
         albedoHeight = 1;
         albedoWidth = 1;
         albedoChannel = 4;
@@ -67,29 +71,12 @@ void S72Object::Material_PBR::ProcessMaterial(const std::shared_ptr<ParserNode>&
 }
 
 
-void S72Object::Material_PBR::CleanUp(const VkDevice& device){
-    S72Object::Material::CleanUp(device);
-
-    vkDestroyImageView(device, albedoImageView, nullptr);
-    vkDestroyImage(device, albedoImage, nullptr);
-    vkFreeMemory(device, albedoImageMemory, nullptr);
-
-    vkDestroyImageView(device, roughnessImageView, nullptr);
-    vkDestroyImage(device, roughnessImage, nullptr);
-    vkFreeMemory(device, roughnessImageMemory, nullptr);
-
-    vkDestroyImageView(device, metallicImageView, nullptr);
-    vkDestroyImage(device, metallicImage, nullptr);
-    vkFreeMemory(device, metallicImageMemory, nullptr);
-}
-
-
 /**
  * @brief Create the descriptor pool for the material.
+ * @param The physical device.
  */
 void S72Object::Material_PBR::CreateDescriptorPool(const VkDevice& device){
     /* Describe which descriptor types our descriptor sets are going to contain */
-    /* The first is used for the uniform buffer. The second is used for the image sampler */
     std::array<VkDescriptorPoolSize,8> poolSizes{};
 
     poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
@@ -131,9 +118,12 @@ void S72Object::Material_PBR::CreateDescriptorPool(const VkDevice& device){
 
 /**
  * @brief Create the descriptor set for the environment/mirror material.
+ * @param device The physical device.
+ * @param descriptorSetLayout The descriptor set layout.
  * @param uniformBuffers The UBO buffer.
  * @param textureSampler The sampler for the texture.
  * @param cubeMap A list of GGX cube map, seperated by the roughness.
+ * @param brdfLUT The integrated BRDF LUT.
  */
 void S72Object::Material_PBR::CreateDescriptorSets(const VkDevice& device, const VkDescriptorSetLayout& descriptorSetLayout,
                           const std::vector<VkBuffer>& uniformBuffers, const VkSampler& textureSampler,
@@ -212,7 +202,7 @@ void S72Object::Material_PBR::CreateDescriptorSets(const VkDevice& device, const
         descriptorWrites[1].dstBinding = 1;
         descriptorWrites[1].dstArrayElement = 0;
         descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrites[1].descriptorCount = normalMapInfo.size();
+        descriptorWrites[1].descriptorCount = static_cast<uint32_t>(normalMapInfo.size());
         descriptorWrites[1].pImageInfo = normalMapInfo.data();
 
         descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -220,7 +210,7 @@ void S72Object::Material_PBR::CreateDescriptorSets(const VkDevice& device, const
         descriptorWrites[2].dstBinding = 2;
         descriptorWrites[2].dstArrayElement = 0;
         descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrites[2].descriptorCount = heightMapInfo.size();
+        descriptorWrites[2].descriptorCount = static_cast<uint32_t>(heightMapInfo.size());
         descriptorWrites[2].pImageInfo = heightMapInfo.data();
 
         descriptorWrites[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -228,7 +218,7 @@ void S72Object::Material_PBR::CreateDescriptorSets(const VkDevice& device, const
         descriptorWrites[3].dstBinding = 3;
         descriptorWrites[3].dstArrayElement = 0;
         descriptorWrites[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrites[3].descriptorCount = albedoInfo.size();
+        descriptorWrites[3].descriptorCount = static_cast<uint32_t>(albedoInfo.size());
         descriptorWrites[3].pImageInfo = albedoInfo.data();
 
         descriptorWrites[4].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -236,7 +226,7 @@ void S72Object::Material_PBR::CreateDescriptorSets(const VkDevice& device, const
         descriptorWrites[4].dstBinding = 4;
         descriptorWrites[4].dstArrayElement = 0;
         descriptorWrites[4].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrites[4].descriptorCount = roughnessInfo.size();
+        descriptorWrites[4].descriptorCount = static_cast<uint32_t>(roughnessInfo.size());
         descriptorWrites[4].pImageInfo = roughnessInfo.data();
 
         descriptorWrites[5].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -244,7 +234,7 @@ void S72Object::Material_PBR::CreateDescriptorSets(const VkDevice& device, const
         descriptorWrites[5].dstBinding = 5;
         descriptorWrites[5].dstArrayElement = 0;
         descriptorWrites[5].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrites[5].descriptorCount = metallicInfo.size();
+        descriptorWrites[5].descriptorCount = static_cast<uint32_t>(metallicInfo.size());
         descriptorWrites[5].pImageInfo = metallicInfo.data();
 
         descriptorWrites[6].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -252,7 +242,7 @@ void S72Object::Material_PBR::CreateDescriptorSets(const VkDevice& device, const
         descriptorWrites[6].dstBinding = 6;
         descriptorWrites[6].dstArrayElement = 0;
         descriptorWrites[6].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrites[6].descriptorCount = brdfInfo.size();
+        descriptorWrites[6].descriptorCount = static_cast<uint32_t>(brdfInfo.size());
         descriptorWrites[6].pImageInfo = brdfInfo.data();
 
         descriptorWrites[7].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -260,9 +250,30 @@ void S72Object::Material_PBR::CreateDescriptorSets(const VkDevice& device, const
         descriptorWrites[7].dstBinding = 7;
         descriptorWrites[7].dstArrayElement = 0;
         descriptorWrites[7].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrites[7].descriptorCount = cubeMapInfo.size();
+        descriptorWrites[7].descriptorCount = static_cast<uint32_t>(cubeMapInfo.size());
         descriptorWrites[7].pImageInfo = cubeMapInfo.data();
 
-        vkUpdateDescriptorSets(device, descriptorWrites.size(), descriptorWrites.data(), 0, nullptr);
+        vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
     }
+}
+
+
+/**
+ * @brief Deallocate and free the memory of the albedo/roughness/metallic data.
+ * @param device The physical device.
+ */
+void S72Object::Material_PBR::CleanUp(const VkDevice& device){
+    S72Object::Material::CleanUp(device);
+
+    vkDestroyImageView(device, albedoImageView, nullptr);
+    vkDestroyImage(device, albedoImage, nullptr);
+    vkFreeMemory(device, albedoImageMemory, nullptr);
+
+    vkDestroyImageView(device, roughnessImageView, nullptr);
+    vkDestroyImage(device, roughnessImage, nullptr);
+    vkFreeMemory(device, roughnessImageMemory, nullptr);
+
+    vkDestroyImageView(device, metallicImageView, nullptr);
+    vkDestroyImage(device, metallicImage, nullptr);
+    vkFreeMemory(device, metallicImageMemory, nullptr);
 }

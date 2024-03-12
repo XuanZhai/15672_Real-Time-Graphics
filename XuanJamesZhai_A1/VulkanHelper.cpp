@@ -532,7 +532,7 @@ bool VulkanHelper::IsDeviceSuitable(VkPhysicalDevice newDevice)
 
 /**
 * @brief Verify that your graphics card is indeed capable of creating a swap chain.
-* @param[in] device: The physical device that's using.
+* @param[in] newDevice: The physical device that's using.
 * @return Return true if it is capable.
 */
 bool VulkanHelper::CheckDeviceExtensionSupport(VkPhysicalDevice newDevice)
@@ -1599,26 +1599,8 @@ void VulkanHelper::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t i
         /* Bind the pipeline. */
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, VkMat.first->pipeline);
 
+        /* Loop through all the material types. */
         for(const auto& material : VkMat.second){
-//            if(VkMat.first->name == "simple"){
-//                auto VkMat_simple = std::dynamic_pointer_cast<VkMaterial_Simple>(VkMat.first);
-//                VkMat_simple->UpdateDescriptorSets((uint32_t)currentFrame, textureSampler,material->normalImageView,material->heightImageView);
-//            }
-//            else if(VkMat.first->name == "environment"){
-//                auto VkMat_environment = std::dynamic_pointer_cast<VkMaterial_EnvironmentMirror>(VkMat.first);
-//                VkMat_environment->UpdateDescriptorSets((uint32_t)currentFrame, textureSampler,material->normalImageView,material->heightImageView);
-//            }
-//            else if(VkMat.first->name == "lambertian"){
-//                auto VkMat_lambertian = std::dynamic_pointer_cast<VkMaterial_Lambertian>(VkMat.first);
-//                auto mat_lambertian = std::dynamic_pointer_cast<S72Object::Material_Lambertian>(material);
-//                VkMat_lambertian->UpdateDescriptorSets((uint32_t)currentFrame, textureSampler,mat_lambertian->normalImageView,mat_lambertian->heightImageView,mat_lambertian->albedoImageView);
-//            }
-//            else if(VkMat.first->name == "pbr"){
-//                auto VkMat_pbr = std::dynamic_pointer_cast<VkMaterial_PBR>(VkMat.first);
-//                auto mat_pbr = std::dynamic_pointer_cast<S72Object::Material_PBR>(material);
-//                VkMat_pbr->UpdateDescriptorSets((uint32_t)currentFrame, textureSampler,mat_pbr->normalImageView,mat_pbr->heightImageView,mat_pbr->albedoImageView,mat_pbr->roughnessImageView,mat_pbr->metallicImageView);
-//            }
-
             uint32_t dynamicOffset = 0 * sizeof(UniformBufferObject);
             vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, VkMat.first->pipelineLayout, 0, 1, &material->descriptorSets[currentFrame], 1,
                                     &dynamicOffset);
@@ -1661,45 +1643,6 @@ void VulkanHelper::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t i
                 }
             }
         }
-
-
-        /* Loop through all the meshes with that material. */
-        //for(auto& mesh : s72Instance->meshesByMaterial[material.]){
-            /* Update the visible instance list. */
-        //    if(currCamera->name == "Debug-Camera"){
-        //        mesh->UpdateInstanceWithCulling(s72Instance->cameras["User-Camera"], cullingMode);
-        //    }
-       //     else{
-       //         mesh->UpdateInstanceWithCulling(currCamera, cullingMode);
-       //     }
-
-            /* If no instance will be drawn, go to the next mesh. */
-        //    if(mesh->visibleInstances.empty()){
-        //        continue;
-        //    }
-
-            /* Update the instance buffer with the new instance data. */
-       //     UpdateInstanceBuffer(*mesh);
-
-            /* Bind its vertex buffer and set its info. */
-        //    VkBuffer newVertexBuffers[] = {  VkMeshes[mesh->name]->vertexBuffer , VkMeshes[mesh->name]->instanceBuffer};
-        //    VkDeviceSize offsets[] = { 0, 0 };
-        //    vkCmdBindVertexBuffers(commandBuffer, 0, 2, newVertexBuffers, offsets);
-
-        //    newBindingDescription = CreateBindingDescription(*mesh);
-         //   newAttributeDescription = CreateAttributeDescription(*mesh);
-
-        //    vkCmdSetVertexInputExt(commandBuffer,static_cast<uint32_t>(newBindingDescription.size()),newBindingDescription.data(),static_cast<uint32_t>(newAttributeDescription.size()),newAttributeDescription.data());
-         //   vkCmdSetPrimitiveTopologyEXT(commandBuffer,mesh->topology);
-
-            /* Draw the mesh. */
-        //    if(mesh->isUseIndex){
-        //        vkCmdDrawIndexed(commandBuffer,mesh->indicesCount,(uint32_t)mesh->visibleInstances.size(),0,0,0);
-        //    }
-         //   else{
-         //       vkCmdDraw(commandBuffer, mesh->count, (uint32_t)mesh->visibleInstances.size(), 0, 0);
-         //   }
-        //}
     }
 
     /* End the render pass */
@@ -2024,6 +1967,10 @@ void VulkanHelper::CreateCubeTextureImageAndView(const std::string& filename, Vk
 }
 
 
+/**
+ * @brief Create the VkImage and the VkImageView for pre-compute BRDF LUT.
+ * @param[in] The LUT file path and name.
+ */
 void VulkanHelper::CreateBRDFImageAndView(const std::string& filename){
 
     int texWidth;
@@ -2087,37 +2034,30 @@ void VulkanHelper::CreateMaterials(){
 
     for(auto& materialTypes : s72Instance->materials){
 
+        /* Create the descriptor set layout for each material. */
         std::shared_ptr<VkMaterial> newVkMaterial = nullptr;
         if(materialTypes.first == S72Object::EMaterial::simple) {
             std::shared_ptr<VkMaterial_Simple> Vk_sim = std::make_shared<VkMaterial_Simple>();
             Vk_sim->name = "simple";
             Vk_sim->CreateDescriptorSetLayout(device);
-            //Vk_sim->CreateDescriptorPool();
-            //Vk_sim->CreateDescriptorSets(materialTypes.second.begin()->second,uniformBuffers,textureSampler);
             newVkMaterial = std::dynamic_pointer_cast<VkMaterial>(Vk_sim);
         }
         else if(materialTypes.first == S72Object::EMaterial::environment || materialTypes.first == S72Object::EMaterial::mirror){
             std::shared_ptr<VkMaterial_EnvironmentMirror> Vk_env = std::make_shared<VkMaterial_EnvironmentMirror>();
             Vk_env->name = "environment";
             Vk_env->CreateDescriptorSetLayout(device);
-            //Vk_env->CreateDescriptorPool();
-            //Vk_env->CreateDescriptorSets(materialTypes.second.begin()->second,uniformBuffers,textureSampler, envTextureImageView);
             newVkMaterial = std::dynamic_pointer_cast<VkMaterial>(Vk_env);
         }
         else if(materialTypes.first == S72Object::EMaterial::lambertian){
             std::shared_ptr<VkMaterial_Lambertian> Vk_lam = std::make_shared<VkMaterial_Lambertian>();
             Vk_lam->name = "lambertian";
             Vk_lam->CreateDescriptorSetLayout(device);
-            //Vk_lam->CreateDescriptorPool();
-            //Vk_lam->CreateDescriptorSets(materialTypes.second.begin()->second,uniformBuffers,textureSampler, lamTextureImageView);
             newVkMaterial = std::dynamic_pointer_cast<VkMaterial>(Vk_lam);
         }
         else if(materialTypes.first == S72Object::EMaterial::pbr){
             std::shared_ptr<VkMaterial_PBR> Vk_pbr = std::make_shared<VkMaterial_PBR>();
             Vk_pbr->name = "pbr";
             Vk_pbr->CreateDescriptorSetLayout(device);
-            //Vk_pbr->CreateDescriptorPool();
-            //Vk_pbr->CreateDescriptorSets(materialTypes.second.begin()->second,uniformBuffers,textureSampler, pbrTextureImageView,pbrBRDFImageView);
             newVkMaterial = std::dynamic_pointer_cast<VkMaterial>(Vk_pbr);
         }
 
@@ -2125,13 +2065,13 @@ void VulkanHelper::CreateMaterials(){
         std::string vertexShader = shaderMap.at(materialTypes.first)[0];
         std::string fragShader = shaderMap.at(materialTypes.first)[1];
         CreateGraphicsPipeline(vertexShader, fragShader,newVkMaterial->descriptorSetLayout,newVkMaterial->pipeline,newVkMaterial->pipelineLayout);
-        //VkMaterials[materialTypes.first] = newVkMaterial;
 
         std::vector<std::shared_ptr<S72Object::Material>> mats;
         mats.reserve(materialTypes.second.size());
+
+        /* For each material for that type, create its descriptor sets. */
         for(const auto& material : materialTypes.second){
             CreateMaterialImageView(material.second);
-
             if(materialTypes.first == S72Object::EMaterial::simple){
                 auto material_sim = std::dynamic_pointer_cast<S72Object::Material_Simple>(material.second);
                 material_sim->CreateDescriptorPool(device);
@@ -2235,6 +2175,10 @@ void VulkanHelper::CreateTextureImageView(const VkImage& textureImage, VkImageVi
 }
 
 
+/**
+ * @brief Given A S72 Material, Create its VkImage and VkImageView.
+ * @param sMaterial The S72 Material.
+ */
 void VulkanHelper::CreateMaterialImageView(const std::shared_ptr<S72Object::Material>& sMaterial){
 
     /* Create the texture for the normal. */
@@ -2369,7 +2313,6 @@ VkFormat VulkanHelper::FindSupportedFormat(const std::vector<VkFormat>& candidat
             return format;
         }
     }
-
     throw std::runtime_error("failed to find supported format!");
 }
 
@@ -3041,7 +2984,6 @@ void VulkanHelper::CleanUp()
         mesh.second->CleanUp();
     }
 
-    /**********************************/
     vkDestroyImageView(device, envTextureImageView, nullptr);
     vkDestroyImage(device, envTextureImage, nullptr);
     vkFreeMemory(device, envTextureImageMemory, nullptr);
@@ -3063,11 +3005,11 @@ void VulkanHelper::CleanUp()
     vkDestroySampler(device, textureSampler, nullptr);
 
     for(auto& materialType : VkMaterials){
-
+        /* Clean the material's data. */
         for(auto& material : materialType.second){
             material->CleanUp(device);
         }
-
+        /* Clean the material types' data. */
         materialType.first->CleanUp(device);
     }
 

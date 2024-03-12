@@ -35,6 +35,8 @@
 {
 	"type":"MATERIAL",
 	"name":"pbr: base",
+	"normalMap":{ "src":"bricks2_normal.png" },
+	"displacementMap":{ "src":"bricks2_disp.png" },
 	"pbr":{
 		"albedo":[ 0.8005210161209106, 0.557878315448761, 0.789514422416687 ],
 		"roughness":0.20000000298023224,
@@ -143,10 +145,10 @@
 {
 	"type":"MATERIAL",
 	"name":"lambertian: rock",
-	"normalMap":{ "src":"normal_test.png" },
-	"displacementMap":{ "src":"disp_test.png" },
+	"normalMap":{ "src":"bricks2_normal.png" },
+	"displacementMap":{ "src":"bricks2_disp.png" },
 	"lambertian":{
-		"albedo":[ 0.9, 0.5, 0.008 ]
+		"albedo":[ 0.8005210161209106, 0.557878315448761, 0.789514422416687 ]
 	}
 },
 {

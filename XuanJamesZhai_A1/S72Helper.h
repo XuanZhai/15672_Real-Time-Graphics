@@ -100,6 +100,7 @@ namespace S72Object {
      */
     class Mesh {
         private:
+            /* If the mesh has tangent and texture coordinate data in S72. */
             bool missingData = false;
 
             /* Load the mesh data from a b72 file given its path. */
@@ -151,6 +152,7 @@ namespace S72Object {
             /* An AABB bounding box for the mesh. */
             AABB boundingBox;
 
+            /* The name of the material it has. */
             std::string material;
 
             /* Construct a mesh based on the node. */
@@ -162,6 +164,7 @@ namespace S72Object {
             /* Given a mesh's b72 data, read and set the mesh's bounding box. */
             void ReadBoundingBox(std::stringstream &buffer);
 
+            /* If the mesh misses Tangent and Texture Coordinate, we need to fill it with default values. */
             void FillMissingData();
 
             /* For a given camera instance, update if the instances are culled. */
@@ -191,7 +194,7 @@ namespace S72Object {
             std::variant<XZM::vec3, XZM::quat> GetCurrentValue(float currTime);
 
             /* Check If the given node uses the driver. If true, return the channel. */
-            std::string HasMatchNodeAndChannel(const std::shared_ptr<ParserNode> &node) const;
+            [[nodiscard]] std::string HasMatchNodeAndChannel(const std::shared_ptr<ParserNode> &node) const;
     };
 
     class Material;
@@ -228,18 +231,11 @@ public:
     /* A list of Drivers. */
     std::vector<std::shared_ptr<S72Object::Driver>> drivers;
 
+    /* The name of the environment cube map. */
     std::string envFileName;
 
-    //std::unordered_map<std::string, std::shared_ptr<S72Object::Material>> materials;
-
+    /* A map of material types, each has its sub materials. */
     std::unordered_map<S72Object::EMaterial, std::map<std::string, std::shared_ptr<S72Object::Material>>> materials;
-    //std::set<S72Object::Material> materials;
-
-    //std::unordered_map<std::string, std::vector<std::shared_ptr<S72Object::Mesh>>> meshesByMaterial;
-
-    //std::unordered_map<S72Object::EMaterial, std::map<std::string, std::vector<std::shared_ptr<S72Object::Mesh>>>> meshesByMaterial;
-
-    //std::unordered_map<std::shared_ptr<S72Object::Material>, std::vector<std::shared_ptr<S72Object::Mesh>>> meshesByMaterial;
 
     S72Helper();
     /* Read and parse a s72 file from a given path. */

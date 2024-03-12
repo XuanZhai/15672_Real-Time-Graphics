@@ -388,6 +388,9 @@ void S72Object::Mesh::SetTopology(const std::string& new_topology){
 }
 
 
+/**
+ * @brief If the mesh misses Tangent and Texture Coordinate, we need to fill it with default values.
+ */
 void S72Object::Mesh::FillMissingData(){
     std::string newSRC;
     newSRC.reserve(count*stride);
@@ -396,6 +399,8 @@ void S72Object::Mesh::FillMissingData(){
     auto backSize = stride - cOffset;
     uint64_t idx = 0;
     uint64_t total = count*(frontSize + backSize);
+
+    /* Default values are all 0s. It's not matter since we'll never use them in the simple material. */
     std::string emptyTangent = std::string(16,'\0') ;
     std::string emptyTexCoord = std::string(8,'\0');
 
@@ -652,6 +657,7 @@ void S72Helper::ReconstructRoot() {
             std::string materialName = std::get<std::string>(node->GetObjectValue("name")->data);
             S72Object::EMaterial type = GetMaterialType(*node);
 
+            /* Read the material data. */
             if(type == S72Object::EMaterial::simple){
                 std::shared_ptr<S72Object::Material> material_Simple = std::make_shared<S72Object::Material_Simple>();
                 material_Simple->ProcessMaterial(node);
@@ -674,7 +680,6 @@ void S72Helper::ReconstructRoot() {
             }
             material->type = type;
             material->name = materialName;
-            //materials.insert(std::make_pair(material->name, material));
             materials[type].insert(std::make_pair(material->name, material));
         }
         index++;
@@ -696,11 +701,7 @@ void S72Helper::ReconstructRoot() {
             matName = std::get<std::string>(matNode->GetObjectValue("name")->data);
             matType = GetMaterialType(*matNode);
 
-            //meshesByMaterial[matName].emplace_back(meshes[meshName]);
             auto matRef = materials[matType][matName];
-            //if(matRef != nullptr){
-            //    meshesByMaterial[matRef].emplace_back(mesh.second);
-            //}
             matRef->meshes.emplace_back(mesh.second);
         }
         else{
@@ -754,13 +755,8 @@ void S72Helper::ReconstructNode(std::shared_ptr<ParserNode> newNode, XZM::mat4 n
             std::string meshName = std::get<std::string>(newNode->GetObjectValue("name")->data);
             /* Insert into the mesh list, use a red-black tree so that it is unique. */
             if(!meshes.count(meshName)) {
-
                 meshes.insert(std::make_pair(meshName, std::make_shared<S72Object::Mesh>(newNode)));
-
-                //meshesByMaterial[matName].emplace_back(meshes[meshName]);
-                //auto matRef = materials[matType][]
             }
-
             /* Add that instance to the mesh's instance list, also update the total instance count. */
             meshes[meshName]->instances.emplace_back(newMat);
             instanceCount++;
@@ -920,20 +916,31 @@ void S72Helper::UpdateObject(const std::shared_ptr<ParserNode>& newNode, XZM::ma
 }
 
 
+/**
+ * @brief Set play animation to true, also reset the timer.
+ */
 void S72Helper::StartAnimation(){
     isPlayingAnimation = true;
 
-// Convert float duration to steady_clock duration
+    // Convert float duration to steady_clock duration
     auto durationInSecondsSteady = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::duration<float>(currDuration));
     animStartTimePoint = std::chrono::system_clock::now() - durationInSecondsSteady;
 }
 
 
+/**
+ * @brief Set play animation to false.
+ */
 void S72Helper::StopAnimation(){
     isPlayingAnimation = false;
 }
 
 
+/**
+ * @brief Given a Material Parser Node, identify its material type.
+ * @param newNode The Material Parser Node.
+ * @return The Material type.
+ */
 S72Object::EMaterial S72Helper::GetMaterialType(const ParserNode& newNode){
     ParserNode::PNMap pnMap = std::get<ParserNode::PNMap>(newNode.data);
 

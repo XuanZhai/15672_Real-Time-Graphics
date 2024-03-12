@@ -5,6 +5,11 @@
 #include "VkMaterial.h"
 
 
+/**
+ * @brief Overload < operator used for the map container.
+ * @param newMat The compared material.
+ * @return If this is smaller.
+ */
 bool VkMaterial::operator < (const VkMaterial& newVkMat) const{
     return name < newVkMat.name;
 }
@@ -12,9 +17,9 @@ bool VkMaterial::operator < (const VkMaterial& newVkMat) const{
 
 /**
  * @brief Destruct the property and free the memory.
+ * @param device The physical device.
  */
 void VkMaterial::CleanUp(const VkDevice& device) {
-    //vkDestroyDescriptorPool(device, descriptorPool, nullptr);
     vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
     vkDestroyPipeline(device, pipeline, nullptr);
     vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
@@ -26,6 +31,7 @@ void VkMaterial::CleanUp(const VkDevice& device) {
 
 /**
  * @brief Create the descriptor set layout for the material.
+ * @param device The physical device.
  */
 void VkMaterial_Simple::CreateDescriptorSetLayout(const VkDevice& device) {
 
@@ -68,6 +74,7 @@ void VkMaterial_Simple::CreateDescriptorSetLayout(const VkDevice& device) {
 
 /**
  * @brief Create the descriptor set layout for the material.
+ * @param device The physical device.
  */
 void VkMaterial_EnvironmentMirror::CreateDescriptorSetLayout(const VkDevice& device) {
 
@@ -117,6 +124,7 @@ void VkMaterial_EnvironmentMirror::CreateDescriptorSetLayout(const VkDevice& dev
 
 /**
  * @brief Create the descriptor set layout for the material.
+ * @param device The physical device.
  */
 void VkMaterial_Lambertian::CreateDescriptorSetLayout(const VkDevice& device) {
 
@@ -172,6 +180,7 @@ void VkMaterial_Lambertian::CreateDescriptorSetLayout(const VkDevice& device) {
 
 /**
  * @brief Create the descriptor set layout for the material.
+ * @param device The physical device.
  */
 void VkMaterial_PBR::CreateDescriptorSetLayout(const VkDevice& device) {
 

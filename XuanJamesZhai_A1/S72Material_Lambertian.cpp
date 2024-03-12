@@ -27,7 +27,7 @@ void S72Object::Material_Lambertian::ProcessMaterial(const std::shared_ptr<Parse
         float g = std::get<float>(color[1]->data);
         float b = std::get<float>(color[2]->data);
 
-        albedo = std::string() + (char) (r * 256) + (char) (g * 256) + (char) (b * 256) + (char)(255);
+        albedo = std::string() + (char) (r * 256) + (char) (g * 256) + (char) (b * 256) + (char)(255u);
         albedoHeight = 1;
         albedoWidth = 1;
         albedoChannel = 4;
@@ -40,21 +40,12 @@ void S72Object::Material_Lambertian::ProcessMaterial(const std::shared_ptr<Parse
 }
 
 
-void S72Object::Material_Lambertian::CleanUp(const VkDevice& device){
-    S72Object::Material::CleanUp(device);
-
-    vkDestroyImageView(device, albedoImageView, nullptr);
-    vkDestroyImage(device, albedoImage, nullptr);
-    vkFreeMemory(device, albedoImageMemory, nullptr);
-}
-
-
 /**
  * @brief Create the descriptor pool for the material.
+ * @param device The physical device.
  */
 void S72Object::Material_Lambertian::CreateDescriptorPool(const VkDevice& device){
     /* Describe which descriptor types our descriptor sets are going to contain */
-    /* The first is used for the uniform buffer. The second is used for the image sampler */
     std::array<VkDescriptorPoolSize,5> poolSizes{};
 
     poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
@@ -86,7 +77,9 @@ void S72Object::Material_Lambertian::CreateDescriptorPool(const VkDevice& device
 
 
 /**
- * @brief Create the descriptor set for the environment/mirror material.
+ * @brief Create the descriptor set for the lambertian material.
+ * @param device The physical device.
+ * @param descriptorSetLayout The descriptor set layout.
  * @param uniformBuffers The UBO buffer.
  * @param textureSampler The sampler for the texture.
  * @param cubeMap The lambertian cube map.
@@ -149,7 +142,7 @@ void S72Object::Material_Lambertian::CreateDescriptorSets(const VkDevice& device
         descriptorWrites[1].dstBinding = 1;
         descriptorWrites[1].dstArrayElement = 0;
         descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrites[1].descriptorCount = normalMapInfo.size();
+        descriptorWrites[1].descriptorCount = static_cast<uint32_t>(normalMapInfo.size());
         descriptorWrites[1].pImageInfo = normalMapInfo.data();
 
         descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -157,7 +150,7 @@ void S72Object::Material_Lambertian::CreateDescriptorSets(const VkDevice& device
         descriptorWrites[2].dstBinding = 2;
         descriptorWrites[2].dstArrayElement = 0;
         descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrites[2].descriptorCount = heightMapInfo.size();
+        descriptorWrites[2].descriptorCount = static_cast<uint32_t>(heightMapInfo.size());
         descriptorWrites[2].pImageInfo = heightMapInfo.data();
 
         descriptorWrites[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -165,7 +158,7 @@ void S72Object::Material_Lambertian::CreateDescriptorSets(const VkDevice& device
         descriptorWrites[3].dstBinding = 3;
         descriptorWrites[3].dstArrayElement = 0;
         descriptorWrites[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrites[3].descriptorCount = albedoInfo.size();
+        descriptorWrites[3].descriptorCount = static_cast<uint32_t>(albedoInfo.size());
         descriptorWrites[3].pImageInfo = albedoInfo.data();
 
         descriptorWrites[4].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -173,9 +166,22 @@ void S72Object::Material_Lambertian::CreateDescriptorSets(const VkDevice& device
         descriptorWrites[4].dstBinding = 4;
         descriptorWrites[4].dstArrayElement = 0;
         descriptorWrites[4].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrites[4].descriptorCount = cubeMapInfo.size();
+        descriptorWrites[4].descriptorCount = static_cast<uint32_t>(cubeMapInfo.size());
         descriptorWrites[4].pImageInfo = cubeMapInfo.data();
 
-        vkUpdateDescriptorSets(device, descriptorWrites.size(), descriptorWrites.data(), 0, nullptr);
+        vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
     }
+}
+
+
+/**
+ * @brief Deallocate and free the memory of the albedo data.
+ * @param device The physical device.
+ */
+void S72Object::Material_Lambertian::CleanUp(const VkDevice& device){
+    S72Object::Material::CleanUp(device);
+
+    vkDestroyImageView(device, albedoImageView, nullptr);
+    vkDestroyImage(device, albedoImage, nullptr);
+    vkFreeMemory(device, albedoImageMemory, nullptr);
 }

@@ -129,6 +129,54 @@ Cubes/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Cubes.dir/build.make CMakeFiles/Cubes.dir/build
 .PHONY : Cubes/fast
 
+Cube.o: Cube.cpp.o
+.PHONY : Cube.o
+
+# target to build an object file
+Cube.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Cubes.dir/build.make CMakeFiles/Cubes.dir/Cube.cpp.o
+.PHONY : Cube.cpp.o
+
+Cube.i: Cube.cpp.i
+.PHONY : Cube.i
+
+# target to preprocess a source file
+Cube.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Cubes.dir/build.make CMakeFiles/Cubes.dir/Cube.cpp.i
+.PHONY : Cube.cpp.i
+
+Cube.s: Cube.cpp.s
+.PHONY : Cube.s
+
+# target to generate assembly for a file
+Cube.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Cubes.dir/build.make CMakeFiles/Cubes.dir/Cube.cpp.s
+.PHONY : Cube.cpp.s
+
+GGX.o: GGX.cpp.o
+.PHONY : GGX.o
+
+# target to build an object file
+GGX.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Cubes.dir/build.make CMakeFiles/Cubes.dir/GGX.cpp.o
+.PHONY : GGX.cpp.o
+
+GGX.i: GGX.cpp.i
+.PHONY : GGX.i
+
+# target to preprocess a source file
+GGX.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Cubes.dir/build.make CMakeFiles/Cubes.dir/GGX.cpp.i
+.PHONY : GGX.cpp.i
+
+GGX.s: GGX.cpp.s
+.PHONY : GGX.s
+
+# target to generate assembly for a file
+GGX.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Cubes.dir/build.make CMakeFiles/Cubes.dir/GGX.cpp.s
+.PHONY : GGX.cpp.s
+
 Lambertian.o: Lambertian.cpp.o
 .PHONY : Lambertian.o
 
@@ -210,6 +258,12 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... Cubes"
+	@echo "... Cube.o"
+	@echo "... Cube.i"
+	@echo "... Cube.s"
+	@echo "... GGX.o"
+	@echo "... GGX.i"
+	@echo "... GGX.s"
 	@echo "... Lambertian.o"
 	@echo "... Lambertian.i"
 	@echo "... Lambertian.s"

@@ -16,7 +16,7 @@
 #include "S72Helper.h"
 
 /**
- * @brief A Vulkan-side material base object. Contains the pipeline and the descriptor info.
+ * @brief A Vulkan-side material base object. Contains the pipeline and the descriptor layout.
  */
 class VkMaterial {
 
@@ -61,7 +61,7 @@ public:
 
 
 /**
- * @brief A subclass of VkMaterial, used for the environment and mirror material.
+ * @brief A subclass of VkMaterial, used for the Lambertian material.
  */
 class VkMaterial_Lambertian : public VkMaterial {
 
@@ -72,6 +72,9 @@ public:
 };
 
 
+/**
+ * @brief A subclass of VkMaterial, used for the PBR material.
+ */
 class VkMaterial_PBR : public VkMaterial {
 public:
 

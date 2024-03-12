@@ -24,9 +24,17 @@ layout(binding = 6) uniform sampler2D brdfSampler;
 layout(binding = 7) uniform samplerCube cubeSampler[10];
 
 
-vec3 toneMapReinhard(vec3 color, float exposure) {
-    return color / (color + vec3(1.0)) * exposure;
+vec3 toneMapACES(vec3 color, float exposure){
+    const float A = 2.51f;
+    const float B = 0.03f;
+    const float C = 2.43f;
+    const float D = 0.59f;
+    const float E = 0.14f;
+
+    color *= exposure;
+    return (color * (A * color + B)) / (color * (C * color + D) + E);
 }
+
 
 // Function to calculate the Fresnel term
 float SchlickFresnel(float cosTheta, vec3 F0) {
@@ -39,7 +47,7 @@ vec3 GetEnv(float roughness, vec3 R){
     if(lod > 9) lod = 9;
     if(lod < 0) lod = 0;
 
-    return toneMapReinhard(texture(cubeSampler[lod], R).rgb,1);
+    return toneMapACES(texture(cubeSampler[lod], R).rgb,1.0);
 }
 
 vec2 GetBRDF(float roughness, float NoV){
@@ -60,40 +68,30 @@ vec2 GetBRDF(float roughness, float NoV){
 
 /* Reference: https://learnopengl.com/Advanced-Lighting/Parallax-Mapping */
 vec2 ParallaxOcclusionMapping(vec2 texCoords, vec3 viewDir){
-    // number of depth layers
+
     const float minLayers = 8.0;
     const float maxLayers = 32.0;
     float numLayers = mix(maxLayers, minLayers, max(dot(vec3(0.0, 0.0, 1.0), viewDir), 0.0));
-    // calculate the size of each layer
     float layerDepth = 1.0 / numLayers;
-    // depth of current layer
     float currentLayerDepth = 0.0;
-    // the amount to shift the texture coordinates per layer (from vector P)
+    /* the amount to shift the texture coordinates per layer. */
     vec2 P = viewDir.xy * 0.1;
     vec2 deltaTexCoords = P / numLayers;
-
-    // get initial values
     vec2  currentTexCoords     = texCoords;
     float currentDepthMapValue = texture(heightSampler, currentTexCoords).r;
 
-    while(currentLayerDepth < currentDepthMapValue)
-    {
-        // shift texture coordinates along direction of P
+    /* Keep iterating the layers. */
+    while(currentLayerDepth < currentDepthMapValue) {
         currentTexCoords -= deltaTexCoords;
-        // get depthmap value at current texture coordinates
         currentDepthMapValue = texture(heightSampler, currentTexCoords).r;
-        // get depth of next layer
         currentLayerDepth += layerDepth;
     }
 
-    // get texture coordinates before collision (reverse operations)
+    /* Interpolate with the previous layer. */
     vec2 prevTexCoords = currentTexCoords + deltaTexCoords;
-
-    // get depth after and before collision for linear interpolation
     float afterDepth  = currentDepthMapValue - currentLayerDepth;
     float beforeDepth = texture(heightSampler, prevTexCoords).r - currentLayerDepth + layerDepth;
 
-    // interpolation of texture coordinates
     float weight = afterDepth / (afterDepth - beforeDepth);
     vec2 finalTexCoords = prevTexCoords * weight + currentTexCoords * (1.0 - weight);
 
@@ -106,7 +104,7 @@ void main() {
     vec3 viewDir = normalize(fragPosition-ubo.viewPos) ;
     vec2 texCoord = fragTexCoord;
     texCoord.y = 1-texCoord.y;
-    texCoord = ParallaxOcclusionMapping(texCoord,viewDir);
+    texCoord = ParallaxOcclusionMapping(texCoord, normalize(transpose(TBN) * viewDir));
 
     vec3 N = texture(normalSampler, texCoord).rgb;
     N = N * 2.0 - 1.0;

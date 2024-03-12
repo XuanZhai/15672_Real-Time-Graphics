@@ -82,6 +82,18 @@
 				</MakeCommands>
 			</Target>
 		</Build>
+		<Unit filename="/mnt/f/Code/15672_Real-Time-Graphics/Cubes/Cube.cpp">
+			<Option target="Cubes"/>
+		</Unit>
+		<Unit filename="/mnt/f/Code/15672_Real-Time-Graphics/Cubes/Cube.h">
+			<Option target="Cubes"/>
+		</Unit>
+		<Unit filename="/mnt/f/Code/15672_Real-Time-Graphics/Cubes/GGX.cpp">
+			<Option target="Cubes"/>
+		</Unit>
+		<Unit filename="/mnt/f/Code/15672_Real-Time-Graphics/Cubes/GGX.h">
+			<Option target="Cubes"/>
+		</Unit>
 		<Unit filename="/mnt/f/Code/15672_Real-Time-Graphics/Cubes/Lambertian.cpp">
 			<Option target="Cubes"/>
 		</Unit>

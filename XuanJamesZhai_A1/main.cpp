@@ -66,8 +66,8 @@ int main(int argc, char** argv) {
 
     ReadCMDArguments(argc,argv);
 
-    //try
-    //{
+    try
+    {
         renderHelper->ReadS72(sceneName);
         renderHelper->AttachS72ToVulkan();
         renderHelper->SetEventFile(eventFileName);
@@ -76,10 +76,10 @@ int main(int argc, char** argv) {
         renderHelper->InitVulkan();
         renderHelper->RunVulkan();
         renderHelper->ClearVulkan();
-   // }
-    //catch (const std::exception& e)
-    //{
-    //    throw std::runtime_error(e.what());
-    //}
+    }
+    catch (const std::exception& e)
+    {
+        throw std::runtime_error(e.what());
+    }
     return EXIT_SUCCESS;
 }
