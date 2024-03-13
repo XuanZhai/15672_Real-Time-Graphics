@@ -321,7 +321,7 @@ private:
     VkShaderModule CreateShaderModule(const std::vector<char>& code);
 
     /* Read the shaders and create the graphics pipeline. */
-    void CreateGraphicsPipeline(const std::string& vertexFileName, const std::string& fragmentFileName, const VkDescriptorSetLayout& descriptorSetLayout, VkPipeline& graphicsPipeline, VkPipelineLayout& pipelineLayout);
+    void CreateGraphicsPipeline(const std::string& vertexFileName, const std::string& fragmentFileName, const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts, VkPipeline& graphicsPipeline, VkPipelineLayout& pipelineLayout);
 
     /* Create the render pass to attach the framebuffer. */
     void CreateRenderPass();

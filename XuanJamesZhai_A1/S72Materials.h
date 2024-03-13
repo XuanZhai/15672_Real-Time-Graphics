@@ -49,8 +49,9 @@ namespace S72Object{
             VkDeviceMemory heightImageMemory = VK_NULL_HANDLE;
             VkImageView heightImageView = VK_NULL_HANDLE;
 
-            VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
-            std::vector<VkDescriptorSet> descriptorSets;
+            VkDescriptorSetLayout MDescriptorSetLayout = VK_NULL_HANDLE;
+            VkDescriptorPool MDescriptorPool = VK_NULL_HANDLE;
+            std::vector<VkDescriptorSet> MDescriptorSets;
 
             /* A list of meshes that use this material. */
             std::vector<std::shared_ptr<S72Object::Mesh>> meshes;
@@ -61,6 +62,8 @@ namespace S72Object{
             virtual void ProcessMaterial(const std::shared_ptr<ParserNode>& node);
             /* Read a PNG from a file path. */
             static void ReadPNG(const std::string& filename, std::string& src, int& width, int& height, int& nChannels, uint32_t& mipLevels);
+            /* Default create layout function. */
+            virtual void CreateDescriptorSetLayout(const VkDevice& device);
             /* Default create pool function. */
             virtual void CreateDescriptorPool(const VkDevice& device);
             /* Deallocate and free the memory of the normal/displacement data, as well as the pool. */
@@ -73,9 +76,10 @@ namespace S72Object{
      */
     class Material_Simple : public Material{
     public:
+        void CreateDescriptorSetLayout(const VkDevice& device) override;
         void CreateDescriptorPool(const VkDevice& device) override;
-        void CreateDescriptorSets(const VkDevice& device, const VkDescriptorSetLayout& descriptorSetLayout,
-                                  const std::vector<VkBuffer>& uniformBuffers,VkSampler const &textureSampler);
+        void CreateDescriptorSets(const VkDevice& device, const std::vector<VkBuffer>& uniformBuffers,
+                                  VkSampler const &textureSampler);
     };
 
 
@@ -84,9 +88,10 @@ namespace S72Object{
     */
     class Material_EnvMirror : public Material{
     public:
+        void CreateDescriptorSetLayout(const VkDevice& device) override;
         void CreateDescriptorPool(const VkDevice& device) override;
-        void CreateDescriptorSets(const VkDevice& device, const VkDescriptorSetLayout& descriptorSetLayout,
-                                  const std::vector<VkBuffer>& uniformBuffers,VkSampler const &textureSampler, VkImageView const &cubeMap);
+        void CreateDescriptorSets(const VkDevice& device, const std::vector<VkBuffer>& uniformBuffers,
+                                  VkSampler const &textureSampler);
     };
 
 
@@ -108,11 +113,10 @@ namespace S72Object{
 
             void ProcessMaterial(const std::shared_ptr<ParserNode>& node) override;
 
+            void CreateDescriptorSetLayout(const VkDevice& device) override;
             void CreateDescriptorPool(const VkDevice& device) override;
-
-            void CreateDescriptorSets(const VkDevice& device, const VkDescriptorSetLayout& descriptorSetLayout,
-                                      const std::vector<VkBuffer> &uniformBuffers,VkSampler const &textureSampler,
-                                      const VkImageView& cubeMap);
+            void CreateDescriptorSets(const VkDevice& device, const std::vector<VkBuffer> &uniformBuffers,
+                                      VkSampler const &textureSampler);
 
             void CleanUp(const VkDevice& device) override;
     };
@@ -153,11 +157,10 @@ namespace S72Object{
 
             void ProcessMaterial(const std::shared_ptr<ParserNode>& node) override;
 
+            void CreateDescriptorSetLayout(const VkDevice& device) override;
             void CreateDescriptorPool(const VkDevice& device) override;
-
-            void CreateDescriptorSets(const VkDevice& device, const VkDescriptorSetLayout& descriptorSetLayout,
-                                      const std::vector<VkBuffer>& uniformBuffers, const VkSampler& textureSampler,
-                                      const std::vector<VkImageView>& cubeMaps, const VkImageView& brdfLUT);
+            void CreateDescriptorSets(const VkDevice& device, const std::vector<VkBuffer>& uniformBuffers,
+                                      const VkSampler& textureSampler);
 
             void CleanUp(const VkDevice& device) override;
     };

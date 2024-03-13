@@ -31,10 +31,16 @@ public:
 
     VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
 
-    VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
+    VkDescriptorSetLayout VKMDescriptorSetLayout = VK_NULL_HANDLE;
+
+    VkDescriptorPool VKMDescriptorPool = VK_NULL_HANDLE;
+
+    std::vector<VkDescriptorSet> VKMDescriptorSets;
 
     /* Create the descriptor set layout. */
     virtual void CreateDescriptorSetLayout(const VkDevice& device) = 0;
+    /* Create the descriptor pool. */
+    virtual void CreateDescriptorPool(const VkDevice& device) = 0;
 
     /* Destructor. */
     virtual void CleanUp(const VkDevice& device);
@@ -45,8 +51,10 @@ public:
  * @brief A subclass of VkMaterial, used for the simple color material.
  */
 class VkMaterial_Simple : public VkMaterial{
+
 public:
     void CreateDescriptorSetLayout(const VkDevice& device) override;
+    void CreateDescriptorPool(const VkDevice& device) override;
 };
 
 
@@ -57,6 +65,8 @@ class VkMaterial_EnvironmentMirror : public VkMaterial {
 
 public:
     void CreateDescriptorSetLayout(const VkDevice& device) override;
+    void CreateDescriptorPool(const VkDevice& device) override;
+    void CreateDescriptorSets(const VkDevice& device, VkSampler const &textureSampler, VkImageView const &cubeMap);
 };
 
 
@@ -66,9 +76,9 @@ public:
 class VkMaterial_Lambertian : public VkMaterial {
 
 public:
-
     void CreateDescriptorSetLayout(const VkDevice& device) override;
-
+    void CreateDescriptorPool(const VkDevice& device) override;
+    void CreateDescriptorSets(const VkDevice& device, VkSampler const &textureSampler, VkImageView const &cubeMap);
 };
 
 
@@ -77,8 +87,9 @@ public:
  */
 class VkMaterial_PBR : public VkMaterial {
 public:
-
     void CreateDescriptorSetLayout(const VkDevice& device) override;
+    void CreateDescriptorPool(const VkDevice& device) override;
+    void CreateDescriptorSets(const VkDevice& device, VkSampler const &textureSampler, const std::vector<VkImageView>& cubeMaps, const VkImageView& brdfLUT);
 };
 
 
