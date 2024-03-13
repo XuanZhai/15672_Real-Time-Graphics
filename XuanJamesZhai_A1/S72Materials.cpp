@@ -27,6 +27,13 @@ void S72Object::Material::CreateDescriptorPool(const VkDevice& device){}
 
 
 /**
+ * @brief Default create layout function.
+ * @param device The physical device.
+ */
+void S72Object::Material::CreateDescriptorSetLayout(const VkDevice& device) {}
+
+
+/**
  * @brief Read a node and load all the info.
  * @param node The node we want to load.
  */
@@ -123,5 +130,6 @@ void S72Object::Material::CleanUp(const VkDevice& device){
     vkDestroyImage(device, heightImage, nullptr);
     vkFreeMemory(device, heightImageMemory, nullptr);
 
-    vkDestroyDescriptorPool(device, descriptorPool, nullptr);
+    vkDestroyDescriptorPool(device, MDescriptorPool, nullptr);
+    vkDestroyDescriptorSetLayout(device, MDescriptorSetLayout, nullptr);
 }

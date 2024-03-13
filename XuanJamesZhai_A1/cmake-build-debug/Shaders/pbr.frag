@@ -9,19 +9,19 @@ layout(location = 4) in mat3 TBN;
 layout(location = 0) out vec4 outColor;
 
 
-layout(binding = 0) uniform UniformBufferObject{
+layout(set = 0, binding = 0) uniform UniformBufferObject{
     mat4 view;
     mat4 proj;
     vec3 viewPos;
 } ubo;
 
-layout(binding = 1) uniform sampler2D normalSampler;
-layout(binding = 2) uniform sampler2D heightSampler;
-layout(binding = 3) uniform sampler2D albedoSampler;
-layout(binding = 4) uniform sampler2D roughnessSampler;
-layout(binding = 5) uniform sampler2D metallicSampler;
-layout(binding = 6) uniform sampler2D brdfSampler;
-layout(binding = 7) uniform samplerCube cubeSampler[10];
+layout(set = 0, binding = 1) uniform sampler2D normalSampler;
+layout(set = 0, binding = 2) uniform sampler2D heightSampler;
+layout(set = 0, binding = 3) uniform sampler2D albedoSampler;
+layout(set = 0, binding = 4) uniform sampler2D roughnessSampler;
+layout(set = 0, binding = 5) uniform sampler2D metallicSampler;
+layout(set = 1, binding = 0) uniform sampler2D brdfSampler;
+layout(set = 1, binding = 1) uniform samplerCube cubeSampler[10];
 
 
 vec3 toneMapACES(vec3 color, float exposure){

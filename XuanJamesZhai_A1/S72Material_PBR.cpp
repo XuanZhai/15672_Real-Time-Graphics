@@ -6,6 +6,68 @@
 
 
 /**
+ * @brief Create the descriptor set layout for the material.
+ * @param device The physical device.
+ */
+void S72Object::Material_PBR::CreateDescriptorSetLayout(const VkDevice& device){
+
+    std::array<VkDescriptorSetLayoutBinding,6> bindings{};
+
+    /* Set the binding info for ubo */
+    bindings[0].binding = 0;
+    bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;    // The type of descriptor is a uniform buffer object
+    bindings[0].descriptorCount = 1;
+    bindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+    bindings[0].pImmutableSamplers = nullptr;
+
+    /* Set the normal map sampler */
+    bindings[1].binding = 1;
+    bindings[1].descriptorCount = 1;
+    bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    bindings[1].pImmutableSamplers = nullptr;
+    bindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;     // Use the image sampler in the fragment shader stage.
+
+    /* Set the height map sampler */
+    bindings[2].binding = 2;
+    bindings[2].descriptorCount = 1;
+    bindings[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    bindings[2].pImmutableSamplers = nullptr;
+    bindings[2].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;     // Use the image sampler in the fragment shader stage.
+
+    /* Set the albedo map sampler */
+    bindings[3].binding = 3;
+    bindings[3].descriptorCount = 1;
+    bindings[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    bindings[3].pImmutableSamplers = nullptr;
+    bindings[3].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;     // Use the image sampler in the fragment shader stage.
+
+    /* Set the roughness map sample. */
+    bindings[4].binding = 4;
+    bindings[4].descriptorCount = 1;
+    bindings[4].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    bindings[4].pImmutableSamplers = nullptr;
+    bindings[4].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;     // Use the image sampler in the fragment shader stage.
+
+    /* Set the metallic map sample. */
+    bindings[5].binding = 5;
+    bindings[5].descriptorCount = 1;
+    bindings[5].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    bindings[5].pImmutableSamplers = nullptr;
+    bindings[5].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;     // Use the image sampler in the fragment shader stage.
+
+    /* Combine all the bindings into a single object */
+    VkDescriptorSetLayoutCreateInfo layoutInfo{};
+    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
+    layoutInfo.pBindings = bindings.data();
+
+    if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &MDescriptorSetLayout) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create descriptor set layout!");
+    }
+}
+
+
+/**
  * @brief Given a PBR S72 Material node, Read its data into the instance.
  * @param node The PBR S72 Material node.
  */
@@ -77,7 +139,7 @@ void S72Object::Material_PBR::ProcessMaterial(const std::shared_ptr<ParserNode>&
  */
 void S72Object::Material_PBR::CreateDescriptorPool(const VkDevice& device){
     /* Describe which descriptor types our descriptor sets are going to contain */
-    std::array<VkDescriptorPoolSize,8> poolSizes{};
+    std::array<VkDescriptorPoolSize,6> poolSizes{};
 
     poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
     poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
@@ -97,12 +159,6 @@ void S72Object::Material_PBR::CreateDescriptorPool(const VkDevice& device){
     poolSizes[5].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     poolSizes[5].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
-    poolSizes[6].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    poolSizes[6].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-
-    poolSizes[7].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    poolSizes[7].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT) * 10;
-
     /* Create the pool info for allocation */
     VkDescriptorPoolCreateInfo poolInfo{};
     poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -110,7 +166,7 @@ void S72Object::Material_PBR::CreateDescriptorPool(const VkDevice& device){
     poolInfo.pPoolSizes = poolSizes.data();
     poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
-    if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
+    if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &MDescriptorPool) != VK_SUCCESS) {
         throw std::runtime_error("failed to create descriptor pool!");
     }
 }
@@ -119,26 +175,24 @@ void S72Object::Material_PBR::CreateDescriptorPool(const VkDevice& device){
 /**
  * @brief Create the descriptor set for the environment/mirror material.
  * @param device The physical device.
- * @param descriptorSetLayout The descriptor set layout.
  * @param uniformBuffers The UBO buffer.
  * @param textureSampler The sampler for the texture.
  * @param cubeMap A list of GGX cube map, seperated by the roughness.
  * @param brdfLUT The integrated BRDF LUT.
  */
-void S72Object::Material_PBR::CreateDescriptorSets(const VkDevice& device, const VkDescriptorSetLayout& descriptorSetLayout,
-                          const std::vector<VkBuffer>& uniformBuffers, const VkSampler& textureSampler,
-                          const std::vector<VkImageView>& cubeMaps, const VkImageView& brdfLUT){
+void S72Object::Material_PBR::CreateDescriptorSets(const VkDevice& device, const std::vector<VkBuffer>& uniformBuffers,
+                                                   const VkSampler& textureSampler){
 
     /* Create one descriptor set for each frame in flight */
-    std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, descriptorSetLayout);
+    std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, MDescriptorSetLayout);
     VkDescriptorSetAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    allocInfo.descriptorPool = descriptorPool;
+    allocInfo.descriptorPool = MDescriptorPool;
     allocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
     allocInfo.pSetLayouts = layouts.data();
 
-    descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
-    if (vkAllocateDescriptorSets(device, &allocInfo, descriptorSets.data()) != VK_SUCCESS) {
+    MDescriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
+    if (vkAllocateDescriptorSets(device, &allocInfo, MDescriptorSets.data()) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate descriptor sets!");
     }
 
@@ -159,20 +213,6 @@ void S72Object::Material_PBR::CreateDescriptorSets(const VkDevice& device, const
         heightMapInfo[0].imageView = heightImageView;
         heightMapInfo[0].sampler = textureSampler;
 
-        std::vector<VkDescriptorImageInfo> cubeMapInfo;
-        for (const auto &cubeMap: cubeMaps) {
-            VkDescriptorImageInfo newInfo;
-            cubeMapInfo.emplace_back(newInfo);
-            cubeMapInfo.back().imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            cubeMapInfo.back().imageView = cubeMap;
-            cubeMapInfo.back().sampler = textureSampler;
-        }
-
-        std::array<VkDescriptorImageInfo,1> brdfInfo{};
-        brdfInfo[0].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        brdfInfo[0].imageView = brdfLUT;
-        brdfInfo[0].sampler = textureSampler;
-
         std::array<VkDescriptorImageInfo,1> albedoInfo{};
         albedoInfo[0].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         albedoInfo[0].imageView = albedoImageView;
@@ -188,9 +228,9 @@ void S72Object::Material_PBR::CreateDescriptorSets(const VkDevice& device, const
         metallicInfo[0].imageView = metallicImageView;
         metallicInfo[0].sampler = textureSampler;
 
-        std::array<VkWriteDescriptorSet, 8> descriptorWrites{};
+        std::array<VkWriteDescriptorSet, 6> descriptorWrites{};
         descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrites[0].dstSet = descriptorSets[i];
+        descriptorWrites[0].dstSet = MDescriptorSets[i];
         descriptorWrites[0].dstBinding = 0;
         descriptorWrites[0].dstArrayElement = 0;
         descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
@@ -198,7 +238,7 @@ void S72Object::Material_PBR::CreateDescriptorSets(const VkDevice& device, const
         descriptorWrites[0].pBufferInfo = &bufferInfo;
 
         descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrites[1].dstSet = descriptorSets[i];
+        descriptorWrites[1].dstSet = MDescriptorSets[i];
         descriptorWrites[1].dstBinding = 1;
         descriptorWrites[1].dstArrayElement = 0;
         descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -206,7 +246,7 @@ void S72Object::Material_PBR::CreateDescriptorSets(const VkDevice& device, const
         descriptorWrites[1].pImageInfo = normalMapInfo.data();
 
         descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrites[2].dstSet = descriptorSets[i];
+        descriptorWrites[2].dstSet = MDescriptorSets[i];
         descriptorWrites[2].dstBinding = 2;
         descriptorWrites[2].dstArrayElement = 0;
         descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -214,7 +254,7 @@ void S72Object::Material_PBR::CreateDescriptorSets(const VkDevice& device, const
         descriptorWrites[2].pImageInfo = heightMapInfo.data();
 
         descriptorWrites[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrites[3].dstSet = descriptorSets[i];
+        descriptorWrites[3].dstSet = MDescriptorSets[i];
         descriptorWrites[3].dstBinding = 3;
         descriptorWrites[3].dstArrayElement = 0;
         descriptorWrites[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -222,7 +262,7 @@ void S72Object::Material_PBR::CreateDescriptorSets(const VkDevice& device, const
         descriptorWrites[3].pImageInfo = albedoInfo.data();
 
         descriptorWrites[4].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrites[4].dstSet = descriptorSets[i];
+        descriptorWrites[4].dstSet = MDescriptorSets[i];
         descriptorWrites[4].dstBinding = 4;
         descriptorWrites[4].dstArrayElement = 0;
         descriptorWrites[4].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -230,28 +270,12 @@ void S72Object::Material_PBR::CreateDescriptorSets(const VkDevice& device, const
         descriptorWrites[4].pImageInfo = roughnessInfo.data();
 
         descriptorWrites[5].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrites[5].dstSet = descriptorSets[i];
+        descriptorWrites[5].dstSet = MDescriptorSets[i];
         descriptorWrites[5].dstBinding = 5;
         descriptorWrites[5].dstArrayElement = 0;
         descriptorWrites[5].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         descriptorWrites[5].descriptorCount = static_cast<uint32_t>(metallicInfo.size());
         descriptorWrites[5].pImageInfo = metallicInfo.data();
-
-        descriptorWrites[6].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrites[6].dstSet = descriptorSets[i];
-        descriptorWrites[6].dstBinding = 6;
-        descriptorWrites[6].dstArrayElement = 0;
-        descriptorWrites[6].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrites[6].descriptorCount = static_cast<uint32_t>(brdfInfo.size());
-        descriptorWrites[6].pImageInfo = brdfInfo.data();
-
-        descriptorWrites[7].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrites[7].dstSet = descriptorSets[i];
-        descriptorWrites[7].dstBinding = 7;
-        descriptorWrites[7].dstArrayElement = 0;
-        descriptorWrites[7].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrites[7].descriptorCount = static_cast<uint32_t>(cubeMapInfo.size());
-        descriptorWrites[7].pImageInfo = cubeMapInfo.data();
 
         vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
     }

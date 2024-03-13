@@ -845,11 +845,11 @@ VkShaderModule VulkanHelper::CreateShaderModule(const std::vector<char>& code)
  * @brief Read the shaders and create the graphics pipeline.
  * @param[in] vertexFileName: The name of the vertex shader.
  * @param[in] fragmentFileName: The name of the fragment shader.
- * @param[in] descriptorSetLayout: The descriptor set layout we want to use.
+ * @param[in] descriptorSetLayouts: A collection of descriptor set layouts we want to use. The first is for the material. The second, if exists, is for the VkMaterial.
  * @param[out] graphicsPipeline: The pipeline we created at the end.
  * @param[out] pipelineLayout: The pipeline layout we created at the end.
 */
-void VulkanHelper::CreateGraphicsPipeline(const std::string& vertexFileName, const std::string& fragmentFileName, const VkDescriptorSetLayout& descriptorSetLayout, VkPipeline& graphicsPipeline, VkPipelineLayout& pipelineLayout)
+void VulkanHelper::CreateGraphicsPipeline(const std::string& vertexFileName, const std::string& fragmentFileName, const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts, VkPipeline& graphicsPipeline, VkPipelineLayout& pipelineLayout)
 {
     /* Read the file into a char array */
     auto vertShaderCode = ReadFile(vertexFileName);
@@ -946,8 +946,8 @@ void VulkanHelper::CreateGraphicsPipeline(const std::string& vertexFileName, con
     /* Specify the layout, the 'uniform' item in the pipeline */
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutInfo.setLayoutCount = 1; // Optional
-    pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout; // Optional
+    pipelineLayoutInfo.setLayoutCount = descriptorSetLayouts.size(); // Optional
+    pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.data(); // Optional
     pipelineLayoutInfo.pushConstantRangeCount = 0; // Optional
     pipelineLayoutInfo.pPushConstantRanges = nullptr; // Optional
 
@@ -1599,10 +1599,19 @@ void VulkanHelper::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t i
         /* Bind the pipeline. */
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, VkMat.first->pipeline);
 
+        /* Bind the VkMaterial's descriptor set if exists. (Simple does not have a VkMaterial's descriptor set) */
+        if(VkMat.first->VKMDescriptorSetLayout != VK_NULL_HANDLE) {
+            vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, VkMat.first->pipelineLayout, 1, 1,
+                                    &VkMat.first->VKMDescriptorSets[currentFrame], 0,
+                                    nullptr);
+        }
+
         /* Loop through all the material types. */
         for(const auto& material : VkMat.second){
             uint32_t dynamicOffset = 0 * sizeof(UniformBufferObject);
-            vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, VkMat.first->pipelineLayout, 0, 1, &material->descriptorSets[currentFrame], 1,
+
+            /* Bind material's descriptor set. */
+            vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, VkMat.first->pipelineLayout, 0, 1, &material->MDescriptorSets[currentFrame], 1,
                                     &dynamicOffset);
 
             /* Loop through all the meshes with that material. */
@@ -2039,32 +2048,32 @@ void VulkanHelper::CreateMaterials(){
         if(materialTypes.first == S72Object::EMaterial::simple) {
             std::shared_ptr<VkMaterial_Simple> Vk_sim = std::make_shared<VkMaterial_Simple>();
             Vk_sim->name = "simple";
-            Vk_sim->CreateDescriptorSetLayout(device);
             newVkMaterial = std::dynamic_pointer_cast<VkMaterial>(Vk_sim);
         }
         else if(materialTypes.first == S72Object::EMaterial::environment || materialTypes.first == S72Object::EMaterial::mirror){
             std::shared_ptr<VkMaterial_EnvironmentMirror> Vk_env = std::make_shared<VkMaterial_EnvironmentMirror>();
             Vk_env->name = "environment";
             Vk_env->CreateDescriptorSetLayout(device);
+            Vk_env->CreateDescriptorPool(device);
+            Vk_env->CreateDescriptorSets(device,textureSampler,envTextureImageView);
             newVkMaterial = std::dynamic_pointer_cast<VkMaterial>(Vk_env);
         }
         else if(materialTypes.first == S72Object::EMaterial::lambertian){
             std::shared_ptr<VkMaterial_Lambertian> Vk_lam = std::make_shared<VkMaterial_Lambertian>();
             Vk_lam->name = "lambertian";
             Vk_lam->CreateDescriptorSetLayout(device);
+            Vk_lam->CreateDescriptorPool(device);
+            Vk_lam->CreateDescriptorSets(device,textureSampler,lamTextureImageView);
             newVkMaterial = std::dynamic_pointer_cast<VkMaterial>(Vk_lam);
         }
         else if(materialTypes.first == S72Object::EMaterial::pbr){
             std::shared_ptr<VkMaterial_PBR> Vk_pbr = std::make_shared<VkMaterial_PBR>();
             Vk_pbr->name = "pbr";
             Vk_pbr->CreateDescriptorSetLayout(device);
+            Vk_pbr->CreateDescriptorPool(device);
+            Vk_pbr->CreateDescriptorSets(device,textureSampler,pbrTextureImageView,pbrBRDFImageView);
             newVkMaterial = std::dynamic_pointer_cast<VkMaterial>(Vk_pbr);
         }
-
-        /* Create the pipeline. */
-        std::string vertexShader = shaderMap.at(materialTypes.first)[0];
-        std::string fragShader = shaderMap.at(materialTypes.first)[1];
-        CreateGraphicsPipeline(vertexShader, fragShader,newVkMaterial->descriptorSetLayout,newVkMaterial->pipeline,newVkMaterial->pipelineLayout);
 
         std::vector<std::shared_ptr<S72Object::Material>> mats;
         mats.reserve(materialTypes.second.size());
@@ -2074,28 +2083,45 @@ void VulkanHelper::CreateMaterials(){
             CreateMaterialImageView(material.second);
             if(materialTypes.first == S72Object::EMaterial::simple){
                 auto material_sim = std::dynamic_pointer_cast<S72Object::Material_Simple>(material.second);
+                material_sim->CreateDescriptorSetLayout(device);
                 material_sim->CreateDescriptorPool(device);
-                material_sim->CreateDescriptorSets(device,newVkMaterial->descriptorSetLayout,uniformBuffers,textureSampler);
+                material_sim->CreateDescriptorSets(device,uniformBuffers,textureSampler);
             }
             else if(materialTypes.first == S72Object::EMaterial::environment || materialTypes.first == S72Object::EMaterial::mirror){
                 auto material_env = std::dynamic_pointer_cast<S72Object::Material_EnvMirror>(material.second);
+                material_env->CreateDescriptorSetLayout(device);;
                 material_env->CreateDescriptorPool(device);
-                material_env->CreateDescriptorSets(device,newVkMaterial->descriptorSetLayout,uniformBuffers,textureSampler,envTextureImageView);
+                material_env->CreateDescriptorSets(device,uniformBuffers,textureSampler);
             }
             else if(materialTypes.first == S72Object::EMaterial::lambertian){
                 auto material_lam = std::dynamic_pointer_cast<S72Object::Material_Lambertian>(material.second);
+                material_lam->CreateDescriptorSetLayout(device);
                 material_lam->CreateDescriptorPool(device);
-                material_lam->CreateDescriptorSets(device,newVkMaterial->descriptorSetLayout,uniformBuffers,textureSampler,lamTextureImageView);
+                material_lam->CreateDescriptorSets(device,uniformBuffers,textureSampler);
             }
             else if(materialTypes.first == S72Object::EMaterial::pbr){
                 auto material_pbr = std::dynamic_pointer_cast<S72Object::Material_PBR>(material.second);
+                material_pbr->CreateDescriptorSetLayout(device);
                 material_pbr->CreateDescriptorPool(device);
-                material_pbr->CreateDescriptorSets(device,newVkMaterial->descriptorSetLayout,uniformBuffers,textureSampler,pbrTextureImageView,pbrBRDFImageView);
+                material_pbr->CreateDescriptorSets(device,uniformBuffers,textureSampler);
             }
 
             mats.emplace_back(material.second);
         }
         VkMaterials.insert(std::make_pair(newVkMaterial,mats));
+
+        /* Create the pipeline. */
+        std::string vertexShader = shaderMap.at(materialTypes.first)[0];
+        std::string fragShader = shaderMap.at(materialTypes.first)[1];
+
+        /* Form a container of descriptor set layouts for creating the pipeline. */
+        std::vector<VkDescriptorSetLayout> descriptorSetLayouts;
+        descriptorSetLayouts.emplace_back(VkMaterials[newVkMaterial][0]->MDescriptorSetLayout);
+        if(newVkMaterial->VKMDescriptorSetLayout != VK_NULL_HANDLE){
+            descriptorSetLayouts.emplace_back(newVkMaterial->VKMDescriptorSetLayout);
+        }
+
+        CreateGraphicsPipeline(vertexShader, fragShader,descriptorSetLayouts,newVkMaterial->pipeline,newVkMaterial->pipelineLayout);
     }
 }
 
