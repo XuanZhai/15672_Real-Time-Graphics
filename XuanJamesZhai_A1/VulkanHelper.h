@@ -72,12 +72,37 @@ const bool enableValidationLayers = true;
 #endif // NDEBUG
 
 
+const size_t MAX_NUM_LIGHTS = 10;
 
-/* MVP data for the vertices */
+
+/* Camera ubo data */
 struct UniformBufferObject {
     alignas(64) XZM::mat4 view;
     alignas(64) XZM::mat4 proj;
     alignas(64) XZM::vec3 viewPos;
+};
+
+
+/* Light ubo data. */
+struct UniformLight {
+    /* 0 = sun, 1 = sphere, 2 = spot */
+    alignas(4) uint32_t type = 0;
+    alignas(4) float angle = 0;
+    alignas(4) float strength = 0;
+    alignas(4) float radius = 0;
+    alignas(4) float power = 0;
+    alignas(4) float limit = 0;
+    alignas(4) float fov = 0;
+    alignas(4) float blend = 0;
+    alignas(16) XZM::vec3 pos = XZM::vec3();
+    alignas(16) XZM::vec3 dir = XZM::vec3();
+    alignas(16) XZM::vec3 tint = XZM::vec3(1.0f,1.0f,1.0f);
+};
+
+/* A container of light data. */
+struct UniformLights {
+    alignas(4) uint32_t lightSize = 0;
+    alignas(16) std::array<UniformLight,MAX_NUM_LIGHTS> lights;
 };
 
 
@@ -167,14 +192,20 @@ private:
     /* A map of VkMeshes hold all the vertex info in the GPU. */
     std::unordered_map<std::string,std::shared_ptr<VkMesh>> VkMeshes;
 
-    /* Buffer that contains UBO data */
+    /* Global descriptor set to store all the ubo data. */
+    VkDescriptorSetLayout globalDescriptorSetLayout = VK_NULL_HANDLE;
+    VkDescriptorPool globalDescriptorPool = VK_NULL_HANDLE;
+    std::vector<VkDescriptorSet> globalDescriptorSets;
+
+    /* Buffer that contains camera UBO data */
     std::vector<VkBuffer> uniformBuffers;
-
-    /* Memory that is allocated for the uniform buffer */
     std::vector<VkDeviceMemory> uniformBuffersMemory;
-
-    /* A reference map to the uniform buffer which can put data into them */
     std::vector<void*> uniformBuffersMapped;
+
+    /* Buffer that contains light UBO data */
+    std::vector<VkBuffer> uniformLightBuffers;
+    std::vector<VkDeviceMemory> uniformLightBuffersMemory;
+    std::vector<void*> uniformLightBuffersMapped;
 
     /* A map of VkMaterials hold all the material info in the GPU. */
     std::map<std::shared_ptr<VkMaterial>,std::vector<std::shared_ptr<S72Object::Material>>> VkMaterials;
@@ -365,11 +396,20 @@ private:
     /* Update an instance buffer with the new instance data. */
     void UpdateInstanceBuffer(const S72Object::Mesh& newMesh);
 
-    /* Create the uniform buffer to store the uniform data. */
+    /* Create the uniform buffer to store the general uniform data. */
     void CreateUniformBuffers();
 
-    /* Update the uniform buffer on the current image with given ubo data. */
+    /* Update the uniform buffer on the current image. */
     void UpdateUniformBuffer(uint32_t currentImage);
+
+    /* Create the uniform buffer to store the light uniform data. */
+    void CreateUniformLightBuffers();
+
+    /* Update the light uniform buffer on the current image. */
+    void UpdateUniformLightBuffers(uint32_t currentImage);
+
+    /* Create the descriptor set layout, pool, and sets for the global descriptor set. */
+    void CreateGlobalDescriptorSets();
 
     /* Create the command pool which will be used to allocate the memory for the command buffer. */
     void CreateCommandPool();

@@ -78,8 +78,7 @@ namespace S72Object{
     public:
         void CreateDescriptorSetLayout(const VkDevice& device) override;
         void CreateDescriptorPool(const VkDevice& device) override;
-        void CreateDescriptorSets(const VkDevice& device, const std::vector<VkBuffer>& uniformBuffers,
-                                  VkSampler const &textureSampler);
+        void CreateDescriptorSets(const VkDevice& device, VkSampler const &textureSampler);
     };
 
 
@@ -90,8 +89,7 @@ namespace S72Object{
     public:
         void CreateDescriptorSetLayout(const VkDevice& device) override;
         void CreateDescriptorPool(const VkDevice& device) override;
-        void CreateDescriptorSets(const VkDevice& device, const std::vector<VkBuffer>& uniformBuffers,
-                                  VkSampler const &textureSampler);
+        void CreateDescriptorSets(const VkDevice& device, VkSampler const &textureSampler);
     };
 
 
@@ -115,8 +113,7 @@ namespace S72Object{
 
             void CreateDescriptorSetLayout(const VkDevice& device) override;
             void CreateDescriptorPool(const VkDevice& device) override;
-            void CreateDescriptorSets(const VkDevice& device, const std::vector<VkBuffer> &uniformBuffers,
-                                      VkSampler const &textureSampler);
+            void CreateDescriptorSets(const VkDevice& device, VkSampler const &textureSampler);
 
             void CleanUp(const VkDevice& device) override;
     };
@@ -159,8 +156,7 @@ namespace S72Object{
 
             void CreateDescriptorSetLayout(const VkDevice& device) override;
             void CreateDescriptorPool(const VkDevice& device) override;
-            void CreateDescriptorSets(const VkDevice& device, const std::vector<VkBuffer>& uniformBuffers,
-                                      const VkSampler& textureSampler);
+            void CreateDescriptorSets(const VkDevice& device, const VkSampler& textureSampler);
 
             void CleanUp(const VkDevice& device) override;
     };

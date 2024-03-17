@@ -11,35 +11,27 @@
  */
 void S72Object::Material_Lambertian::CreateDescriptorSetLayout(const VkDevice& device){
 
-    std::array<VkDescriptorSetLayoutBinding,4> bindings{};
-
-    /* Set the binding info for ubo */
-    bindings[0].binding = 0;
-    bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;    // The type of descriptor is a uniform buffer object
-    bindings[0].descriptorCount = 1;
-    bindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-    bindings[0].pImmutableSamplers = nullptr;
-
+    std::array<VkDescriptorSetLayoutBinding,3> bindings{};
     /* Set the normal map sampler */
+    bindings[0].binding = 0;
+    bindings[0].descriptorCount = 1;
+    bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    bindings[0].pImmutableSamplers = nullptr;
+    bindings[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;     // Use the image sampler in the fragment shader stage.
+
+    /* Set the height map sampler */
     bindings[1].binding = 1;
     bindings[1].descriptorCount = 1;
     bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     bindings[1].pImmutableSamplers = nullptr;
     bindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;     // Use the image sampler in the fragment shader stage.
 
-    /* Set the height map sampler */
+    /* Set the albedo map sampler */
     bindings[2].binding = 2;
     bindings[2].descriptorCount = 1;
     bindings[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     bindings[2].pImmutableSamplers = nullptr;
     bindings[2].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;     // Use the image sampler in the fragment shader stage.
-
-    /* Set the albedo map sampler */
-    bindings[3].binding = 3;
-    bindings[3].descriptorCount = 1;
-    bindings[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    bindings[3].pImmutableSamplers = nullptr;
-    bindings[3].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;     // Use the image sampler in the fragment shader stage.
 
     /* Combine all the bindings into a single object */
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
@@ -94,9 +86,8 @@ void S72Object::Material_Lambertian::ProcessMaterial(const std::shared_ptr<Parse
  */
 void S72Object::Material_Lambertian::CreateDescriptorPool(const VkDevice& device){
     /* Describe which descriptor types our descriptor sets are going to contain */
-    std::array<VkDescriptorPoolSize,4> poolSizes{};
-
-    poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+    std::array<VkDescriptorPoolSize,3> poolSizes{};
+    poolSizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
     poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -104,9 +95,6 @@ void S72Object::Material_Lambertian::CreateDescriptorPool(const VkDevice& device
 
     poolSizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     poolSizes[2].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-
-    poolSizes[3].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    poolSizes[3].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
     /* Create the pool info for allocation */
     VkDescriptorPoolCreateInfo poolInfo{};
@@ -128,8 +116,7 @@ void S72Object::Material_Lambertian::CreateDescriptorPool(const VkDevice& device
  * @param textureSampler The sampler for the texture.
  * @param cubeMap The lambertian cube map.
  */
-void S72Object::Material_Lambertian::CreateDescriptorSets(const VkDevice& device, const std::vector<VkBuffer> &uniformBuffers,
-                                                          VkSampler const &textureSampler){
+void S72Object::Material_Lambertian::CreateDescriptorSets(const VkDevice& device, VkSampler const &textureSampler){
 
     /* Create one descriptor set for each frame in flight */
     std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, MDescriptorSetLayout);
@@ -146,11 +133,6 @@ void S72Object::Material_Lambertian::CreateDescriptorSets(const VkDevice& device
 
     /* Configure each descriptor set */
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        VkDescriptorBufferInfo bufferInfo{};
-        bufferInfo.buffer = uniformBuffers[i];
-        bufferInfo.offset = 0;
-        bufferInfo.range = sizeof(UniformBufferObject);
-
         std::array<VkDescriptorImageInfo,1> normalMapInfo{};
         normalMapInfo[0].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         normalMapInfo[0].imageView = normalImageView;
@@ -166,38 +148,30 @@ void S72Object::Material_Lambertian::CreateDescriptorSets(const VkDevice& device
         albedoInfo[0].imageView = albedoImageView;
         albedoInfo[0].sampler = textureSampler;
 
-        std::array<VkWriteDescriptorSet, 4> descriptorWrites{};
+        std::array<VkWriteDescriptorSet, 3> descriptorWrites{};
         descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[0].dstSet = MDescriptorSets[i];
         descriptorWrites[0].dstBinding = 0;
         descriptorWrites[0].dstArrayElement = 0;
-        descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-        descriptorWrites[0].descriptorCount = 1;
-        descriptorWrites[0].pBufferInfo = &bufferInfo;
+        descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWrites[0].descriptorCount = static_cast<uint32_t>(normalMapInfo.size());
+        descriptorWrites[0].pImageInfo = normalMapInfo.data();
 
         descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[1].dstSet = MDescriptorSets[i];
         descriptorWrites[1].dstBinding = 1;
         descriptorWrites[1].dstArrayElement = 0;
         descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrites[1].descriptorCount = static_cast<uint32_t>(normalMapInfo.size());
-        descriptorWrites[1].pImageInfo = normalMapInfo.data();
+        descriptorWrites[1].descriptorCount = static_cast<uint32_t>(heightMapInfo.size());
+        descriptorWrites[1].pImageInfo = heightMapInfo.data();
 
         descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[2].dstSet = MDescriptorSets[i];
         descriptorWrites[2].dstBinding = 2;
         descriptorWrites[2].dstArrayElement = 0;
         descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrites[2].descriptorCount = static_cast<uint32_t>(heightMapInfo.size());
-        descriptorWrites[2].pImageInfo = heightMapInfo.data();
-
-        descriptorWrites[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrites[3].dstSet = MDescriptorSets[i];
-        descriptorWrites[3].dstBinding = 3;
-        descriptorWrites[3].dstArrayElement = 0;
-        descriptorWrites[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrites[3].descriptorCount = static_cast<uint32_t>(albedoInfo.size());
-        descriptorWrites[3].pImageInfo = albedoInfo.data();
+        descriptorWrites[2].descriptorCount = static_cast<uint32_t>(albedoInfo.size());
+        descriptorWrites[2].pImageInfo = albedoInfo.data();
 
         vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
     }

@@ -15,13 +15,33 @@ layout(set = 0, binding = 0) uniform UniformBufferObject{
     vec3 viewPos;
 } ubo;
 
-layout(set = 0, binding = 1) uniform sampler2D normalSampler;
-layout(set = 0, binding = 2) uniform sampler2D heightSampler;
-layout(set = 0, binding = 3) uniform sampler2D albedoSampler;
-layout(set = 0, binding = 4) uniform sampler2D roughnessSampler;
-layout(set = 0, binding = 5) uniform sampler2D metallicSampler;
-layout(set = 1, binding = 0) uniform sampler2D brdfSampler;
-layout(set = 1, binding = 1) uniform samplerCube cubeSampler[10];
+struct UniformLightObject {
+    /* 0 = sun, 1 = sphere, 2 = spot */
+    uint type;
+    float angle;
+    float strength;
+    float radius;
+    float power;
+    float limit;
+    float fov;
+    float blend;
+    vec3 pos;
+    vec3 dir;
+    vec3 tint;
+};
+
+layout(std140, set = 0, binding = 1) uniform UniformLightsObject {
+    uint lightSize;
+    UniformLightObject lights[10];
+} lightObjects;
+
+layout(set = 1, binding = 0) uniform sampler2D normalSampler;
+layout(set = 1, binding = 1) uniform sampler2D heightSampler;
+layout(set = 1, binding = 2) uniform sampler2D albedoSampler;
+layout(set = 1, binding = 3) uniform sampler2D roughnessSampler;
+layout(set = 1, binding = 4) uniform sampler2D metallicSampler;
+layout(set = 2, binding = 0) uniform sampler2D brdfSampler;
+layout(set = 2, binding = 1) uniform samplerCube cubeSampler[10];
 
 
 vec3 toneMapACES(vec3 color, float exposure){

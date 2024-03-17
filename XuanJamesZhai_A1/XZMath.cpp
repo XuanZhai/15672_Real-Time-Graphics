@@ -579,8 +579,7 @@ XZM::vec3 XZM::GetLookAtDir(const mat4& rotationMatrix){
             rotationMatrix.data[0][2] * forward.data[0] + rotationMatrix.data[1][2] * forward.data[1] + rotationMatrix.data[2][2] * forward.data[2]
     };
 
-    Normalize(result);
-    return result;
+    return Normalize(result);
 }
 
 
@@ -662,18 +661,24 @@ XZM::vec3 XZM::RotateVec3(const vec3& vector, const vec3& axis, float radians){
 
     vec3 result;
 
+    quat q;
+    q.data[0] = (axis * sin(radians / 2.0f)).data[0];
+    q.data[1] = (axis * sin(radians / 2.0f)).data[1];
+    q.data[2] = (axis * sin(radians / 2.0f)).data[2];
+    q.data[3] = cos(radians / 2.0f);
+
     XZM::mat4 rotationMatrix;
-    rotationMatrix.data[0][0] = cosTheta + (1 - cosTheta) * axis.data[0] * axis.data[0];
-    rotationMatrix.data[0][1] = (1 - cosTheta) * axis.data[0] * axis.data[1] - sinTheta * axis.data[2];
-    rotationMatrix.data[0][2] = (1 - cosTheta) * axis.data[0] * axis.data[2] + sinTheta * axis.data[1];
+    rotationMatrix.data[0][0] = 1.0f - 2.0f * (q.data[1] * q.data[1] + q.data[2] * q.data[2]);
+    rotationMatrix.data[0][1] = 2.0f * (q.data[0] * q.data[1] - q.data[3] * q.data[2]);
+    rotationMatrix.data[0][2] = 2.0f * (q.data[0] * q.data[2] + q.data[3] * q.data[1]);
 
-    rotationMatrix.data[1][0] = (1 - cosTheta) * axis.data[0] * axis.data[1] + sinTheta * axis.data[2];
-    rotationMatrix.data[1][1] = cosTheta + (1 - cosTheta) * axis.data[1] * axis.data[1];
-    rotationMatrix.data[1][2] = (1 - cosTheta) * axis.data[1] * axis.data[2] - sinTheta * axis.data[0];
+    rotationMatrix.data[1][0] = 2.0f * (q.data[0] * q.data[1] + q.data[3] * q.data[2]);
+    rotationMatrix.data[1][1] = 1.0f - 2.0f * (q.data[0] * q.data[0] + q.data[2] * q.data[2]);
+    rotationMatrix.data[1][2] = 2.0f * (q.data[1] * q.data[2] - q.data[3] * q.data[0]);
 
-    rotationMatrix.data[2][0] = (1 - cosTheta) * axis.data[0] * axis.data[2] - sinTheta * axis.data[1];
-    rotationMatrix.data[2][1] = (1 - cosTheta) * axis.data[1] * axis.data[2] + sinTheta * axis.data[0];
-    rotationMatrix.data[2][2] = cosTheta + (1 - cosTheta) * axis.data[2] * axis.data[2];
+    rotationMatrix.data[2][0] = 2.0f * (q.data[0] * q.data[2] - q.data[3] * q.data[1]);
+    rotationMatrix.data[2][1] = 2.0f * (q.data[1] * q.data[2] + q.data[3] * q.data[0]);
+    rotationMatrix.data[2][2] = 1.0f - 2.0f * (q.data[0] * q.data[0] + q.data[1] * q.data[1]);
 
     result.data[0] = vector.data[0] * rotationMatrix.data[0][0] + vector.data[1] * rotationMatrix.data[0][1] + vector.data[2] * rotationMatrix.data[0][2];
     result.data[1] = vector.data[0] * rotationMatrix.data[1][0] + vector.data[1] * rotationMatrix.data[1][1] + vector.data[2] * rotationMatrix.data[1][2];

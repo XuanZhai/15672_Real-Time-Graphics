@@ -1496,6 +1496,155 @@ void VulkanHelper::UpdateUniformBuffer(uint32_t currentImage)
 
 
 /**
+ * @brief Create the uniform buffer to store the light uniform data.
+ */
+void VulkanHelper::CreateUniformLightBuffers(){
+    /* We use a large uniform buffer to store all mesh instance's ubo data */
+    VkDeviceSize bufferSize = sizeof(UniformLights);
+
+    uniformLightBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+    uniformLightBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
+    uniformLightBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
+
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        CreateBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniformLightBuffers[i], uniformLightBuffersMemory[i]);
+
+        vkMapMemory(device, uniformLightBuffersMemory[i], 0, bufferSize, 0, &uniformLightBuffersMapped[i]);
+    }
+}
+
+
+/**
+ * @brief Update the light uniform buffer on the current image.
+ * @param currentImage The index of the current frame.
+ */
+void VulkanHelper::UpdateUniformLightBuffers(uint32_t currentImage){
+
+    UniformLights uboLights{};
+    uboLights.lightSize = 0;
+
+    /* Loop through each S72 Light, also increment the light count. */
+    for(const auto& light : s72Instance->lights){
+        UniformLight uboLight;
+        uboLight.pos = light->pos;
+        uboLight.dir = light->dir;
+        uboLight.tint = light->tint;
+        uboLight.type = light->type;
+        uboLight.angle = light->angle;
+        uboLight.strength = light->strength;
+        uboLight.radius = light->radius;
+        uboLight.power = light->power;
+        uboLight.limit = light->limit;
+        uboLight.fov = light->fov;
+        uboLight.blend = light->blend;
+
+        uboLights.lights[uboLights.lightSize] = uboLight;
+        uboLights.lightSize++;
+    }
+
+    memcpy(uniformLightBuffersMapped[currentImage], &uboLights, sizeof(uboLights));
+}
+
+
+/**
+ * @brief Create the descriptor set layout, pool, and sets for the global descriptor set.
+ */
+void VulkanHelper::CreateGlobalDescriptorSets(){
+    /* Set the binding info for ubo */
+    std::array<VkDescriptorSetLayoutBinding,2> bindings{};
+    bindings[0].binding = 0;
+    bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;    // The type of descriptor is a uniform buffer object
+    bindings[0].descriptorCount = 1;
+    bindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+    bindings[0].pImmutableSamplers = nullptr;
+
+    /* Set the binding info for the light ubo */
+    bindings[1].binding = 1;
+    bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;    // The type of descriptor is a uniform buffer object
+    bindings[1].descriptorCount = 1;
+    bindings[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+    bindings[1].pImmutableSamplers = nullptr;
+
+    /* Combine all the bindings into a single object */
+    VkDescriptorSetLayoutCreateInfo layoutInfo{};
+    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
+    layoutInfo.pBindings = bindings.data();
+
+    if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &globalDescriptorSetLayout) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create descriptor set layout!");
+    }
+
+    /* Describe which descriptor types our descriptor sets are going to contain */
+    /* The first is used for the uniform buffer. The second is used for the image sampler */
+    std::array<VkDescriptorPoolSize,2> poolSizes{};
+    poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+
+    /* Used for the light ubo. */
+    poolSizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    poolSizes[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+
+    /* Create the pool info for allocation */
+    VkDescriptorPoolCreateInfo poolInfo{};
+    poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+    poolInfo.pPoolSizes = poolSizes.data();
+    poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+
+    if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &globalDescriptorPool) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create descriptor pool!");
+    }
+
+    /* Create one descriptor set for each frame in flight */
+    std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, globalDescriptorSetLayout);
+    VkDescriptorSetAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocInfo.descriptorPool = globalDescriptorPool;
+    allocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    allocInfo.pSetLayouts = layouts.data();
+
+    globalDescriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
+    if (vkAllocateDescriptorSets(device, &allocInfo, globalDescriptorSets.data()) != VK_SUCCESS) {
+        throw std::runtime_error("failed to allocate descriptor sets!");
+    }
+
+    /* Configure each descriptor set */
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        VkDescriptorBufferInfo uboBufferInfo{};
+        uboBufferInfo.buffer = uniformBuffers[i];
+        uboBufferInfo.offset = 0;
+        uboBufferInfo.range = sizeof(UniformBufferObject);
+
+        VkDescriptorBufferInfo uboLightBufferInfo{};
+        uboLightBufferInfo.buffer = uniformLightBuffers[i];
+        uboLightBufferInfo.offset = 0;
+        uboLightBufferInfo.range = sizeof(UniformLights);
+
+        std::array<VkWriteDescriptorSet,2> descriptorWrites{};
+
+        descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[0].dstSet = globalDescriptorSets[i];
+        descriptorWrites[0].dstBinding = 0;
+        descriptorWrites[0].dstArrayElement = 0;
+        descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorWrites[0].descriptorCount = 1;
+        descriptorWrites[0].pBufferInfo = &uboBufferInfo;
+
+        descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[1].dstSet = globalDescriptorSets[i];
+        descriptorWrites[1].dstBinding = 1;
+        descriptorWrites[1].dstArrayElement = 0;
+        descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorWrites[1].descriptorCount = 1;
+        descriptorWrites[1].pBufferInfo = &uboLightBufferInfo;
+
+        vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
+    }
+}
+
+
+/**
 * @brief Create the command pool which will be used to allocate the memory for the command buffer.
 */
 void VulkanHelper::CreateCommandPool()
@@ -1592,6 +1741,8 @@ void VulkanHelper::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t i
 
     /* Since the uniform buffer is one for every object, we update it globally. */
     UpdateUniformBuffer(currentFrame);
+    UpdateUniformLightBuffers(currentFrame);
+
 
     /* Loop through each material. */
     for(const auto& VkMat : VkMaterials){
@@ -1599,20 +1750,22 @@ void VulkanHelper::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t i
         /* Bind the pipeline. */
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, VkMat.first->pipeline);
 
+        /* Bind global descriptor set. */
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, VkMat.first->pipelineLayout, 0, 1, &globalDescriptorSets[currentFrame], 0,
+                                nullptr);
+
         /* Bind the VkMaterial's descriptor set if exists. (Simple does not have a VkMaterial's descriptor set) */
         if(VkMat.first->VKMDescriptorSetLayout != VK_NULL_HANDLE) {
-            vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, VkMat.first->pipelineLayout, 1, 1,
+            vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, VkMat.first->pipelineLayout, 2, 1,
                                     &VkMat.first->VKMDescriptorSets[currentFrame], 0,
                                     nullptr);
         }
 
         /* Loop through all the material types. */
         for(const auto& material : VkMat.second){
-            uint32_t dynamicOffset = 0 * sizeof(UniformBufferObject);
-
             /* Bind material's descriptor set. */
-            vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, VkMat.first->pipelineLayout, 0, 1, &material->MDescriptorSets[currentFrame], 1,
-                                    &dynamicOffset);
+            vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, VkMat.first->pipelineLayout, 1, 1, &material->MDescriptorSets[currentFrame], 0,
+                                    nullptr);
 
             /* Loop through all the meshes with that material. */
             for(auto& mesh : material->meshes){
@@ -2085,25 +2238,25 @@ void VulkanHelper::CreateMaterials(){
                 auto material_sim = std::dynamic_pointer_cast<S72Object::Material_Simple>(material.second);
                 material_sim->CreateDescriptorSetLayout(device);
                 material_sim->CreateDescriptorPool(device);
-                material_sim->CreateDescriptorSets(device,uniformBuffers,textureSampler);
+                material_sim->CreateDescriptorSets(device,textureSampler);
             }
             else if(materialTypes.first == S72Object::EMaterial::environment || materialTypes.first == S72Object::EMaterial::mirror){
                 auto material_env = std::dynamic_pointer_cast<S72Object::Material_EnvMirror>(material.second);
                 material_env->CreateDescriptorSetLayout(device);;
                 material_env->CreateDescriptorPool(device);
-                material_env->CreateDescriptorSets(device,uniformBuffers,textureSampler);
+                material_env->CreateDescriptorSets(device,textureSampler);
             }
             else if(materialTypes.first == S72Object::EMaterial::lambertian){
                 auto material_lam = std::dynamic_pointer_cast<S72Object::Material_Lambertian>(material.second);
                 material_lam->CreateDescriptorSetLayout(device);
                 material_lam->CreateDescriptorPool(device);
-                material_lam->CreateDescriptorSets(device,uniformBuffers,textureSampler);
+                material_lam->CreateDescriptorSets(device,textureSampler);
             }
             else if(materialTypes.first == S72Object::EMaterial::pbr){
                 auto material_pbr = std::dynamic_pointer_cast<S72Object::Material_PBR>(material.second);
                 material_pbr->CreateDescriptorSetLayout(device);
                 material_pbr->CreateDescriptorPool(device);
-                material_pbr->CreateDescriptorSets(device,uniformBuffers,textureSampler);
+                material_pbr->CreateDescriptorSets(device,textureSampler);
             }
 
             mats.emplace_back(material.second);
@@ -2116,6 +2269,7 @@ void VulkanHelper::CreateMaterials(){
 
         /* Form a container of descriptor set layouts for creating the pipeline. */
         std::vector<VkDescriptorSetLayout> descriptorSetLayouts;
+        descriptorSetLayouts.emplace_back(globalDescriptorSetLayout);
         descriptorSetLayouts.emplace_back(VkMaterials[newVkMaterial][0]->MDescriptorSetLayout);
         if(newVkMaterial->VKMDescriptorSetLayout != VK_NULL_HANDLE){
             descriptorSetLayouts.emplace_back(newVkMaterial->VKMDescriptorSetLayout);
@@ -2696,6 +2850,8 @@ void VulkanHelper::InitVulkan()
 
     CreateMeshes();
     CreateUniformBuffers();
+    CreateUniformLightBuffers();
+    CreateGlobalDescriptorSets();
 
     CreateMaterials();
     CreateCommandBuffers();
@@ -3004,7 +3160,12 @@ void VulkanHelper::CleanUp()
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         vkDestroyBuffer(device, uniformBuffers[i], nullptr);
         vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
+        vkDestroyBuffer(device, uniformLightBuffers[i], nullptr);
+        vkFreeMemory(device, uniformLightBuffersMemory[i], nullptr);
     }
+
+    vkDestroyDescriptorPool(device, globalDescriptorPool, nullptr);
+    vkDestroyDescriptorSetLayout(device, globalDescriptorSetLayout, nullptr);
 
     for(auto& mesh : VkMeshes){
         mesh.second->CleanUp();

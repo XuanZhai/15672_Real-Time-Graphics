@@ -424,8 +424,27 @@
 	"radiance": {"src":"src.png", "type":"cube", "format":"rgbe"}
 },
 {
+	"type":"NODE",
+	"name":"Sphere.004",
+	"translation":[-5,-5,5],
+	"rotation":[0,0,0,1],
+	"scale":[1,1,1],
+	"light":44
+},
+{
+	"type":"LIGHT",
+	"name":"yellow-sun",
+	"tint":[0.3, 0.6, 0.9],
+	"sphere":{
+		"radius":0.1,
+		"power":60.0,
+		"limit":4.0
+	},
+	"shadow":256
+},
+{
 	"type":"SCENE",
 	"name":"C:/Code/Blender/RotatingSuzanneReport.blend",
-	"roots":[2, 3, 4, 7, 9, 12, 15, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40]
+	"roots":[2, 3, 4, 7, 9, 12, 15, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 43]
 }
 ]

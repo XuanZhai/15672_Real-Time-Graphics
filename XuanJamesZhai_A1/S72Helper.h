@@ -198,6 +198,28 @@ namespace S72Object {
     };
 
     class Material;
+
+    class Light{
+        public:
+            XZM::vec3 pos = XZM::vec3();;
+            XZM::vec3 dir = XZM::vec3();;
+            /* 0 = sun, 1 = sphere, 2 = spot */
+            int type;
+            std::string name;
+            float angle = 0;
+            float strength = 0;
+            float radius = 0;
+            float power = 0;
+            float limit = 0;
+            float fov = 0;
+            float blend = 0;
+            XZM::vec3 tint = XZM::vec3(1.0f,1.0f,1.0f);
+
+            /* Initialize the light object from the parser node. */
+            void Initialization(const std::shared_ptr<ParserNode> &node);
+            /* Set the light's position and direction. */
+            void SetModelMatrix(const XZM::mat4& newModel);
+    };
 }
 
 
@@ -236,6 +258,9 @@ public:
 
     /* A map of material types, each has its sub materials. */
     std::unordered_map<S72Object::EMaterial, std::map<std::string, std::shared_ptr<S72Object::Material>>> materials;
+
+    uint32_t lightIndex = 0;
+    std::vector<std::shared_ptr<S72Object::Light>> lights;
 
     S72Helper();
     /* Read and parse a s72 file from a given path. */
