@@ -613,7 +613,7 @@ void S72Object::Light::Initialization(const std::shared_ptr<ParserNode> &node){
  */
 void S72Object::Light::SetModelMatrix(const XZM::mat4& newModel){
     pos = XZM::ExtractTranslationFromMat(newModel);
-    dir = XZM::GetLookAtDir(newModel);
+    dir = XZM::GetLookAtDir(newModel) * -1;
 }
 
 

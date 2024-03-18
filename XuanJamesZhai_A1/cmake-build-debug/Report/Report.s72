@@ -438,7 +438,7 @@
 	"sphere":{
 		"radius":0.1,
 		"power":60.0,
-		"limit":4.0
+		"limit":8
 	},
 	"shadow":256
 },
