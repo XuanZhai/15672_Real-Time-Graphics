@@ -64,7 +64,7 @@ void Lambertian::Processing(uint32_t newNSamples, uint32_t outWidth, uint32_t ou
     nSamples = newNSamples;
 
     /* Collect the brightest part. */
-    ProcessBright();
+    //ProcessBright();
 
     for(int face = 0; face < 6; face++){
         outMaps[face] = new XZM::vec3*[outMapHeight];
@@ -149,12 +149,12 @@ void Lambertian::ProcessingFace(EFace face) {
                 if(NoL > 0){
                     /* Find its correspond cube map. */
                     acc += Projection(sampleDir) * NoL;
-                    totalWeight += NoL;
+                    totalWeight ++;
                 }
             }
             /* Average the result. */
-            acc = acc * (1.0f / totalWeight);
-            acc += (SumBrightDirection(N));
+            acc = acc * M_PI * (1.0f / totalWeight);
+           // acc += (SumBrightDirection(N));
             outMaps[face][v][u] = acc;
         }
     }

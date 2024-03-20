@@ -35,12 +35,10 @@
 {
 	"type":"MATERIAL",
 	"name":"pbr: base",
-	"normalMap":{ "src":"bricks2_normal.png" },
-	"displacementMap":{ "src":"bricks2_disp.png" },
 	"pbr":{
-		"albedo":[ 0.8005210161209106, 0.557878315448761, 0.789514422416687 ],
-		"roughness":0.20000000298023224,
-		"metalness":0.75
+		"albedo":[ 1.0, 1.0, 1.0 ],
+		"roughness":0.9,
+		"metalness":0.1
 	}
 },
 {
@@ -145,10 +143,8 @@
 {
 	"type":"MATERIAL",
 	"name":"lambertian: rock",
-	"normalMap":{ "src":"bricks2_normal.png" },
-	"displacementMap":{ "src":"bricks2_disp.png" },
 	"lambertian":{
-		"albedo":[ 0.8005210161209106, 0.557878315448761, 0.789514422416687 ]
+		"albedo":[ 0.9, 0.9, 0.9 ]
 	}
 },
 {
@@ -426,7 +422,7 @@
 {
 	"type":"NODE",
 	"name":"Sphere.004",
-	"translation":[-5,-5,5],
+	"translation":[3,0,6],
 	"rotation":[0,0,0,1],
 	"scale":[1,1,1],
 	"light":44
@@ -434,11 +430,13 @@
 {
 	"type":"LIGHT",
 	"name":"yellow-sun",
-	"tint":[0.3, 0.6, 0.9],
-	"sphere":{
-		"radius":0.1,
-		"power":60.0,
-		"limit":8
+	"tint":[1.0, 0.0, 0.0],
+	"spot":{
+		"radius":0.5,
+		"power":600.0,
+		"fov":0.3,
+		"blend":0.15,
+		"limit":15.0
 	},
 	"shadow":256
 },

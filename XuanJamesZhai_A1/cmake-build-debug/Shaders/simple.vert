@@ -23,7 +23,7 @@ void main() {
     gl_Position = ubo.proj * ubo.view * inModel * vec4(inPosition, 1.0);
 
     fragColor = inColor;
-    fragNormal = (transpose(inverse(inModel)) * vec4(inNormal,1.0)).xyz;
+    fragNormal = normalize((transpose(inverse(inModel)) * vec4(inNormal,1.0)).xyz);
 
     fragTexCoord = vec2(0,0);
 

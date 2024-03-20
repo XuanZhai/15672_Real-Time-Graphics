@@ -2122,7 +2122,7 @@ void VulkanHelper::CreateCubeTextureImageAndView(const std::string& filename, Vk
     vkDestroyBuffer(device, stagingBuffer, nullptr);
     vkFreeMemory(device, stagingBufferMemory, nullptr);
 
-    GenerateMipmaps(image, VK_FORMAT_R8G8B8A8_SRGB, texWidth, texHeight, envMipLevels, 6);
+    GenerateMipmaps(image, VK_FORMAT_R32G32B32A32_SFLOAT, texWidth, texHeight, envMipLevels, 6);
 
     /* Create the image view. */
     imageView = CreateImageView(image, VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_VIEW_TYPE_CUBE, VK_IMAGE_ASPECT_COLOR_BIT, envMipLevels, 6);
@@ -2224,7 +2224,7 @@ void VulkanHelper::CreateMaterials(){
             Vk_pbr->name = "pbr";
             Vk_pbr->CreateDescriptorSetLayout(device);
             Vk_pbr->CreateDescriptorPool(device);
-            Vk_pbr->CreateDescriptorSets(device,textureSampler,pbrTextureImageView,pbrBRDFImageView);
+            Vk_pbr->CreateDescriptorSets(device,textureSampler,lamTextureImageView,pbrTextureImageView,pbrBRDFImageView);
             newVkMaterial = std::dynamic_pointer_cast<VkMaterial>(Vk_pbr);
         }
 
@@ -2313,7 +2313,7 @@ void VulkanHelper::CreateTextureImage(const std::string& src, int texWidth, int 
 
     }
     else if(nChannels == 4 || nChannels == 3){
-        CreateImage(texWidth, texHeight, mipLevels, 1, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory);
+        CreateImage(texWidth, texHeight, mipLevels, 1, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory);
     }
     else{
         throw std::runtime_error("Cannot find the format with desired number of channels! ");
@@ -2331,7 +2331,7 @@ void VulkanHelper::CreateTextureImage(const std::string& src, int texWidth, int 
         GenerateMipmaps(textureImage, VK_FORMAT_R8_UNORM, texWidth, texHeight, mipLevels,1);
     }
     else if(nChannels == 3 || nChannels == 4){
-        GenerateMipmaps(textureImage, VK_FORMAT_R8G8B8A8_SRGB, texWidth, texHeight, mipLevels,1);
+        GenerateMipmaps(textureImage, VK_FORMAT_R8G8B8A8_UNORM, texWidth, texHeight, mipLevels,1);
     }
 }
 
@@ -2350,7 +2350,7 @@ void VulkanHelper::CreateTextureImageView(const VkImage& textureImage, VkImageVi
         textureImageView = CreateImageView(textureImage, VK_FORMAT_R8_UNORM, VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_ASPECT_COLOR_BIT,mipLevels, 1);
     }
     else if(nChannels == 3 || nChannels == 4){
-        textureImageView = CreateImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_ASPECT_COLOR_BIT,mipLevels, 1);
+        textureImageView = CreateImageView(textureImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_ASPECT_COLOR_BIT,mipLevels, 1);
     }
 }
 

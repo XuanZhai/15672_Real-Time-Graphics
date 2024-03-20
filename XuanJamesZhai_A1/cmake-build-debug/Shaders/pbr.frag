@@ -40,8 +40,9 @@ layout(set = 1, binding = 1) uniform sampler2D heightSampler;
 layout(set = 1, binding = 2) uniform sampler2D albedoSampler;
 layout(set = 1, binding = 3) uniform sampler2D roughnessSampler;
 layout(set = 1, binding = 4) uniform sampler2D metallicSampler;
-layout(set = 2, binding = 0) uniform sampler2D brdfSampler;
-layout(set = 2, binding = 1) uniform samplerCube cubeSampler[10];
+layout(set = 2, binding = 0) uniform samplerCube LamcubeSampler;
+layout(set = 2, binding = 1) uniform sampler2D brdfSampler;
+layout(set = 2, binding = 2) uniform samplerCube cubeSampler[10];
 
 
 vec3 toneMapACES(vec3 color, float exposure){
@@ -57,8 +58,11 @@ vec3 toneMapACES(vec3 color, float exposure){
 
 
 // Function to calculate the Fresnel term
-float SchlickFresnel(float cosTheta, vec3 F0) {
-    return max(dot(F0, vec3(1.0 - cosTheta)), 0.0);
+// Reference: https://learnopengl.com/PBR/IBL/Diffuse-irradiance
+// Reference: https://learnopengl.com/PBR/IBL/Specular-IBL
+
+vec3 SchlickFresnel(float WoH, vec3 F0, float roughness) {
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - WoH, 0.0, 1.0), 5.0);
 }
 
 
@@ -81,7 +85,8 @@ vec2 GetBRDF(float roughness, float NoV){
     if(novLod > 9) novLod = 9;
     if(novLod < 0) novLod = 0;
 
-    vec2 tex = vec2(roughnessLod, novLod);
+    //vec2 tex = vec2(roughnessLod, novLod);
+    vec2 tex = vec2(1-roughness, NoV);
     return texture(brdfSampler, tex).rg;
 }
 
@@ -131,7 +136,7 @@ void main() {
     N = normalize(TBN * N);
 
     vec3 V = normalize(fragPosition-ubo.viewPos);
-    vec3 R = reflect(-V, N);
+    vec3 R = reflect(V, N);
 
     float roughness = texture(roughnessSampler, texCoord).r;
     float metallic = texture(metallicSampler, texCoord).r;
@@ -140,19 +145,24 @@ void main() {
     float cosTheta = max(dot(R, V), 0.0);
     // Fresnel term
     vec3 F0 = vec3(0.04);
-    F0 = mix(F0, vec3(1.0), metallic);
-    float F = SchlickFresnel(cosTheta, F0);
+   // F0 = mix(F0, vec3(1.0), metallic);
+    vec3 F = SchlickFresnel(cosTheta, F0,roughness);
+
+    vec3 kS = F;
+    vec3 kD = 1.0 - kS;
+    kD = kD * (1-metallic);
 
     float NoV = max(0.0, min(1.0, dot(N,V)));
     vec3 EnvColor = GetEnv( roughness, R );
     vec2 EnvBRDF = GetBRDF( roughness, NoV );
 
-    vec3 diffuse = texture(albedoSampler, texCoord).xyz;
-    vec3 specular = EnvColor * ( F * EnvBRDF.x + EnvBRDF.y );
-    vec3 ambient = vec3(0.05); // Ambient color
+    vec3 irradiance = toneMapACES(texture(LamcubeSampler, N).rgb,1.0);
+    vec3 diffuse  = irradiance * texture(albedoSampler, vec2(0,0)).xyz;
 
-    vec3 color = mix(diffuse, specular, metallic);
-    color += ambient;
+    //vec3 diffuse = texture(albedoSampler, texCoord).xyz;
+    vec3 specular = EnvColor * ( F * EnvBRDF.x + EnvBRDF.y );
+
+    vec3 color = kD * diffuse + specular;
 
     outColor = vec4(color,1.0);
 }

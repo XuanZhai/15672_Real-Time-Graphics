@@ -82,7 +82,7 @@ void S72Object::Material_PBR::ProcessMaterial(const std::shared_ptr<ParserNode>&
         float g = std::get<float>(color[1]->data);
         float b = std::get<float>(color[2]->data);
 
-        albedo = std::string() + (char) (r * 256) + (char) (g * 256) + (char) (b * 256) + (char)(255u);
+        albedo = std::string() + (char) (r * 255) + (char) (g * 255) + (char) (b * 255) + (char)(255u);
         albedoHeight = 1;
         albedoWidth = 1;
         albedoChannel = 4;
