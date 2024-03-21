@@ -39,8 +39,5 @@ layout(set = 1, binding = 1) uniform sampler2D heightSampler;
 
 
 void main() {
-    //vec3 light = mix(vec3(0,0,0), vec3(1,1,1), dot(normalize(fragNormal), lightObjects.lights[0].dir) * 0.5 + 0.5);
-    //outColor = vec4(light * fragColor.xyz, fragColor.w);
-
     outColor = fragColor;
 }

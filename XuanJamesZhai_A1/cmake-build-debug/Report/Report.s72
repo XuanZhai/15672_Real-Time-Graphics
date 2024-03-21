@@ -37,8 +37,8 @@
 	"name":"pbr: base",
 	"pbr":{
 		"albedo":[ 1.0, 1.0, 1.0 ],
-		"roughness":0.9,
-		"metalness":0.1
+		"roughness":0.4,
+		"metalness":0.8
 	}
 },
 {
@@ -421,9 +421,9 @@
 },
 {
 	"type":"NODE",
-	"name":"Sphere.004",
-	"translation":[3,0,6],
-	"rotation":[0,0,0,1],
+	"name":"Sphere.010",
+	"translation":[3,-2,6],
+	"rotation":[0.259,0,0, 0.966],
 	"scale":[1,1,1],
 	"light":44
 },
@@ -434,7 +434,7 @@
 	"spot":{
 		"radius":0.5,
 		"power":600.0,
-		"fov":0.3,
+		"fov":0.285,
 		"blend":0.15,
 		"limit":15.0
 	},
