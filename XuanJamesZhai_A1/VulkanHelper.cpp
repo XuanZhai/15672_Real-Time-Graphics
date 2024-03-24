@@ -849,7 +849,7 @@ VkShaderModule VulkanHelper::CreateShaderModule(const std::vector<char>& code)
  * @param[out] graphicsPipeline: The pipeline we created at the end.
  * @param[out] pipelineLayout: The pipeline layout we created at the end.
 */
-void VulkanHelper::CreateGraphicsPipeline(const std::string& vertexFileName, const std::string& fragmentFileName, const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts, VkPipeline& graphicsPipeline, VkPipelineLayout& pipelineLayout)
+void VulkanHelper::CreateGraphicsPipeline(const VkRenderPass& newRenderPass, const std::string& vertexFileName, const std::string& fragmentFileName, const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts, const std::vector<VkPushConstantRange>& pushConstants, VkPipeline& graphicsPipeline, VkPipelineLayout& pipelineLayout)
 {
     /* Read the file into a char array */
     auto vertShaderCode = ReadFile(vertexFileName);
@@ -946,10 +946,24 @@ void VulkanHelper::CreateGraphicsPipeline(const std::string& vertexFileName, con
     /* Specify the layout, the 'uniform' item in the pipeline */
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutInfo.setLayoutCount = descriptorSetLayouts.size(); // Optional
-    pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.data(); // Optional
-    pipelineLayoutInfo.pushConstantRangeCount = 0; // Optional
-    pipelineLayoutInfo.pPushConstantRanges = nullptr; // Optional
+
+    if(descriptorSetLayouts.empty()){
+        pipelineLayoutInfo.setLayoutCount = 0;
+        pipelineLayoutInfo.pSetLayouts = nullptr;
+    }
+    else{
+        pipelineLayoutInfo.setLayoutCount = descriptorSetLayouts.size();
+        pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.data();
+    }
+
+    if(pushConstants.empty()){
+        pipelineLayoutInfo.pushConstantRangeCount = 0;
+        pipelineLayoutInfo.pPushConstantRanges = nullptr;
+    }
+    else{
+        pipelineLayoutInfo.pushConstantRangeCount = pushConstants.size();
+        pipelineLayoutInfo.pPushConstantRanges = pushConstants.data();
+    }
 
     if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
         throw std::runtime_error("failed to create pipeline layout!");
@@ -977,7 +991,7 @@ void VulkanHelper::CreateGraphicsPipeline(const std::string& vertexFileName, con
     pipelineInfo.pColorBlendState = &colorBlending;
     pipelineInfo.pDynamicState = &dynamicState;
     pipelineInfo.layout = pipelineLayout;       // Layout
-    pipelineInfo.renderPass = renderPass;       // Render pass
+    pipelineInfo.renderPass = newRenderPass;       // Render pass
     pipelineInfo.subpass = 0;
 
     /* Option to create derived pipeline */
@@ -1551,7 +1565,7 @@ void VulkanHelper::UpdateUniformLightBuffers(uint32_t currentImage){
  */
 void VulkanHelper::CreateGlobalDescriptorSets(){
     /* Set the binding info for ubo */
-    std::array<VkDescriptorSetLayoutBinding,2> bindings{};
+    std::array<VkDescriptorSetLayoutBinding,3> bindings{};
     bindings[0].binding = 0;
     bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;    // The type of descriptor is a uniform buffer object
     bindings[0].descriptorCount = 1;
@@ -1565,6 +1579,13 @@ void VulkanHelper::CreateGlobalDescriptorSets(){
     bindings[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
     bindings[1].pImmutableSamplers = nullptr;
 
+    /* Set the binding info for the shadow maps */
+    bindings[2].binding = 2;
+    bindings[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;    // The type of descriptor is a uniform buffer object
+    bindings[2].descriptorCount = shadowMaps->shadowCount;
+    bindings[2].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+    bindings[2].pImmutableSamplers = nullptr;
+
     /* Combine all the bindings into a single object */
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -1577,13 +1598,17 @@ void VulkanHelper::CreateGlobalDescriptorSets(){
 
     /* Describe which descriptor types our descriptor sets are going to contain */
     /* The first is used for the uniform buffer. The second is used for the image sampler */
-    std::array<VkDescriptorPoolSize,2> poolSizes{};
+    std::array<VkDescriptorPoolSize,3> poolSizes{};
     poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
     /* Used for the light ubo. */
     poolSizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     poolSizes[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+
+    /* Used for the shadow maps. */
+    poolSizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    poolSizes[2].descriptorCount = shadowMaps->shadowCount * static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
     /* Create the pool info for allocation */
     VkDescriptorPoolCreateInfo poolInfo{};
@@ -1621,7 +1646,15 @@ void VulkanHelper::CreateGlobalDescriptorSets(){
         uboLightBufferInfo.offset = 0;
         uboLightBufferInfo.range = sizeof(UniformLights);
 
-        std::array<VkWriteDescriptorSet,2> descriptorWrites{};
+        std::vector<VkDescriptorImageInfo> shadowMapInfo;
+        for(uint32_t j = 0; j < shadowMaps->shadowCount; j++){
+            shadowMapInfo.emplace_back();
+            shadowMapInfo.back().imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+            shadowMapInfo.back().imageView = shadowMaps->shadowMapImageView[j];
+            shadowMapInfo.back().sampler = textureSampler;
+        }
+
+        std::array<VkWriteDescriptorSet,3> descriptorWrites{};
 
         descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[0].dstSet = globalDescriptorSets[i];
@@ -1639,6 +1672,14 @@ void VulkanHelper::CreateGlobalDescriptorSets(){
         descriptorWrites[1].descriptorCount = 1;
         descriptorWrites[1].pBufferInfo = &uboLightBufferInfo;
 
+        descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[2].dstSet = globalDescriptorSets[i];
+        descriptorWrites[2].dstBinding = 2;
+        descriptorWrites[2].dstArrayElement = 0;
+        descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWrites[2].descriptorCount = static_cast<uint32_t>(shadowMapInfo.size());
+        descriptorWrites[2].pImageInfo = shadowMapInfo.data();
+
         vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
     }
 }
@@ -1647,7 +1688,7 @@ void VulkanHelper::CreateGlobalDescriptorSets(){
 /**
 * @brief Create the command pool which will be used to allocate the memory for the command buffer.
 */
-void VulkanHelper::CreateCommandPool()
+void VulkanHelper::CreateCommandPool(VkCommandPool& newCommandPool)
 {
     QueueFamilyIndices queueFamilyIndices = FindQueueFamilies(physicalDevice);
 
@@ -1656,29 +1697,123 @@ void VulkanHelper::CreateCommandPool()
     poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
     poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
 
-    if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS) {
+    if (vkCreateCommandPool(device, &poolInfo, nullptr, &newCommandPool) != VK_SUCCESS) {
         throw std::runtime_error("failed to create command pool!");
     }
 }
 
 
+
 /**
 * @brief Create the command buffer which can submit the drawing command.
 */
-void VulkanHelper::CreateCommandBuffers()
+void VulkanHelper::CreateCommandBuffers(VkCommandPool& newCommandPool, std::vector<VkCommandBuffer>& newCommandBuffers)
 {
-    commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-
     VkCommandBufferAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    allocInfo.commandPool = commandPool;                // Allocate the buffer on the command pool
+    allocInfo.commandPool = newCommandPool;                // Allocate the buffer on the command pool
     allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    allocInfo.commandBufferCount = (uint32_t)commandBuffers.size();
+    allocInfo.commandBufferCount = (uint32_t)newCommandBuffers.size();
 
-    if (vkAllocateCommandBuffers(device, &allocInfo, commandBuffers.data()) != VK_SUCCESS) {
+    if (vkAllocateCommandBuffers(device, &allocInfo, newCommandBuffers.data()) != VK_SUCCESS) {
         throw std::runtime_error("Failed to allocate command buffers!");
     }
 }
+
+
+/* Writes the commands we want to execute into a command buffer. */
+void VulkanHelper::RecordShadowCommandBuffer(VkCommandBuffer commandBuffer){
+
+    for(uint32_t i = 0; i < shadowMaps->shadowCount; i++) {
+
+        /* Start the render pass and start drawing */
+        VkRenderPassBeginInfo renderPassInfo{};
+        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        renderPassInfo.renderPass = shadowMaps->renderPass;
+        renderPassInfo.framebuffer = shadowMaps->shadowMapFrameBuffer[i];     // Bind the frame buffer with the swap chain image
+
+        renderPassInfo.renderArea.offset = {0, 0};
+        renderPassInfo.renderArea.extent = {shadowMaps->shadowMapSize[i], shadowMaps->shadowMapSize[i]};
+
+        /* Describe the clear color and the depth when we clear the view */
+        std::array<VkClearValue, 1> clearValues{};
+        clearValues[0].depthStencil = { 1.0f, 0 };
+
+        renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+        renderPassInfo.pClearValues = clearValues.data();
+
+        /* Begin the render pass*/
+        vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+        /* Since We set the viewport and scissor state for this pipeline to be dynamic. */
+        /* Here we need to set it now */
+        VkViewport viewport{};
+        viewport.x = 0.0f;
+        viewport.y = 0.0f;
+        viewport.width = static_cast<float>(shadowMaps->shadowMapSize[i]);
+        viewport.height = static_cast<float>(shadowMaps->shadowMapSize[i]);
+        viewport.minDepth = 0.0f;
+        viewport.maxDepth = 1.0f;
+        vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+
+        VkRect2D scissor{};
+        scissor.offset = { 0, 0 };
+        scissor.extent = {shadowMaps->shadowMapSize[i], shadowMaps->shadowMapSize[i]};
+        vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+        std::array<VkVertexInputBindingDescription2EXT,2> newBindingDescription{};
+        std::array<VkVertexInputAttributeDescription2EXT, 9> newAttributeDescription{};
+        auto vkCmdSetVertexInputExt = (PFN_vkCmdSetVertexInputEXT)vkGetDeviceProcAddr(device, "vkCmdSetVertexInputEXT");
+        auto vkCmdSetPrimitiveTopologyEXT = (PFN_vkCmdSetPrimitiveTopologyEXT)( vkGetDeviceProcAddr( device, "vkCmdSetPrimitiveTopologyEXT" ) );
+
+        /* Bind the pipeline. */
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, shadowMaps->shadowPipeline);
+        //UniformShadowObject uso;
+        //uso.view = currCamera->viewMatrix;
+        //uso.proj = currCamera->projMatrix;
+        /* Flip the Y-Dir */
+        //uso.proj.data[1][1] *= -1;
+        vkCmdPushConstants(commandBuffer, shadowMaps->shadowPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(UniformShadowObject), &shadowMaps->USOMatrices[i]);
+
+        //vkCmdPushConstants(commandBuffer, shadowMaps->shadowPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(UniformShadowObject), &uso);
+
+        /* Loop through each material. */
+        for(const auto& VkMat : VkMaterials){
+            /* Loop through all the material types. */
+            for(const auto& material : VkMat.second){
+                /* Loop through all the meshes with that material. */
+                for(auto& mesh : material->meshes){
+
+                    /* Update the instance buffer with the new instance data. */
+                    UpdateInstanceBuffer(*mesh);
+
+                    /* Bind its vertex buffer and set its info. */
+                    VkBuffer newVertexBuffers[] = {  VkMeshes[mesh->name]->vertexBuffer , VkMeshes[mesh->name]->instanceBuffer};
+                    VkDeviceSize offsets[] = { 0, 0 };
+                    vkCmdBindVertexBuffers(commandBuffer, 0, 2, newVertexBuffers, offsets);
+
+                    newBindingDescription = CreateBindingDescription(*mesh);
+                    newAttributeDescription = CreateAttributeDescription(*mesh);
+
+                    vkCmdSetVertexInputExt(commandBuffer,static_cast<uint32_t>(newBindingDescription.size()),newBindingDescription.data(),static_cast<uint32_t>(newAttributeDescription.size()),newAttributeDescription.data());
+                    vkCmdSetPrimitiveTopologyEXT(commandBuffer,mesh->topology);
+
+                    /* Draw the mesh. */
+                    if(mesh->isUseIndex){
+                        vkCmdDrawIndexed(commandBuffer,mesh->indicesCount,(uint32_t)mesh->visibleInstances.size(),0,0,0);
+                    }
+                    else{
+                        vkCmdDraw(commandBuffer, mesh->count, (uint32_t)mesh->visibleInstances.size(), 0, 0);
+                    }
+                }
+            }
+        }
+
+        /* End the render pass */
+        vkCmdEndRenderPass(commandBuffer);
+    }
+}
+
 
 
 /**
@@ -1696,6 +1831,8 @@ void VulkanHelper::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t i
     if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
         throw std::runtime_error("Failed to begin recording command buffer!");
     }
+
+    RecordShadowCommandBuffer(commandBuffers[currentFrame]);
 
     /* Start the render pass and start drawing */
     VkRenderPassBeginInfo renderPassInfo{};
@@ -2275,7 +2412,7 @@ void VulkanHelper::CreateMaterials(){
             descriptorSetLayouts.emplace_back(newVkMaterial->VKMDescriptorSetLayout);
         }
 
-        CreateGraphicsPipeline(vertexShader, fragShader,descriptorSetLayouts,newVkMaterial->pipeline,newVkMaterial->pipelineLayout);
+        CreateGraphicsPipeline(renderPass, vertexShader, fragShader,descriptorSetLayouts,std::vector<VkPushConstantRange>(), newVkMaterial->pipeline,newVkMaterial->pipelineLayout);
     }
 }
 
@@ -2539,7 +2676,7 @@ void VulkanHelper::CreateDepthResources()
  * @param imageMemory The memory allocated for the image.
  * @param data The data we copied to.
  */
-void VulkanHelper::CopyImageToData(const VkImage& image, const VkDeviceMemory& imageMemory, void*& data){
+void VulkanHelper::CopyImageToData(const VkImage& image, const VkDeviceMemory& imageMemory, void*& data, uint32_t imageWidth, uint32_t imageHeight){
 
     VkMemoryRequirements oldMemoryRequirements;
     vkGetImageMemoryRequirements(device, image, &oldMemoryRequirements);
@@ -2571,16 +2708,16 @@ void VulkanHelper::CopyImageToData(const VkImage& image, const VkDeviceMemory& i
     VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
     VkBufferImageCopy copyRegion = {};
     copyRegion.bufferOffset = 0;
-    copyRegion.bufferRowLength = windowWidth;
-    copyRegion.bufferImageHeight = windowHeight;
-    copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    copyRegion.bufferRowLength = imageWidth;
+    copyRegion.bufferImageHeight = imageHeight;
+    copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
     copyRegion.imageSubresource.mipLevel = 0;
     copyRegion.imageSubresource.baseArrayLayer = 0;
     copyRegion.imageSubresource.layerCount = 1;
     copyRegion.imageOffset = {0, 0, 0};
     copyRegion.imageExtent = {
-            windowWidth,
-            windowHeight,
+            imageWidth,
+            imageHeight,
             1
     };
 
@@ -2605,11 +2742,11 @@ void VulkanHelper::CopyImageToData(const VkImage& image, const VkDeviceMemory& i
  * @param imageMemory The memory allocated for the image.
  * @param filename The target PPM file name.
  */
-void VulkanHelper::SaveImageToPPM(const VkImage& image, const VkDeviceMemory& imageMemory,  const std::string& filename){
+void VulkanHelper::SaveImageToPPM(const VkImage& image, const VkDeviceMemory& imageMemory,  const std::string& filename, uint32_t imageWidth, uint32_t imageHeight){
     /* Map image memory */
     void *mappedMemory;
     /* Read pixel data from image */
-    CopyImageToData(image,imageMemory,mappedMemory);
+    CopyImageToData(image,imageMemory,mappedMemory, imageWidth,imageHeight);
 
     /* Write pixel data to PPM file */
     std::ofstream ppmFile(filename, std::ios::binary);
@@ -2619,7 +2756,7 @@ void VulkanHelper::SaveImageToPPM(const VkImage& image, const VkDeviceMemory& im
 
     /* Write PPM header */
     ppmFile << "P6\n";
-    ppmFile << windowWidth << " " << windowHeight << "\n";
+    ppmFile << imageWidth << " " << imageHeight << "\n";
     ppmFile << "255\n";
 
     /* Write pixel data */
@@ -2627,15 +2764,35 @@ void VulkanHelper::SaveImageToPPM(const VkImage& image, const VkDeviceMemory& im
     uint32_t y = 0;
     uint32_t x = 0;
 
-    for (; y < windowHeight; y++){
-        for (x = 0; x < windowWidth; x++){
+    for (; y < imageWidth; y++){
+        for (x = 0; x < imageHeight; x++){
             /* We want to avoid writing the alpha data. */
-            ppmFile.write((char*)row,3);
+            ppmFile.write((char*)row,1);
+            ppmFile.write((char*)row,1);
+            ppmFile.write((char*)row,1);
             row++;
         }
     }
     /* Close file and unmap memory */
     ppmFile.close();
+}
+
+
+void VulkanHelper::DebugShadowMapData(){
+    /* Map image memory */
+    void *mappedMemory;
+    /* Read pixel data from image */
+    CopyImageToData(shadowMaps->shadowMapImage[0],shadowMaps->shadowMapImageMemory[0],mappedMemory, 256,256);
+    auto *row = reinterpret_cast<float*>(mappedMemory);
+
+    for (int y = 0; y < 256; y++){
+        for (int x = 0; x < 256; x++){
+            std::cout << *row << std::endl;
+            row++;
+        }
+    }
+
+    int end = 0;
 }
 
 
@@ -2841,7 +2998,7 @@ void VulkanHelper::InitVulkan()
     CreateImageViews();
     CreateRenderPass();
 
-    CreateCommandPool();
+    CreateCommandPool(commandPool);
     CreateDepthResources();
     CreateFrameBuffers();
 
@@ -2851,11 +3008,38 @@ void VulkanHelper::InitVulkan()
     CreateMeshes();
     CreateUniformBuffers();
     CreateUniformLightBuffers();
+    InitShadowMaps();
     CreateGlobalDescriptorSets();
 
     CreateMaterials();
-    CreateCommandBuffers();
+    commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+    CreateCommandBuffers(commandPool,commandBuffers);
     CreateSyncObjects();
+}
+
+
+void VulkanHelper::InitShadowMaps(){
+
+    shadowMaps = std::make_shared<VkShadowMaps>();
+
+    shadowMaps->CreateRenderPass(this);
+    shadowMaps->CreateSyncObject(device);
+    shadowMaps->CreatePushConstant();
+
+    for(const auto& light : s72Instance->lights){
+
+        if(light->type != 2) continue;
+
+        shadowMaps->CreateShadowMapImageAndView(this,light->shadowMapSize);
+        shadowMaps->ComputeViewAndProjectionMatrix(light->fov,0.001f,light->limit,light->pos,light->dir);
+        shadowMaps->CreateFrameBuffer(device);
+    }
+
+    //CreateGraphicsPipeline(shadowMaps->renderPass, shadowMaps->shadowVertexFileName,shadowMaps->shadowFragmentFileName, std::vector<VkDescriptorSetLayout>(), shadowMaps->pushConstantRange, shadowMaps->shadowPipeline, shadowMaps->shadowPipelineLayout);
+    shadowMaps->CreatePipeline(this,std::vector<VkDescriptorSetLayout>(), shadowMaps->pushConstantRange);
+    //CreateCommandPool(shadowMaps->commandPool);
+    //shadowMaps->commandBuffer.resize(1);
+    //CreateCommandBuffers(shadowMaps->commandPool,shadowMaps->commandBuffer);
 }
 
 
@@ -2954,7 +3138,7 @@ void VulkanHelper::SaveRenderResult(const std::string& filename){
         imageIndex = headlessImageMemory.size()-1;
     }
 
-    SaveImageToPPM(swapChainImages[imageIndex], headlessImageMemory[imageIndex], filename);
+    SaveImageToPPM(swapChainImages[imageIndex], headlessImageMemory[imageIndex], filename,windowWidth,windowHeight);
 }
 
 
@@ -3030,6 +3214,50 @@ void VulkanHelper::ProcessGLFWInputCallBack(char key){
 }
 
 
+void VulkanHelper::DrawShadows(){
+
+    /* Reset the fence after wait. Only reset the fence if we are submitting work */
+    vkResetFences(device, 1, &shadowMaps->fence);
+
+    vkResetCommandBuffer(shadowMaps->commandBuffer[0], /*VkCommandBufferResetFlagBits*/ 0);
+    RecordShadowCommandBuffer(shadowMaps->commandBuffer[0]);
+
+    VkPipelineStageFlags shadow_map_wait_stages = 0;
+    VkSubmitInfo submit_info = { };
+    submit_info.pNext = VK_NULL_HANDLE;
+    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submit_info.waitSemaphoreCount = 0;
+    submit_info.pWaitSemaphores = VK_NULL_HANDLE;
+    submit_info.signalSemaphoreCount = 1;
+    submit_info.pSignalSemaphores = &shadowMaps->signalSemaphore;
+    submit_info.pWaitDstStageMask = nullptr;
+    submit_info.commandBufferCount = 1;
+    submit_info.pCommandBuffers = &shadowMaps->commandBuffer[0];
+
+
+    if (vkQueueSubmit(graphicsQueue, 1, &submit_info, shadowMaps->fence) != VK_SUCCESS) {
+        throw std::runtime_error("failed to submit draw command buffer!");
+    }
+
+    //VkSemaphore waitSemaphores[] = { shadowMaps->signalSemaphore };
+    //VkSemaphoreCreateInfo semaphoreCreateInfo = {};
+    //VkSemaphoreWaitInfo waitInfo = {};
+    //waitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
+    //waitInfo.semaphoreCount = 1;
+    //waitInfo.pSemaphores = &shadowMaps->signalSemaphore;
+   // waitInfo.pValues = nullptr;
+   // vkWaitSemaphores(device, &waitInfo, UINT64_MAX);
+
+    vkWaitForFences(device, 1, &shadowMaps->fence, VK_TRUE, UINT64_MAX);
+
+   // if(!isSave){
+   //     DebugShadowMapData();
+   //     isSave = true;
+   // }
+}
+
+
+
 /**
 * @brief Wait for the previous frame to finish.
 * Acquire an image from the swap chain.
@@ -3039,6 +3267,8 @@ void VulkanHelper::ProcessGLFWInputCallBack(char key){
 */
 void VulkanHelper::DrawFrame()
 {
+    //DrawShadows();
+
     /* Wait until the previous frame has finished */
     vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
@@ -3072,8 +3302,8 @@ void VulkanHelper::DrawFrame()
     VkSubmitInfo submitInfo{};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-    VkSemaphore waitSemaphores[] = { imageAvailableSemaphores[currentFrame] };
-    VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+    VkSemaphore waitSemaphores[] = { imageAvailableSemaphores[currentFrame]};
+    VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
     if(!useHeadlessRendering) {
         submitInfo.waitSemaphoreCount = 1;
         submitInfo.pWaitSemaphores = waitSemaphores;
@@ -3150,6 +3380,8 @@ void VulkanHelper::CleanUp()
     }
 
     CleanUpSwapChain();
+
+    shadowMaps->CleanUp(device);
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);

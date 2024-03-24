@@ -579,6 +579,11 @@ void S72Object::Light::Initialization(const std::shared_ptr<ParserNode> &node){
     tint.data[1] = std::get<float>(tintVector[1]->data);
     tint.data[2] = std::get<float>(tintVector[2]->data);
 
+    auto shadowPtr = node->GetObjectValue("shadow");
+    if(shadowPtr != nullptr){
+        shadowMapSize = static_cast<uint32_t>(std::get<float>(shadowPtr->data));
+    }
+
     if(node->GetObjectValue("sun") != nullptr){
         type = 0;
         auto sunMap = std::get<ParserNode::PNMap>(node->GetObjectValue("sun")->data);

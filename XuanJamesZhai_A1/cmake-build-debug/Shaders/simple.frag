@@ -33,11 +33,20 @@ layout(std140, set = 0, binding = 1) uniform UniformLightsObject {
     uint lightSize;
     UniformLightObject lights[10];
 } lightObjects;
+layout(set = 0, binding = 2) uniform sampler2D depthMap[];
 
 layout(set = 1, binding = 0) uniform sampler2D normalSampler;
 layout(set = 1, binding = 1) uniform sampler2D heightSampler;
 
 
 void main() {
-    outColor = fragColor;
+    //outColor = fragColor;
+    float depthValue = texture(depthMap[0], fragTexCoord).r;
+    if(depthValue < 1.0f){
+        outColor = vec4(1.0,1.0,1.0, 1.0);
+    }
+    else{
+        outColor = vec4(0.0,0.0,0.0, 1.0);
+    }
+    //outColor = vec4(depthValue,1.0,1.0, 1.0);
 }

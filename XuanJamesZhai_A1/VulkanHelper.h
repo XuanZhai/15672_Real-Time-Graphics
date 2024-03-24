@@ -32,6 +32,7 @@
 #include "EventHelper.h"
 #include "VkMaterial.h"
 #include "VkMesh.h"
+#include "VkShadowMaps.h"
 
 
 
@@ -266,6 +267,10 @@ private:
     /* The current rendered image into headless list. */
     uint32_t headlessImageIndex = 0;
 
+    std::shared_ptr<VkShadowMaps> shadowMaps = nullptr;
+
+    bool isSave = false;
+
 
     /* A struct of queue that will be submitted to Vulkan */
     struct QueueFamilyIndices {
@@ -342,6 +347,9 @@ private:
     /* Create the swap chain as a list of images for the headless mode. */
     void CreateHeadlessSwapChain();
 
+    /* Create the image instance. */
+    void CreateImage(uint32_t width, uint32_t height, uint32_t newMipLevels, uint32_t newArrayLayers, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkImageCreateFlags flags, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
+
     /* Create an image view instance based on the image and its format. */
     VkImageView CreateImageView(VkImage image, VkFormat format, VkImageViewType viewType, VkImageAspectFlags aspectFlags, uint32_t newMipLevels, uint32_t layerCount);
 
@@ -352,7 +360,9 @@ private:
     VkShaderModule CreateShaderModule(const std::vector<char>& code);
 
     /* Read the shaders and create the graphics pipeline. */
-    void CreateGraphicsPipeline(const std::string& vertexFileName, const std::string& fragmentFileName, const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts, VkPipeline& graphicsPipeline, VkPipelineLayout& pipelineLayout);
+    void CreateGraphicsPipeline(const VkRenderPass& newRenderPass, const std::string& vertexFileName,
+                                const std::string& fragmentFileName, const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts,
+                                const std::vector<VkPushConstantRange>& pushConstants, VkPipeline& graphicsPipeline, VkPipelineLayout& pipelineLayout);
 
     /* Create the render pass to attach the framebuffer. */
     void CreateRenderPass();
@@ -412,16 +422,16 @@ private:
     void CreateGlobalDescriptorSets();
 
     /* Create the command pool which will be used to allocate the memory for the command buffer. */
-    void CreateCommandPool();
+    void CreateCommandPool(VkCommandPool& newCommandPool);
 
     /* Create the command buffer which can submit the drawing command. */
-    void CreateCommandBuffers();
+    void CreateCommandBuffers(VkCommandPool& newCommandPool, std::vector<VkCommandBuffer>& newCommandBuffers);
+
+    /* Writes the commands we want to execute into a command buffer. */
+    void RecordShadowCommandBuffer(VkCommandBuffer commandBuffer);
 
     /* Writes the commands we want to execute into a command buffer. */
     void RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
-
-    /* Create the image instance. */
-    void CreateImage(uint32_t width, uint32_t height, uint32_t newMipLevels, uint32_t newArrayLayers, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkImageCreateFlags flags, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
 
     /* Copy a VkBuffer to a VkImage. */
     void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
@@ -475,10 +485,12 @@ private:
     void CreateDepthResources();
 
     /* Copy a VkImage to a mapped array through a staging buffer. */
-    void CopyImageToData(const VkImage& image, const VkDeviceMemory& imageMemory, void*& data);
+    void CopyImageToData(const VkImage& image, const VkDeviceMemory& imageMemory, void*& data, uint32_t imageWidth, uint32_t imageHeight);
 
     /* Same a VKImage to a PPM file with a given name. */
-    void SaveImageToPPM(const VkImage& image, const VkDeviceMemory& imageMemory, const std::string&);
+    void SaveImageToPPM(const VkImage& image, const VkDeviceMemory& imageMemory, const std::string&, uint32_t imageWidth, uint32_t imageHeight);
+
+    void DebugShadowMapData();
 
     /* Clean up the swap chain and all the related resources. */
     void CleanUpSwapChain();
@@ -498,6 +510,10 @@ private:
     /* Initialize the Vulkan application and setup. */
     void InitVulkan();
 
+    void InitShadowMaps();
+
+    void DrawShadows();
+
     /* Draw the frame and submit the command buffer. */
     void DrawFrame();
 
@@ -508,6 +524,8 @@ public:
 
     /* Make the render helper can access the vulkan helper's private properties. */
     friend class RenderHelper;
+
+    friend class VkShadowMaps;
 
     /* Set the s72helper with a new instance. */
     void SetS72Instance(const std::shared_ptr<S72Helper>& s72Instance);

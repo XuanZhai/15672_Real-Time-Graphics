@@ -688,6 +688,36 @@ XZM::vec3 XZM::RotateVec3(const vec3& vector, const vec3& axis, float radians){
 }
 
 
+XZM::mat4 XZM::RotateMat4(const mat4& mat, const vec3& axis, float radians){
+
+    mat4 result;
+
+    const float cosAngle = std::cos(radians);
+    const float sinAngle = std::sin(radians);
+    const float oneMinusCos = 1.0f - cosAngle;
+
+    const float x2 = axis.data[0] * axis.data[0];
+    const float y2 = axis.data[1] * axis.data[1];
+    const float z2 = axis.data[2] * axis.data[2];
+    const float xy = axis.data[0] * axis.data[1];
+    const float xz = axis.data[0] * axis.data[2];
+    const float yz = axis.data[1] * axis.data[2];
+
+    // Set up the rotation matrix
+    result.data[0][0] = cosAngle + x2 * oneMinusCos;
+    result.data[0][1] = xy * oneMinusCos - axis.data[2] * sinAngle;
+    result.data[0][2] = xz * oneMinusCos + axis.data[1] * sinAngle;
+    result.data[1][0] = xy * oneMinusCos + axis.data[2] * sinAngle;
+    result.data[1][1] = cosAngle + y2 * oneMinusCos;
+    result.data[1][2] = yz * oneMinusCos - axis.data[0] * sinAngle;
+    result.data[2][0] = xz * oneMinusCos - axis.data[1] * sinAngle;
+    result.data[2][1] = yz * oneMinusCos + axis.data[0] * sinAngle;
+    result.data[2][2] = cosAngle + z2 * oneMinusCos;
+
+    return result*mat;
+}
+
+
 /**
  * Find the linear interpolated vec3 between the lower bound and the upper bound given an alpha.
  * @param low The lower bound.

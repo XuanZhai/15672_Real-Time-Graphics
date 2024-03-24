@@ -34,6 +34,7 @@ layout(std140, set = 0, binding = 1) uniform UniformLightsObject {
     uint lightSize;
     UniformLightObject lights[10];
 } lightObjects;
+layout(set = 0, binding = 2) uniform sampler2D depthMap[];
 
 layout(set = 1, binding = 0) uniform sampler2D normalSampler;
 layout(set = 1, binding = 1) uniform sampler2D heightSampler;

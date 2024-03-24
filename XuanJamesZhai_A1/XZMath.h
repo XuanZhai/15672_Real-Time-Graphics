@@ -117,6 +117,8 @@ namespace XZM {
     /* Rotate a vec3 along an axis for a given radians. */
     vec3 RotateVec3(const vec3& vector, const vec3& axis, float radians);
 
+    mat4 RotateMat4(const mat4& mat, const vec3& axis, float radians);
+
     /* Linear interpolate two vec3 with a given factor t. */
     vec3 Lerp(const vec3& low, const vec3& high, float t);
 

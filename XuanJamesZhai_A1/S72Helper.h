@@ -201,6 +201,8 @@ namespace S72Object {
 
     class Light{
         public:
+            uint32_t shadowMapSize = 256;
+
             XZM::vec3 pos = XZM::vec3();;
             XZM::vec3 dir = XZM::vec3();;
             /* 0 = sun, 1 = sphere, 2 = spot */
