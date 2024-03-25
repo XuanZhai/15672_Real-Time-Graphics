@@ -1,10 +1,12 @@
-#version 450
+#version 460
+#extension GL_EXT_nonuniform_qualifier : require
 
 layout(location = 0) in vec4 fragColor;
 layout(location = 1) in vec3 fragNormal;
 layout(location = 2) in vec2 fragTexCoord;
 layout(location = 3) in vec3 fragPosition;
 layout(location = 4) in mat3 TBN;
+layout(location = 7) in vec4 fragPositionLightSpace[10];
 
 layout(location = 0) out vec4 outColor;
 
@@ -15,9 +17,8 @@ layout(set = 0, binding = 0) uniform UniformBufferObject{
     vec3 viewPos;
 } ubo;
 
-/* Struct for a single light. */
 struct UniformLightObject {
-    /* 0 = sun, 1 = sphere, 2 = spot */
+/* 0 = sun, 1 = sphere, 2 = spot */
     uint type;
     float angle;
     float strength;
@@ -29,9 +30,10 @@ struct UniformLightObject {
     vec3 pos;
     vec3 dir;
     vec3 tint;
+    mat4 view;
+    mat4 proj;
 };
 
-/* A container of lights. Max size is 10. */
 layout(std140, set = 0, binding = 1) uniform UniformLightsObject {
     uint lightSize;
     UniformLightObject lights[10];
@@ -197,7 +199,7 @@ vec3 PBRLightCalculation(UniformLightObject light, vec3 normal, vec3 view, vec3 
 
     /* If sun light, direction is the closest within the angle. */
     if(light.type == 0){
-        vec3 LoDir = normalize(light.dir);
+        vec3 LoDir = normalize(-light.dir);
         NoL = max(dot(LoDir, normal), 0.0);
         if(abs(NoL) >= 1.0){
             L = LoDir;
@@ -254,7 +256,7 @@ vec3 PBRLightCalculation(UniformLightObject light, vec3 normal, vec3 view, vec3 
     }
     /* If it is a spot light. */
     else if(light.type == 2){
-        float LoDir = max(dot(normalize(light.dir), normalize(L)), 0.0);
+        float LoDir = max(dot(normalize(-light.dir), normalize(L)), 0.0);
         float angle = abs(acos(LoDir));
         float minAngle = abs((light.fov * (1 - light.blend)) / 2);
         float maxAngle = abs(light.fov / 2);
@@ -273,6 +275,31 @@ vec3 PBRLightCalculation(UniformLightObject light, vec3 normal, vec3 view, vec3 
     Lo = Lo / (Lo + vec3(1.0));
     Lo = pow(Lo, vec3(1.0/2.2));
     return Lo;
+}
+
+
+float ShadowCalculation(uint lightIndex) {
+
+    if(lightObjects.lights[lightIndex].type != 2){
+        return 1.0;
+    }
+
+    // perform perspective divide
+    vec3 projCoords = fragPositionLightSpace[lightIndex].xyz / fragPositionLightSpace[lightIndex].w;
+
+    if (abs(projCoords.x) > 1.0 || abs(projCoords.y) > 1.0 || abs(projCoords.z) > 1.0) {
+        return 0.0;
+    }
+    // transform to [0,1] range
+    projCoords = projCoords * 0.5 + 0.5;
+    // get closest depth value from light's perspective (using [0,1] range fragPosLight as coords)
+    float closestDepth = texture(depthMap[lightIndex], projCoords.xy).r;
+    // get depth of current fragment from light's perspective
+    float currentDepth = projCoords.z;
+    // check whether current frag pos is in shadow
+    float shadow = currentDepth > closestDepth  ? 0.0 : 1.0;
+
+    return shadow;
 }
 
 
@@ -299,7 +326,10 @@ void main() {
     color += GetEnvironmentLight(normal, view, R, albedo,roughness,metallic,F0);
 
     for(int i = 0; i < lightObjects.lightSize; i++){
-        color += PBRLightCalculation(lightObjects.lights[i], normal, view, R, F0, albedo, roughness, metallic);
+
+
+       color += ShadowCalculation(i) * PBRLightCalculation(lightObjects.lights[i], normal, view, R, F0, albedo, roughness, metallic);
+        //color =  vec3(ShadowCalculation(i));
     }
 
     outColor = vec4(color,1.0);

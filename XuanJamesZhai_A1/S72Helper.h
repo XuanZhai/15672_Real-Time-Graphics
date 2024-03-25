@@ -216,6 +216,8 @@ namespace S72Object {
             float fov = 0;
             float blend = 0;
             XZM::vec3 tint = XZM::vec3(1.0f,1.0f,1.0f);
+            XZM::mat4 view;
+            XZM::mat4 proj;
 
             /* Initialize the light object from the parser node. */
             void Initialization(const std::shared_ptr<ParserNode> &node);

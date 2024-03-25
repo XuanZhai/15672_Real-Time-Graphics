@@ -98,6 +98,8 @@ struct UniformLight {
     alignas(16) XZM::vec3 pos = XZM::vec3();
     alignas(16) XZM::vec3 dir = XZM::vec3();
     alignas(16) XZM::vec3 tint = XZM::vec3(1.0f,1.0f,1.0f);
+    alignas(16) XZM::mat4 view;
+    alignas(16) XZM::mat4 proj;
 };
 
 /* A container of light data. */

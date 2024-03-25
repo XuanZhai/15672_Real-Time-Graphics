@@ -12,6 +12,10 @@
 #include <vector>
 #include <string>
 
+#include <memory>
+#include <map>
+#include "S72Helper.h"
+
 #include "XZMath.h"
 
 class VulkanHelper;
@@ -28,6 +32,7 @@ class VkShadowMaps {
         VkRenderPass renderPass = VK_NULL_HANDLE;
         const std::string shadowVertexFileName = "Shaders/shadowMap.vert.spv";
         const std::string shadowFragmentFileName = "Shaders/shadowMap.frag.spv";
+
         VkPipeline shadowPipeline = VK_NULL_HANDLE;
         VkPipelineLayout shadowPipelineLayout = VK_NULL_HANDLE;
         std::vector<VkPushConstantRange> pushConstantRange;
@@ -53,7 +58,7 @@ class VkShadowMaps {
                             const std::vector<VkPushConstantRange>& pushConstants);
 
         void CreateShadowMapImageAndView(VulkanHelper* vulkanHelper, uint32_t size);
-        void ComputeViewAndProjectionMatrix(float fov, float light_near, float light_far, const XZM::vec3& pos, const XZM::vec3& dir);
+        void SetViewAndProjectionMatrix(const S72Object::Light& light);
         void CreateFrameBuffer(const VkDevice& device);
 
         void CreatePushConstant();

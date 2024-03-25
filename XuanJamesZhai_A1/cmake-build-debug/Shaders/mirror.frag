@@ -1,10 +1,12 @@
-#version 450
+#version 460
+#extension GL_EXT_nonuniform_qualifier : require
 
 layout(location = 0) in vec4 fragColor;
 layout(location = 1) in vec3 fragNormal;
 layout(location = 2) in vec2 fragTexCoord;
 layout(location = 3) in vec3 fragPosition;
 layout(location = 4) in mat3 TBN;
+layout(location = 7) in vec4 fragPositionLightSpace[10];
 
 layout(location = 0) out vec4 outColor;
 
@@ -28,6 +30,8 @@ struct UniformLightObject {
     vec3 pos;
     vec3 dir;
     vec3 tint;
+    mat4 view;
+    mat4 proj;
 };
 
 layout(std140, set = 0, binding = 1) uniform UniformLightsObject {
@@ -87,6 +91,23 @@ vec2 ParallaxOcclusionMapping(vec2 texCoords, vec3 viewDir){
     vec2 finalTexCoords = prevTexCoords * weight + currentTexCoords * (1.0 - weight);
 
     return clamp(finalTexCoords,0,1);
+}
+
+
+float ShadowCalculation(uint lightIndex) {
+
+    // perform perspective divide
+    vec3 projCoords = fragPositionLightSpace[lightIndex].xyz / fragPositionLightSpace[lightIndex].w;
+    // transform to [0,1] range
+    projCoords = projCoords * 0.5 + 0.5;
+    // get closest depth value from light's perspective (using [0,1] range fragPosLight as coords)
+    float closestDepth = texture(depthMap[lightIndex], projCoords.xy).r;
+    // get depth of current fragment from light's perspective
+    float currentDepth = projCoords.z;
+    // check whether current frag pos is in shadow
+    float shadow = currentDepth > closestDepth  ? 1.0 : 0.0;
+
+    return shadow;
 }
 
 

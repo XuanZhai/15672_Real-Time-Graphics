@@ -15,7 +15,7 @@ layout(set = 0, binding = 0) uniform UniformBufferObject{
 } ubo;
 
 struct UniformLightObject {
-    /* 0 = sun, 1 = sphere, 2 = spot */
+/* 0 = sun, 1 = sphere, 2 = spot */
     uint type;
     float angle;
     float strength;
@@ -27,6 +27,8 @@ struct UniformLightObject {
     vec3 pos;
     vec3 dir;
     vec3 tint;
+    mat4 view;
+    mat4 proj;
 };
 
 layout(std140, set = 0, binding = 1) uniform UniformLightsObject {

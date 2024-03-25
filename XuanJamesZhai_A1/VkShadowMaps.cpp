@@ -140,7 +140,7 @@ void VkShadowMaps::CreatePipeline(VulkanHelper* vulkanHelper, const std::vector<
     rasterizer.rasterizerDiscardEnable = VK_FALSE;  // True = disables any output to the framebuffer.
     rasterizer.polygonMode = VK_POLYGON_MODE_FILL;  // Fill the area of the polygon with fragments.
     rasterizer.lineWidth = 1.0f;
-    rasterizer.cullMode = VK_CULL_MODE_NONE;   // Culling mode.
+    rasterizer.cullMode = VK_CULL_MODE_FRONT_BIT;   // Culling mode.
     rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;         // We update this since we change the Y-flip
     rasterizer.depthBiasEnable = VK_FALSE;
     rasterizer.depthBiasConstantFactor = 0.0f; // Optional
@@ -273,25 +273,11 @@ void VkShadowMaps::CreateShadowMapImageAndView(VulkanHelper* vulkanHelper, uint3
 }
 
 
-void VkShadowMaps::ComputeViewAndProjectionMatrix(float fov, float light_near, float light_far, const XZM::vec3& pos, const XZM::vec3& dir){
-
-    XZM::mat4 viewMatrix;
-    viewMatrix = XZM::RotateMat4(viewMatrix, XZM::vec3(1,0,0) , -dir.data[0]);
-    viewMatrix = XZM::RotateMat4(viewMatrix, XZM::vec3(0,1,0) , -dir.data[1]);
-    viewMatrix = XZM::RotateMat4(viewMatrix, XZM::vec3(0,0,1) , -dir.data[2]);
-    viewMatrix = viewMatrix * XZM::Translation(pos);
-
-    XZM::mat4 clip;
-    clip.data[1][1] = -1.0f;
-    clip.data[2][2] = -1.0f;
-    clip.data[2][3] = -1.0f;
-
-    XZM::mat4 light_projection = clip * XZM::Perspective(fov,1,light_near,light_far);
-    light_projection.data[1][1] *= -1;
+void VkShadowMaps::SetViewAndProjectionMatrix(const S72Object::Light& light){
 
     USOMatrices.emplace_back();
-    USOMatrices.back().view = viewMatrix;
-    USOMatrices.back().proj = light_projection;
+    USOMatrices.back().view = light.view;
+    USOMatrices.back().proj = light.proj;
 }
 
 

@@ -92,7 +92,7 @@ void S72Object::Camera::SetCameraData(float newAspect, float new_V_fov, float ne
  * @brief Compute and set the camera's view matrix based on its position and direction.
  */
 void S72Object::Camera::ComputeViewMatrix(){
-    viewMatrix = XZM::LookAt(cameraPos,cameraPos + cameraDir, XZM::vec3(0,0,1));
+    viewMatrix = XZM::LookAt(cameraPos, cameraPos + cameraDir, XZM::vec3(0,0,1));
 }
 
 
@@ -618,7 +618,17 @@ void S72Object::Light::Initialization(const std::shared_ptr<ParserNode> &node){
  */
 void S72Object::Light::SetModelMatrix(const XZM::mat4& newModel){
     pos = XZM::ExtractTranslationFromMat(newModel);
-    dir = XZM::GetLookAtDir(newModel) * -1;
+    dir = XZM::Normalize(XZM::GetLookAtDir(newModel));
+
+    if(type == 2) {
+        view = XZM::LookAt(pos, pos + dir, XZM::vec3(0, 0, 1));
+        proj = XZM::Perspective(fov, 1, radius, limit);
+        proj.data[1][1] *= -1;
+    }
+    else{
+        view = XZM::mat4();
+        proj = XZM::mat4();
+    }
 }
 
 

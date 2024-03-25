@@ -393,7 +393,7 @@ void VulkanHelper::CreateInstance()
     appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
     appInfo.pEngineName = "No Engine";
     appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-    appInfo.apiVersion = VK_API_VERSION_1_0;
+    appInfo.apiVersion = VK_API_VERSION_1_2;
 
     /* Specify The global extension and the validation layers */
     VkInstanceCreateInfo createInfo{};
@@ -613,10 +613,21 @@ void VulkanHelper::CreateLogicalDevice()
     VkPhysicalDeviceFeatures2 deviceFeatures{};
     deviceFeatures.features.samplerAnisotropy = VK_TRUE;     // Enable the anisotropy feature
 
+    VkPhysicalDeviceVulkan12Features capacityFeature12{};
+    capacityFeature12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+    capacityFeature12.runtimeDescriptorArray = true;
+
+
+    VkPhysicalDeviceVulkan11Features capacityFeature11{};
+    capacityFeature11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+    capacityFeature11.shaderDrawParameters = true;
+    capacityFeature11.pNext = &capacityFeature12;
+
     /* Enable the extended dynamic state feature. */
     VkPhysicalDeviceExtendedDynamicStateFeaturesEXT extendedDynamicStateFeatures = {};
     extendedDynamicStateFeatures.extendedDynamicState = VK_TRUE;
     extendedDynamicStateFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT;
+    extendedDynamicStateFeatures.pNext = &capacityFeature11;
 
     /* Enable the dynamic vertex input state feature. */
     VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT extendedVertexInputFeatures = {};
@@ -1551,6 +1562,8 @@ void VulkanHelper::UpdateUniformLightBuffers(uint32_t currentImage){
         uboLight.limit = light->limit;
         uboLight.fov = light->fov;
         uboLight.blend = light->blend;
+        uboLight.view = light->view;
+        uboLight.proj = light->proj;
 
         uboLights.lights[uboLights.lightSize] = uboLight;
         uboLights.lightSize++;
@@ -3031,7 +3044,7 @@ void VulkanHelper::InitShadowMaps(){
         if(light->type != 2) continue;
 
         shadowMaps->CreateShadowMapImageAndView(this,light->shadowMapSize);
-        shadowMaps->ComputeViewAndProjectionMatrix(light->fov,0.001f,light->limit,light->pos,light->dir);
+        shadowMaps->SetViewAndProjectionMatrix(*light);
         shadowMaps->CreateFrameBuffer(device);
     }
 
