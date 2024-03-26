@@ -13,8 +13,8 @@
 {
 	"type":"NODE",
 	"name":"Camera",
-	"translation":[0,-12.0818,3.18315],
-	"rotation":[0.646949,0,0,0.762533],
+	"translation":[3,-2,6],
+	"rotation":[0.259,0,0, 0.966],
 	"scale":[1,1,1],
 	"camera":1
 },
@@ -434,7 +434,7 @@
 	"spot":{
 		"radius":0.5,
 		"power":600.0,
-		"fov":0.285,
+		"fov":1.285,
 		"blend":0.15,
 		"limit":15.0
 	},

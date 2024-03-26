@@ -278,27 +278,29 @@ vec3 PBRLightCalculation(UniformLightObject light, vec3 normal, vec3 view, vec3 
 }
 
 
-float ShadowCalculation(uint lightIndex) {
+/* Check shadow effect for a given light. */
+float ShadowCalculation(uint lightIndex, vec3 normal) {
+    /* Convert light to NDC space. */
+    vec3 fragPositionLightNDC = fragPositionLightSpace[lightIndex].xyz / fragPositionLightSpace[lightIndex].w;
 
-    if(lightObjects.lights[lightIndex].type != 2){
-        return 1.0;
+    /* NDC to [0,1] range. */
+    fragPositionLightNDC.x = fragPositionLightNDC.x * 0.5 + 0.5;
+    fragPositionLightNDC.y = fragPositionLightNDC.y * 0.5 + 0.5;
+    /* Current fragment from light's perspective. */
+    float currentDepth = fragPositionLightNDC.z;
+
+    /* check whether current frag pos is in shadow using PCF with bias. */
+    /* Inspired by: https://learnopengl.com/Advanced-Lighting/Shadows/Shadow-Mapping */
+    //float bias = max(0.05 * (1.0 - dot(normal, -lightObjects.lights[lightIndex].dir)), 0.005);
+    float shadow = 0.0;
+    vec2 texelSize = 1.0 / textureSize(depthMap[lightIndex], 0);
+    for(int x = -1; x <= 1; ++x) {
+        for(int y = -1; y <= 1; ++y) {
+            float pcfDepth = texture(depthMap[lightIndex], fragPositionLightNDC.xy + vec2(x, y) * texelSize).r;
+            shadow += (currentDepth) > pcfDepth ? 0.0 : 1.0;
+        }
     }
-
-    // perform perspective divide
-    vec3 projCoords = fragPositionLightSpace[lightIndex].xyz / fragPositionLightSpace[lightIndex].w;
-
-    if (abs(projCoords.x) > 1.0 || abs(projCoords.y) > 1.0 || abs(projCoords.z) > 1.0) {
-        return 0.0;
-    }
-    // transform to [0,1] range
-    projCoords = projCoords * 0.5 + 0.5;
-    // get closest depth value from light's perspective (using [0,1] range fragPosLight as coords)
-    float closestDepth = texture(depthMap[lightIndex], projCoords.xy).r;
-    // get depth of current fragment from light's perspective
-    float currentDepth = projCoords.z;
-    // check whether current frag pos is in shadow
-    float shadow = currentDepth > closestDepth  ? 0.0 : 1.0;
-
+    shadow /= 9.0;
     return shadow;
 }
 
@@ -326,10 +328,8 @@ void main() {
     color += GetEnvironmentLight(normal, view, R, albedo,roughness,metallic,F0);
 
     for(int i = 0; i < lightObjects.lightSize; i++){
-
-
-       color += ShadowCalculation(i) * PBRLightCalculation(lightObjects.lights[i], normal, view, R, F0, albedo, roughness, metallic);
-        //color =  vec3(ShadowCalculation(i));
+       color += ShadowCalculation(i,normal) * PBRLightCalculation(lightObjects.lights[i], normal, view, R, F0, albedo, roughness, metallic);
+        //color =  vec3(ShadowCalculation(i,normal));
     }
 
     outColor = vec4(color,1.0);

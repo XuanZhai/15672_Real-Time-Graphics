@@ -1,12 +1,14 @@
 #version 460
 #extension GL_EXT_nonuniform_qualifier : require
 
+const uint MAX_LIGHT_COUNT = 10;
+
 layout(location = 0) in vec4 fragColor;
 layout(location = 1) in vec3 fragNormal;
 layout(location = 2) in vec2 fragTexCoord;
 layout(location = 3) in vec3 fragPosition;
 layout(location = 4) in mat3 TBN;
-layout(location = 7) in vec4 fragPositionLightSpace[10];
+layout(location = 7) in vec4 fragPositionLightSpace[MAX_LIGHT_COUNT];
 
 layout(location = 0) out vec4 outColor;
 
@@ -16,8 +18,9 @@ layout(set = 0, binding = 0) uniform UniformBufferObject{
     vec3 viewPos;
 } ubo;
 
+/* Struct of a single light source. */
 struct UniformLightObject {
-/* 0 = sun, 1 = sphere, 2 = spot */
+    /* 0 = sun, 1 = sphere, 2 = spot */
     uint type;
     float angle;
     float strength;
@@ -33,10 +36,12 @@ struct UniformLightObject {
     mat4 proj;
 };
 
+/* The number of lights and a list of lights. */
 layout(std140, set = 0, binding = 1) uniform UniformLightsObject {
     uint lightSize;
-    UniformLightObject lights[10];
+    UniformLightObject lights[MAX_LIGHT_COUNT];
 } lightObjects;
+/* A list of shadow maps, one for each light source. */
 layout(set = 0, binding = 2) uniform sampler2D depthMap[];
 
 layout(set = 1, binding = 0) uniform sampler2D normalSampler;
@@ -166,18 +171,29 @@ vec3 DiffuseLightCalculation(UniformLightObject light, vec3 normal, vec3 albedo)
 }
 
 
-float ShadowCalculation(uint lightIndex) {
+/* Check shadow effect for a given light. */
+float ShadowCalculation(uint lightIndex, vec3 normal) {
+    /* Convert light to NDC space. */
+    vec3 fragPositionLightNDC = fragPositionLightSpace[lightIndex].xyz / fragPositionLightSpace[lightIndex].w;
 
-    // perform perspective divide
-    vec3 projCoords = fragPositionLightSpace[lightIndex].xyz / fragPositionLightSpace[lightIndex].w;
-    // transform to [0,1] range
-    projCoords = projCoords * 0.5 + 0.5;
-    // get closest depth value from light's perspective (using [0,1] range fragPosLight as coords)
-    float closestDepth = texture(depthMap[lightIndex], projCoords.xy).r;
-    // get depth of current fragment from light's perspective
-    float currentDepth = projCoords.z;
-    // check whether current frag pos is in shadow
-    float shadow = currentDepth > closestDepth  ? 1.0 : 0.0;
+    /* NDC to [0,1] range. */
+    fragPositionLightNDC.x = fragPositionLightNDC.x * 0.5 + 0.5;
+    fragPositionLightNDC.y = fragPositionLightNDC.y * 0.5 + 0.5;
+    /* Current fragment from light's perspective. */
+    float currentDepth = fragPositionLightNDC.z;
+
+    /* check whether current frag pos is in shadow using PCF with bias. */
+    /* Inspired by: https://learnopengl.com/Advanced-Lighting/Shadows/Shadow-Mapping */
+    //float bias = max(0.05 * (1.0 - dot(normal, -lightObjects.lights[lightIndex].dir)), 0.005);
+    float shadow = 0.0;
+    vec2 texelSize = 1.0 / textureSize(depthMap[lightIndex], 0);
+    for(int x = -1; x <= 1; ++x) {
+        for(int y = -1; y <= 1; ++y) {
+            float pcfDepth = texture(depthMap[lightIndex], fragPositionLightNDC.xy + vec2(x, y) * texelSize).r;
+            shadow += (currentDepth) > pcfDepth ? 0.0 : 1.0;
+        }
+    }
+    shadow /= 9.0;
 
     return shadow;
 }
@@ -197,10 +213,11 @@ void main() {
     vec3 albedo = texture(albedoSampler, texCoord).xyz * fragColor.xyz;
 
     vec3 color = vec3(0);
-    //color += GetEnvironmentLight(viewDir, normal, albedo);
+    color += GetEnvironmentLight(viewDir, normal, albedo);
 
     for(uint i = 0; i < lightObjects.lightSize; i++){
-        color += ShadowCalculation(i) * DiffuseLightCalculation(lightObjects.lights[i], normal,albedo);
+        color += ShadowCalculation(i,normal) * DiffuseLightCalculation(lightObjects.lights[i], normal,albedo);
+        //color =  vec3(ShadowCalculation(i,normal));
     }
 
     outColor = vec4(color,1.0);

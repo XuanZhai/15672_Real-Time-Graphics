@@ -199,12 +199,15 @@ namespace S72Object {
 
     class Material;
 
+    /**
+    * @brief A light object contains a node's ;ight info.
+    */
     class Light{
         public:
             uint32_t shadowMapSize = 256;
 
-            XZM::vec3 pos = XZM::vec3();;
-            XZM::vec3 dir = XZM::vec3();;
+            XZM::vec3 pos = XZM::vec3();
+            XZM::vec3 dir = XZM::vec3();
             /* 0 = sun, 1 = sphere, 2 = spot */
             int type;
             std::string name;
@@ -216,12 +219,14 @@ namespace S72Object {
             float fov = 0;
             float blend = 0;
             XZM::vec3 tint = XZM::vec3(1.0f,1.0f,1.0f);
+            /* View matrix */
             XZM::mat4 view;
+            /* Projection matrix. */
             XZM::mat4 proj;
 
             /* Initialize the light object from the parser node. */
             void Initialization(const std::shared_ptr<ParserNode> &node);
-            /* Set the light's position and direction. */
+            /* Set the light's position and direction. Also calculate the VP matrices. */
             void SetModelMatrix(const XZM::mat4& newModel);
     };
 }

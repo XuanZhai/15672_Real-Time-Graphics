@@ -268,10 +268,9 @@ private:
 
     /* The current rendered image into headless list. */
     uint32_t headlessImageIndex = 0;
+    /* Refers to the instance of VkShadowMaps */
 
     std::shared_ptr<VkShadowMaps> shadowMaps = nullptr;
-
-    bool isSave = false;
 
 
     /* A struct of queue that will be submitted to Vulkan */
@@ -429,8 +428,8 @@ private:
     /* Create the command buffer which can submit the drawing command. */
     void CreateCommandBuffers(VkCommandPool& newCommandPool, std::vector<VkCommandBuffer>& newCommandBuffers);
 
-    /* Writes the commands we want to execute into a command buffer. */
-    void RecordShadowCommandBuffer(VkCommandBuffer commandBuffer);
+    /* Render the shadow passes. */
+    void RenderShadowPass(VkCommandBuffer commandBuffer);
 
     /* Writes the commands we want to execute into a command buffer. */
     void RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
@@ -492,8 +491,6 @@ private:
     /* Same a VKImage to a PPM file with a given name. */
     void SaveImageToPPM(const VkImage& image, const VkDeviceMemory& imageMemory, const std::string&, uint32_t imageWidth, uint32_t imageHeight);
 
-    void DebugShadowMapData();
-
     /* Clean up the swap chain and all the related resources. */
     void CleanUpSwapChain();
 
@@ -512,9 +509,8 @@ private:
     /* Initialize the Vulkan application and setup. */
     void InitVulkan();
 
+    /* Initialize the shadow map data. */
     void InitShadowMaps();
-
-    void DrawShadows();
 
     /* Draw the frame and submit the command buffer. */
     void DrawFrame();

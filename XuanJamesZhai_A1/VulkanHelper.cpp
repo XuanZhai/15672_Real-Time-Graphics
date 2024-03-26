@@ -933,7 +933,7 @@ void VulkanHelper::CreateGraphicsPipeline(const VkRenderPass& newRenderPass, con
     depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
     depthStencil.depthTestEnable = VK_TRUE;
     depthStencil.depthWriteEnable = VK_TRUE;        // If the new depth that passed should be written to the depth buffer
-    depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
+    depthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
     depthStencil.depthBoundsTestEnable = VK_FALSE;
     depthStencil.stencilTestEnable = VK_FALSE;
 
@@ -1734,8 +1734,11 @@ void VulkanHelper::CreateCommandBuffers(VkCommandPool& newCommandPool, std::vect
 }
 
 
-/* Writes the commands we want to execute into a command buffer. */
-void VulkanHelper::RecordShadowCommandBuffer(VkCommandBuffer commandBuffer){
+/**
+ * @brief Render the shadow passes.
+ * @param commandBuffer
+ */
+void VulkanHelper::RenderShadowPass(VkCommandBuffer commandBuffer){
 
     for(uint32_t i = 0; i < shadowMaps->shadowCount; i++) {
 
@@ -1748,7 +1751,7 @@ void VulkanHelper::RecordShadowCommandBuffer(VkCommandBuffer commandBuffer){
         renderPassInfo.renderArea.offset = {0, 0};
         renderPassInfo.renderArea.extent = {shadowMaps->shadowMapSize[i], shadowMaps->shadowMapSize[i]};
 
-        /* Describe the clear color and the depth when we clear the view */
+        /* Describe the depth when we clear the view */
         std::array<VkClearValue, 1> clearValues{};
         clearValues[0].depthStencil = { 1.0f, 0 };
 
@@ -1781,14 +1784,7 @@ void VulkanHelper::RecordShadowCommandBuffer(VkCommandBuffer commandBuffer){
 
         /* Bind the pipeline. */
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, shadowMaps->shadowPipeline);
-        //UniformShadowObject uso;
-        //uso.view = currCamera->viewMatrix;
-        //uso.proj = currCamera->projMatrix;
-        /* Flip the Y-Dir */
-        //uso.proj.data[1][1] *= -1;
         vkCmdPushConstants(commandBuffer, shadowMaps->shadowPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(UniformShadowObject), &shadowMaps->USOMatrices[i]);
-
-        //vkCmdPushConstants(commandBuffer, shadowMaps->shadowPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(UniformShadowObject), &uso);
 
         /* Loop through each material. */
         for(const auto& VkMat : VkMaterials){
@@ -1845,7 +1841,8 @@ void VulkanHelper::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t i
         throw std::runtime_error("Failed to begin recording command buffer!");
     }
 
-    RecordShadowCommandBuffer(commandBuffers[currentFrame]);
+    /* Render the shadow passes. */
+    RenderShadowPass(commandBuffers[currentFrame]);
 
     /* Start the render pass and start drawing */
     VkRenderPassBeginInfo renderPassInfo{};
@@ -1892,7 +1889,6 @@ void VulkanHelper::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t i
     /* Since the uniform buffer is one for every object, we update it globally. */
     UpdateUniformBuffer(currentFrame);
     UpdateUniformLightBuffers(currentFrame);
-
 
     /* Loop through each material. */
     for(const auto& VkMat : VkMaterials){
@@ -2791,24 +2787,6 @@ void VulkanHelper::SaveImageToPPM(const VkImage& image, const VkDeviceMemory& im
 }
 
 
-void VulkanHelper::DebugShadowMapData(){
-    /* Map image memory */
-    void *mappedMemory;
-    /* Read pixel data from image */
-    CopyImageToData(shadowMaps->shadowMapImage[0],shadowMaps->shadowMapImageMemory[0],mappedMemory, 256,256);
-    auto *row = reinterpret_cast<float*>(mappedMemory);
-
-    for (int y = 0; y < 256; y++){
-        for (int x = 0; x < 256; x++){
-            std::cout << *row << std::endl;
-            row++;
-        }
-    }
-
-    int end = 0;
-}
-
-
 /**
 * @brief Clean up the swap chain and all the related resources.
 */
@@ -3021,6 +2999,7 @@ void VulkanHelper::InitVulkan()
     CreateMeshes();
     CreateUniformBuffers();
     CreateUniformLightBuffers();
+    /* Need to be before creating the descriptor sets. */
     InitShadowMaps();
     CreateGlobalDescriptorSets();
 
@@ -3031,28 +3010,23 @@ void VulkanHelper::InitVulkan()
 }
 
 
+/**
+ * @brief Initialize the shadow map data.
+ */
 void VulkanHelper::InitShadowMaps(){
 
     shadowMaps = std::make_shared<VkShadowMaps>();
-
     shadowMaps->CreateRenderPass(this);
-    shadowMaps->CreateSyncObject(device);
     shadowMaps->CreatePushConstant();
 
     for(const auto& light : s72Instance->lights){
-
+        /* Only process if it is a spotlight. */
         if(light->type != 2) continue;
-
         shadowMaps->CreateShadowMapImageAndView(this,light->shadowMapSize);
         shadowMaps->SetViewAndProjectionMatrix(*light);
         shadowMaps->CreateFrameBuffer(device);
     }
-
-    //CreateGraphicsPipeline(shadowMaps->renderPass, shadowMaps->shadowVertexFileName,shadowMaps->shadowFragmentFileName, std::vector<VkDescriptorSetLayout>(), shadowMaps->pushConstantRange, shadowMaps->shadowPipeline, shadowMaps->shadowPipelineLayout);
     shadowMaps->CreatePipeline(this,std::vector<VkDescriptorSetLayout>(), shadowMaps->pushConstantRange);
-    //CreateCommandPool(shadowMaps->commandPool);
-    //shadowMaps->commandBuffer.resize(1);
-    //CreateCommandBuffers(shadowMaps->commandPool,shadowMaps->commandBuffer);
 }
 
 
@@ -3227,50 +3201,6 @@ void VulkanHelper::ProcessGLFWInputCallBack(char key){
 }
 
 
-void VulkanHelper::DrawShadows(){
-
-    /* Reset the fence after wait. Only reset the fence if we are submitting work */
-    vkResetFences(device, 1, &shadowMaps->fence);
-
-    vkResetCommandBuffer(shadowMaps->commandBuffer[0], /*VkCommandBufferResetFlagBits*/ 0);
-    RecordShadowCommandBuffer(shadowMaps->commandBuffer[0]);
-
-    VkPipelineStageFlags shadow_map_wait_stages = 0;
-    VkSubmitInfo submit_info = { };
-    submit_info.pNext = VK_NULL_HANDLE;
-    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submit_info.waitSemaphoreCount = 0;
-    submit_info.pWaitSemaphores = VK_NULL_HANDLE;
-    submit_info.signalSemaphoreCount = 1;
-    submit_info.pSignalSemaphores = &shadowMaps->signalSemaphore;
-    submit_info.pWaitDstStageMask = nullptr;
-    submit_info.commandBufferCount = 1;
-    submit_info.pCommandBuffers = &shadowMaps->commandBuffer[0];
-
-
-    if (vkQueueSubmit(graphicsQueue, 1, &submit_info, shadowMaps->fence) != VK_SUCCESS) {
-        throw std::runtime_error("failed to submit draw command buffer!");
-    }
-
-    //VkSemaphore waitSemaphores[] = { shadowMaps->signalSemaphore };
-    //VkSemaphoreCreateInfo semaphoreCreateInfo = {};
-    //VkSemaphoreWaitInfo waitInfo = {};
-    //waitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
-    //waitInfo.semaphoreCount = 1;
-    //waitInfo.pSemaphores = &shadowMaps->signalSemaphore;
-   // waitInfo.pValues = nullptr;
-   // vkWaitSemaphores(device, &waitInfo, UINT64_MAX);
-
-    vkWaitForFences(device, 1, &shadowMaps->fence, VK_TRUE, UINT64_MAX);
-
-   // if(!isSave){
-   //     DebugShadowMapData();
-   //     isSave = true;
-   // }
-}
-
-
-
 /**
 * @brief Wait for the previous frame to finish.
 * Acquire an image from the swap chain.
@@ -3280,7 +3210,6 @@ void VulkanHelper::DrawShadows(){
 */
 void VulkanHelper::DrawFrame()
 {
-    //DrawShadows();
 
     /* Wait until the previous frame has finished */
     vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);

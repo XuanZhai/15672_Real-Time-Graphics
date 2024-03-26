@@ -613,7 +613,7 @@ void S72Object::Light::Initialization(const std::shared_ptr<ParserNode> &node){
 
 
 /**
- * @brief Set the light's position and direction.
+ * @brief Set the light's position and direction. Also calculate the VP matrices.
  * @param newModel Input transform matrix.
  */
 void S72Object::Light::SetModelMatrix(const XZM::mat4& newModel){

@@ -33,12 +33,15 @@ static std::vector<char> ReadFile(const std::string& filename) {
 }
 
 
+/**
+ * @brief Create the shadow pass.
+ * @param vulkanHelper Reference to the vulkan helper.
+ */
 void VkShadowMaps::CreateRenderPass(VulkanHelper* vulkanHelper){
 
     format = vulkanHelper->FindDepthFormat();
 
     std::array<VkAttachmentDescription,1> attachments{};
-
     // Depth attachment (shadow map)
     attachments[0].format = format;
     attachments[0].samples = VK_SAMPLE_COUNT_1_BIT;
@@ -55,7 +58,7 @@ void VkShadowMaps::CreateRenderPass(VulkanHelper* vulkanHelper){
     depthAttachmentRef.attachment = 0;
     depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-    // Subpass 0: shadow map rendering
+    // SubPass 0: shadow map rendering
     VkSubpassDescription subPass = {};
     subPass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
     subPass.flags = 0;
@@ -94,8 +97,6 @@ void VkShadowMaps::CreateRenderPass(VulkanHelper* vulkanHelper){
     renderPassInfo.pAttachments = attachments.data();
     renderPassInfo.subpassCount = 1;
     renderPassInfo.pSubpasses = &subPass;
-    //renderPassInfo.dependencyCount = 0;
-    //renderPassInfo.pDependencies =VK_NULL_HANDLE;
     renderPassInfo.dependencyCount = static_cast<uint32_t>(dependencies.size());
     renderPassInfo.pDependencies = dependencies.data();
     renderPassInfo.flags = 0;
@@ -106,6 +107,12 @@ void VkShadowMaps::CreateRenderPass(VulkanHelper* vulkanHelper){
 }
 
 
+/**
+ * @brief Create the pipeline for the shadow pass.
+ * @param vulkanHelper Reference to the vulkan helper.
+ * @param descriptorSetLayouts Descriptor set layouts used in the pipeline.
+ * @param pushConstants Push constant used in the pipeline.
+ */
 void VkShadowMaps::CreatePipeline(VulkanHelper* vulkanHelper, const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts,
                                   const std::vector<VkPushConstantRange>& pushConstants){
     /* Read the file into a char array */
@@ -162,7 +169,7 @@ void VkShadowMaps::CreatePipeline(VulkanHelper* vulkanHelper, const std::vector<
     depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
     depthStencil.depthTestEnable = VK_TRUE;
     depthStencil.depthWriteEnable = VK_TRUE;        // If the new depth that passed should be written to the depth buffer
-    depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
+    depthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
     depthStencil.depthBoundsTestEnable = VK_FALSE;
     depthStencil.stencilTestEnable = VK_FALSE;
 
@@ -235,23 +242,11 @@ void VkShadowMaps::CreatePipeline(VulkanHelper* vulkanHelper, const std::vector<
 }
 
 
-void VkShadowMaps::CreateSyncObject(const VkDevice& device){
-
-    /* Create the info for the semaphore and the fence */
-    VkSemaphoreCreateInfo semaphoreInfo{};
-    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-    VkFenceCreateInfo fenceInfo{};
-    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;     // Make it signaled to avoid the first-frame dilemma
-
-    if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &signalSemaphore) != VK_SUCCESS||
-        vkCreateFence(device, &fenceInfo, nullptr, &fence) != VK_SUCCESS)  {
-        throw std::runtime_error("failed to create synchronization objects for the shadow map!");
-    }
-}
-
-
+/**
+ * @brief Create the image views for the shadow maps.
+ * @param vulkanHelper Reference to the vulkan helper.
+ * @param size The size of the shadow map image.
+ */
 void VkShadowMaps::CreateShadowMapImageAndView(VulkanHelper* vulkanHelper, uint32_t size){
     shadowMapSize.emplace_back(size);
 
@@ -273,14 +268,10 @@ void VkShadowMaps::CreateShadowMapImageAndView(VulkanHelper* vulkanHelper, uint3
 }
 
 
-void VkShadowMaps::SetViewAndProjectionMatrix(const S72Object::Light& light){
-
-    USOMatrices.emplace_back();
-    USOMatrices.back().view = light.view;
-    USOMatrices.back().proj = light.proj;
-}
-
-
+/**
+ * @brief Create the frame buffers for the image views.
+ * @param device The physical device.
+ */
 void VkShadowMaps::CreateFrameBuffer(const VkDevice& device){
     VkFramebufferCreateInfo framebufferInfo;
     framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -300,6 +291,20 @@ void VkShadowMaps::CreateFrameBuffer(const VkDevice& device){
 }
 
 
+/**
+ * @brief Set the VP matrices.
+ * @param light A reference to the S72 light.
+ */
+void VkShadowMaps::SetViewAndProjectionMatrix(const S72Object::Light& light){
+    USOMatrices.emplace_back();
+    USOMatrices.back().view = light.view;
+    USOMatrices.back().proj = light.proj;
+}
+
+
+/**
+ * @brief Create the push constant for the VP matrices.
+ */
 void VkShadowMaps::CreatePushConstant(){
     pushConstantRange.emplace_back();
     pushConstantRange.back().stageFlags = VK_SHADER_STAGE_VERTEX_BIT; // Shader stages that can access push constants
@@ -308,10 +313,11 @@ void VkShadowMaps::CreatePushConstant(){
 }
 
 
+/**
+ * @brief Dealloc the resources.
+ * @param device The physical device.
+ */
 void VkShadowMaps::CleanUp(const VkDevice& device){
-
-    vkDestroySemaphore(device, signalSemaphore, nullptr);
-    vkDestroyFence(device,fence, nullptr);
 
     for(uint32_t i = 0; i < shadowCount; i++){
         vkDestroyFramebuffer(device, shadowMapFrameBuffer[i], nullptr);
@@ -323,5 +329,4 @@ void VkShadowMaps::CleanUp(const VkDevice& device){
     vkDestroyPipeline(device, shadowPipeline, nullptr);
     vkDestroyPipelineLayout(device, shadowPipelineLayout, nullptr);
     vkDestroyRenderPass(device, renderPass, nullptr);
-    vkDestroyCommandPool(device, commandPool, nullptr);
 }
