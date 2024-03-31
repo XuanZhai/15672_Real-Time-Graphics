@@ -296,6 +296,7 @@ void VkShadowMaps::CreateFrameBuffer(const VkDevice& device){
  * @param light A reference to the S72 light.
  */
 void VkShadowMaps::SetViewAndProjectionMatrix(const S72Object::Light& light){
+
     USOMatrices.emplace_back();
     USOMatrices.back().view = light.view;
     USOMatrices.back().proj = light.proj;

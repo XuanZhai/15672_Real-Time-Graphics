@@ -293,6 +293,7 @@ public:
     /* Pause the animation if it is playing. */
     void StopAnimation();
 
+    /* Given a material parser node, identify its EMaterial type. */
     static S72Object::EMaterial GetMaterialType(const ParserNode&);
 
     /* Extract the translation data as a vec3 from a ParserNode. */

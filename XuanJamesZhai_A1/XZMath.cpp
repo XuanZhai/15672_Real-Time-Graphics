@@ -718,6 +718,18 @@ XZM::mat4 XZM::RotateMat4(const mat4& mat, const vec3& axis, float radians){
 }
 
 
+XZM::mat4 XZM::Ortho(float left, float right, float bottom, float top, float near, float far){
+    mat4 result;
+    result.data[0][0] = 2.0f / (right - left);
+    result.data[1][1] = 2.0f / (top - bottom);
+    result.data[2][2] = -2.0f / (far - near);
+    result.data[3][0] = -(right + left) / (right - left);
+    result.data[3][1] = -(top + bottom) / (top - bottom);
+    result.data[3][2] = -(far + near) / (far - near);
+    return result;
+}
+
+
 /**
  * Find the linear interpolated vec3 between the lower bound and the upper bound given an alpha.
  * @param low The lower bound.

@@ -325,11 +325,10 @@ void main() {
     F0 = mix(F0, albedo, metallic);
 
     vec3 color = vec3(0);
-    color += GetEnvironmentLight(normal, view, R, albedo,roughness,metallic,F0);
+    //color += GetEnvironmentLight(normal, view, R, albedo,roughness,metallic,F0);
 
     for(int i = 0; i < lightObjects.lightSize; i++){
        color += ShadowCalculation(i,normal) * PBRLightCalculation(lightObjects.lights[i], normal, view, R, F0, albedo, roughness, metallic);
-        //color =  vec3(ShadowCalculation(i,normal));
     }
 
     outColor = vec4(color,1.0);

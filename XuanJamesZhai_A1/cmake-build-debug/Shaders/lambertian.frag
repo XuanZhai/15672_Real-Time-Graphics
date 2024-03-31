@@ -217,7 +217,6 @@ void main() {
 
     for(uint i = 0; i < lightObjects.lightSize; i++){
         color += ShadowCalculation(i,normal) * DiffuseLightCalculation(lightObjects.lights[i], normal,albedo);
-        //color =  vec3(ShadowCalculation(i,normal));
     }
 
     outColor = vec4(color,1.0);
