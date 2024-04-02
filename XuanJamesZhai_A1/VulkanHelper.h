@@ -512,6 +512,9 @@ private:
     /* Initialize the shadow map data. */
     void InitShadowMaps();
 
+    /* Update the VP matrices to produce new shadow maps. */
+    void UpdateShadowMaps();
+
     /* Draw the frame and submit the command buffer. */
     void DrawFrame();
 

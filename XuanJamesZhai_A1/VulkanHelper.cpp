@@ -1841,6 +1841,8 @@ void VulkanHelper::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t i
         throw std::runtime_error("Failed to begin recording command buffer!");
     }
 
+    /* Update the VP matrices before creating the shadow maps. */
+    UpdateShadowMaps();
     /* Render the shadow passes. */
     RenderShadowPass(commandBuffers[currentFrame]);
 
@@ -3031,6 +3033,19 @@ void VulkanHelper::InitShadowMaps(){
 
 
 /**
+ * @brief Update the VP matrices to produce new shadow maps.
+ */
+void VulkanHelper::UpdateShadowMaps(){
+    shadowMaps->USOMatrices.clear();
+    for(const auto& light : s72Instance->lights){
+        /* Only process if it is a spotlight. */
+        if(light->type != 2) continue;
+        shadowMaps->SetViewAndProjectionMatrix(*light);
+    }
+}
+
+
+/**
 * @brief Create a main loop to let the window keep opening (Looping using the MSG mechanism).
 */
 void VulkanHelper::MainLoopWIN()
@@ -3210,6 +3225,7 @@ void VulkanHelper::ProcessGLFWInputCallBack(char key){
 */
 void VulkanHelper::DrawFrame()
 {
+
 
     /* Wait until the previous frame has finished */
     vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);

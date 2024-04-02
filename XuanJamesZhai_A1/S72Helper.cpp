@@ -593,14 +593,14 @@ void S72Object::Light::Initialization(const std::shared_ptr<ParserNode> &node){
     else if(node->GetObjectValue("sphere") != nullptr){
         type = 1;
         auto sphereMap = std::get<ParserNode::PNMap>(node->GetObjectValue("sphere")->data);
-        radius = std::get<float>(sphereMap["radius"]->data);
+        radius = std::max(0.01f,std::get<float>(sphereMap["radius"]->data));
         power = std::get<float>(sphereMap["power"]->data);
         limit = std::get<float>(sphereMap["limit"]->data);
     }
     else if(node->GetObjectValue("spot") != nullptr){
         type = 2;
         auto spotMap = std::get<ParserNode::PNMap>(node->GetObjectValue("spot")->data);
-        radius = std::get<float>(spotMap["radius"]->data);
+        radius = std::max(0.01f,std::get<float>(spotMap["radius"]->data));
         power = std::get<float>(spotMap["power"]->data);
         limit = std::get<float>(spotMap["limit"]->data);
         fov = std::get<float>(spotMap["fov"]->data);
@@ -976,6 +976,7 @@ void S72Helper::UpdateObject(const std::shared_ptr<ParserNode>& newNode, XZM::ma
     }
     else if(type == "LIGHT"){
         lights.at(lightIndex)->SetModelMatrix(newMat);
+        lightIndex++;
     }
 
     /* If it has a mesh key. Recursively visit its children. */

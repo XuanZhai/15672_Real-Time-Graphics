@@ -1,12 +1,14 @@
 #version 460
 #extension GL_EXT_nonuniform_qualifier : require
 
+const uint MAX_LIGHT_COUNT = 10;
+
 layout(location = 0) in vec4 fragColor;
 layout(location = 1) in vec3 fragNormal;
 layout(location = 2) in vec2 fragTexCoord;
 layout(location = 3) in vec3 fragPosition;
 layout(location = 4) in mat3 TBN;
-layout(location = 7) in vec4 fragPositionLightSpace[10];
+layout(location = 7) in vec4 fragPositionLightSpace[MAX_LIGHT_COUNT];
 
 layout(location = 0) out vec4 outColor;
 
@@ -36,7 +38,7 @@ struct UniformLightObject {
 
 layout(std140, set = 0, binding = 1) uniform UniformLightsObject {
     uint lightSize;
-    UniformLightObject lights[10];
+    UniformLightObject lights[MAX_LIGHT_COUNT];
 } lightObjects;
 layout(set = 0, binding = 2) uniform sampler2D depthMap[];
 
@@ -47,7 +49,7 @@ layout(set = 1, binding = 3) uniform sampler2D roughnessSampler;
 layout(set = 1, binding = 4) uniform sampler2D metallicSampler;
 layout(set = 2, binding = 0) uniform samplerCube LamcubeSampler;
 layout(set = 2, binding = 1) uniform sampler2D brdfSampler;
-layout(set = 2, binding = 2) uniform samplerCube cubeSampler[10];
+layout(set = 2, binding = 2) uniform samplerCube cubeSampler[MAX_LIGHT_COUNT];
 
 /* Reference: https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/ */
 vec3 toneMapACES(vec3 color, float exposure){
@@ -283,6 +285,9 @@ float ShadowCalculation(uint lightIndex, vec3 normal) {
     /* Convert light to NDC space. */
     vec3 fragPositionLightNDC = fragPositionLightSpace[lightIndex].xyz / fragPositionLightSpace[lightIndex].w;
 
+    if (abs(fragPositionLightNDC.x) > 1.0 || abs(fragPositionLightNDC.y) > 1.0 || abs(fragPositionLightNDC.z) > 1.0)
+    return 0.0;
+
     /* NDC to [0,1] range. */
     fragPositionLightNDC.x = fragPositionLightNDC.x * 0.5 + 0.5;
     fragPositionLightNDC.y = fragPositionLightNDC.y * 0.5 + 0.5;
@@ -291,7 +296,7 @@ float ShadowCalculation(uint lightIndex, vec3 normal) {
 
     /* check whether current frag pos is in shadow using PCF with bias. */
     /* Inspired by: https://learnopengl.com/Advanced-Lighting/Shadows/Shadow-Mapping */
-    //float bias = max(0.05 * (1.0 - dot(normal, -lightObjects.lights[lightIndex].dir)), 0.005);
+    //float bias = max(0.05 * (1.0 - dot(normal, normalize(-lightObjects.lights[lightIndex].dir))), 0.05);
     float shadow = 0.0;
     vec2 texelSize = 1.0 / textureSize(depthMap[lightIndex], 0);
     for(int x = -1; x <= 1; ++x) {
@@ -325,10 +330,12 @@ void main() {
     F0 = mix(F0, albedo, metallic);
 
     vec3 color = vec3(0);
-    //color += GetEnvironmentLight(normal, view, R, albedo,roughness,metallic,F0);
+    color += GetEnvironmentLight(normal, view, R, albedo,roughness,metallic,F0);
 
     for(int i = 0; i < lightObjects.lightSize; i++){
        color += ShadowCalculation(i,normal) * PBRLightCalculation(lightObjects.lights[i], normal, view, R, F0, albedo, roughness, metallic);
+       // For debug.
+       //color = vec3(ShadowCalculation(i,normal));
     }
 
     outColor = vec4(color,1.0);

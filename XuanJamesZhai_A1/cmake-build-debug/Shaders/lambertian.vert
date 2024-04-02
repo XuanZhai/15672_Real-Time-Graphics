@@ -65,7 +65,7 @@ void main() {
 
     /* Compute the vertex position in light space. */
     for(int i = 0; i < lightObjects.lightSize; i++){
-        fragPositionLightSpace[i] =  lightObjects.lights[i].proj * lightObjects.lights[i].view * vec4(inPosition, 1.0);
+        fragPositionLightSpace[i] =  lightObjects.lights[i].proj * lightObjects.lights[i].view * vec4(fragPosition, 1.0);
     }
     for(uint i = lightObjects.lightSize; i < MAX_LIGHT_COUNT; i++){
         fragPositionLightSpace[i] = vec4(1,0,0,0);

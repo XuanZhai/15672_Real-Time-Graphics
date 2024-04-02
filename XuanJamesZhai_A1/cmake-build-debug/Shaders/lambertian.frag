@@ -176,6 +176,9 @@ float ShadowCalculation(uint lightIndex, vec3 normal) {
     /* Convert light to NDC space. */
     vec3 fragPositionLightNDC = fragPositionLightSpace[lightIndex].xyz / fragPositionLightSpace[lightIndex].w;
 
+    if (abs(fragPositionLightNDC.x) > 1.0 || abs(fragPositionLightNDC.y) > 1.0 || abs(fragPositionLightNDC.z) > 1.0)
+    return 0.0;
+
     /* NDC to [0,1] range. */
     fragPositionLightNDC.x = fragPositionLightNDC.x * 0.5 + 0.5;
     fragPositionLightNDC.y = fragPositionLightNDC.y * 0.5 + 0.5;
@@ -184,7 +187,7 @@ float ShadowCalculation(uint lightIndex, vec3 normal) {
 
     /* check whether current frag pos is in shadow using PCF with bias. */
     /* Inspired by: https://learnopengl.com/Advanced-Lighting/Shadows/Shadow-Mapping */
-    //float bias = max(0.05 * (1.0 - dot(normal, -lightObjects.lights[lightIndex].dir)), 0.005);
+    //float bias = max(0.05 * (1.0 - dot(normal, normalize(-lightObjects.lights[lightIndex].dir))), 0.05);
     float shadow = 0.0;
     vec2 texelSize = 1.0 / textureSize(depthMap[lightIndex], 0);
     for(int x = -1; x <= 1; ++x) {
@@ -217,6 +220,8 @@ void main() {
 
     for(uint i = 0; i < lightObjects.lightSize; i++){
         color += ShadowCalculation(i,normal) * DiffuseLightCalculation(lightObjects.lights[i], normal,albedo);
+        // For debug.
+        //color = vec3(ShadowCalculation(i,normal));
     }
 
     outColor = vec4(color,1.0);
