@@ -243,6 +243,27 @@ void VkShadowMaps::CreatePipeline(VulkanHelper* vulkanHelper, const std::vector<
 
 
 /**
+ * @brief Create a 1x1 Shadow map as a placeholder for the descriptor set.
+ * @param vulkanHelper Reference to the vulkan helper.
+ */
+void VkShadowMaps::CreateDefaultShadowMap(VulkanHelper* vulkanHelper){
+
+    format = vulkanHelper->FindDepthFormat();
+
+    vulkanHelper->CreateImage(1, 1, 1, 1, format,
+                              VK_IMAGE_TILING_OPTIMAL,
+                              VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |  VK_IMAGE_USAGE_SAMPLED_BIT,
+                              0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, defaultShadowMapImage, defaultShadowMapImageMemory);
+
+    vulkanHelper->TransitionImageLayout(defaultShadowMapImage,1,VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,1,VK_IMAGE_ASPECT_DEPTH_BIT);
+
+    defaultShadowMapImageView = vulkanHelper->CreateImageView(defaultShadowMapImage,
+                                  format,VK_IMAGE_VIEW_TYPE_2D,
+                                  VK_IMAGE_ASPECT_DEPTH_BIT,1,1);
+}
+
+
+/**
  * @brief Create the image views for the shadow maps.
  * @param vulkanHelper Reference to the vulkan helper.
  * @param size The size of the shadow map image.
@@ -319,6 +340,10 @@ void VkShadowMaps::CreatePushConstant(){
  * @param device The physical device.
  */
 void VkShadowMaps::CleanUp(const VkDevice& device){
+
+    vkDestroyImageView(device, defaultShadowMapImageView, nullptr);
+    vkDestroyImage(device, defaultShadowMapImage, nullptr);
+    vkFreeMemory(device, defaultShadowMapImageMemory, nullptr);
 
     for(uint32_t i = 0; i < shadowCount; i++){
         vkDestroyFramebuffer(device, shadowMapFrameBuffer[i], nullptr);

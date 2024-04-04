@@ -1578,7 +1578,9 @@ void VulkanHelper::UpdateUniformLightBuffers(uint32_t currentImage){
  */
 void VulkanHelper::CreateGlobalDescriptorSets(){
     /* Set the binding info for ubo */
-    std::array<VkDescriptorSetLayoutBinding,3> bindings{};
+    std::vector<VkDescriptorSetLayoutBinding> bindings{};
+    bindings.resize(3);
+
     bindings[0].binding = 0;
     bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;    // The type of descriptor is a uniform buffer object
     bindings[0].descriptorCount = 1;
@@ -1592,12 +1594,11 @@ void VulkanHelper::CreateGlobalDescriptorSets(){
     bindings[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
     bindings[1].pImmutableSamplers = nullptr;
 
-    /* Set the binding info for the shadow maps */
     bindings[2].binding = 2;
     bindings[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;    // The type of descriptor is a uniform buffer object
-    bindings[2].descriptorCount = shadowMaps->shadowCount;
     bindings[2].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
     bindings[2].pImmutableSamplers = nullptr;
+    bindings[2].descriptorCount = max(1, shadowMaps->shadowCount);
 
     /* Combine all the bindings into a single object */
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
@@ -1611,7 +1612,8 @@ void VulkanHelper::CreateGlobalDescriptorSets(){
 
     /* Describe which descriptor types our descriptor sets are going to contain */
     /* The first is used for the uniform buffer. The second is used for the image sampler */
-    std::array<VkDescriptorPoolSize,3> poolSizes{};
+    std::vector<VkDescriptorPoolSize> poolSizes{};
+    poolSizes.resize(3);
     poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
@@ -1619,9 +1621,8 @@ void VulkanHelper::CreateGlobalDescriptorSets(){
     poolSizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     poolSizes[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
-    /* Used for the shadow maps. */
     poolSizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    poolSizes[2].descriptorCount = shadowMaps->shadowCount * static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    poolSizes[2].descriptorCount = max(1, shadowMaps->shadowCount) * static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
     /* Create the pool info for allocation */
     VkDescriptorPoolCreateInfo poolInfo{};
@@ -1659,15 +1660,23 @@ void VulkanHelper::CreateGlobalDescriptorSets(){
         uboLightBufferInfo.offset = 0;
         uboLightBufferInfo.range = sizeof(UniformLights);
 
+        std::vector<VkWriteDescriptorSet> descriptorWrites{};
+        descriptorWrites.resize(3);
+
         std::vector<VkDescriptorImageInfo> shadowMapInfo;
-        for(uint32_t j = 0; j < shadowMaps->shadowCount; j++){
+        if (shadowMaps->shadowCount == 0) {
             shadowMapInfo.emplace_back();
             shadowMapInfo.back().imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-            shadowMapInfo.back().imageView = shadowMaps->shadowMapImageView[j];
+            shadowMapInfo.back().imageView = shadowMaps->defaultShadowMapImageView;
             shadowMapInfo.back().sampler = textureSampler;
+        } else {
+            for (uint32_t j = 0; j < shadowMaps->shadowCount; j++) {
+                shadowMapInfo.emplace_back();
+                shadowMapInfo.back().imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+                shadowMapInfo.back().imageView = shadowMaps->shadowMapImageView[j];
+                shadowMapInfo.back().sampler = textureSampler;
+            }
         }
-
-        std::array<VkWriteDescriptorSet,3> descriptorWrites{};
 
         descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[0].dstSet = globalDescriptorSets[i];
@@ -1693,7 +1702,8 @@ void VulkanHelper::CreateGlobalDescriptorSets(){
         descriptorWrites[2].descriptorCount = static_cast<uint32_t>(shadowMapInfo.size());
         descriptorWrites[2].pImageInfo = shadowMapInfo.data();
 
-        vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
+        vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0,
+                               nullptr);
     }
 }
 
@@ -2122,7 +2132,7 @@ void VulkanHelper::CopyBufferToImageCube(VkBuffer buffer, VkImage image, uint32_
  * @param[in] newLayout: The new layout we determine.
  * @param[in] mipLevels: The image's mip map levels.
 */
-void VulkanHelper::TransitionImageLayout(VkImage image, uint32_t layerCount, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels) {
+void VulkanHelper::TransitionImageLayout(VkImage image, uint32_t layerCount, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels, VkImageAspectFlags aspectFlags) {
     VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
 
     VkImageMemoryBarrier barrier{};
@@ -2135,7 +2145,7 @@ void VulkanHelper::TransitionImageLayout(VkImage image, uint32_t layerCount, VkI
     barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 
     barrier.image = image;
-    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    barrier.subresourceRange.aspectMask = aspectFlags;
     barrier.subresourceRange.baseMipLevel = 0;
     barrier.subresourceRange.levelCount = mipLevels;
     barrier.subresourceRange.baseArrayLayer = 0;
@@ -2157,6 +2167,13 @@ void VulkanHelper::TransitionImageLayout(VkImage image, uint32_t layerCount, VkI
         barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
         sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    }
+    else if(oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL){
+        barrier.srcAccessMask = 0; // No previous access, since the previous layout is undefined
+        barrier.dstAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+
+        sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
         destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
     }
     else {
@@ -2263,7 +2280,7 @@ void VulkanHelper::CreateCubeTextureImageAndView(const std::string& filename, Vk
     CreateImage(texWidth, texHeight, envMipLevels, 6,VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, image, imageMemory);
 
     /* Copy the staging buffer to the texture image */
-    TransitionImageLayout(image, 6, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, envMipLevels);
+    TransitionImageLayout(image, 6, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, envMipLevels, VK_IMAGE_ASPECT_COLOR_BIT);
     CopyBufferToImageCube(stagingBuffer, image, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), static_cast<uint32_t>(texChannels));
 
     /* Clear the stage buffer */
@@ -2468,7 +2485,7 @@ void VulkanHelper::CreateTextureImage(const std::string& src, int texWidth, int 
     }
 
     /* Copy the staging buffer to the texture image */
-    TransitionImageLayout(textureImage, 1, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels);
+    TransitionImageLayout(textureImage, 1, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels,VK_IMAGE_ASPECT_COLOR_BIT);
     CopyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
 
     /* Clear the stage buffer */
@@ -3020,6 +3037,7 @@ void VulkanHelper::InitShadowMaps(){
     shadowMaps = std::make_shared<VkShadowMaps>();
     shadowMaps->CreateRenderPass(this);
     shadowMaps->CreatePushConstant();
+    shadowMaps->CreateDefaultShadowMap(this);
 
     for(const auto& light : s72Instance->lights){
         /* Only process if it is a spotlight. */

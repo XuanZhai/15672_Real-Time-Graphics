@@ -432,11 +432,11 @@
 	"name":"yellow-sun",
 	"tint":[1.0, 0.0, 0.0],
 	"spot":{
-		"radius":0.5,
-		"power":600.0,
-		"fov":1.285,
-		"blend":0.15,
-		"limit":15.0
+		"radius":0.05,
+		"power":600,
+		"fov":1.03149,
+		"blend":0.4375,
+		"limit":15
 	},
 	"shadow":256
 },

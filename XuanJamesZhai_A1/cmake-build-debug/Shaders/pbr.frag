@@ -282,11 +282,16 @@ vec3 PBRLightCalculation(UniformLightObject light, vec3 normal, vec3 view, vec3 
 
 /* Check shadow effect for a given light. */
 float ShadowCalculation(uint lightIndex, vec3 normal) {
+
+    if(lightObjects.lights[lightIndex].type != 2){
+        return 1.0;
+    }
+
     /* Convert light to NDC space. */
     vec3 fragPositionLightNDC = fragPositionLightSpace[lightIndex].xyz / fragPositionLightSpace[lightIndex].w;
 
     if (abs(fragPositionLightNDC.x) > 1.0 || abs(fragPositionLightNDC.y) > 1.0 || abs(fragPositionLightNDC.z) > 1.0)
-    return 0.0;
+    return 1.0;
 
     /* NDC to [0,1] range. */
     fragPositionLightNDC.x = fragPositionLightNDC.x * 0.5 + 0.5;

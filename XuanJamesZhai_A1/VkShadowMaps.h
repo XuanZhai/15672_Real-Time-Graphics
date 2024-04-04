@@ -51,6 +51,12 @@ class VkShadowMaps {
         std::vector<VkDeviceMemory> shadowMapImageMemory;
         std::vector<VkImageView> shadowMapImageView;
 
+        VkImage defaultShadowMapImage;
+        VkDeviceMemory defaultShadowMapImageMemory;
+        VkImageView defaultShadowMapImageView;
+
+        /* Create a 1x1 Shadow map as a placeholder for the descriptor set. */
+        void CreateDefaultShadowMap(VulkanHelper* vulkanHelper);
         /* Create the shadow pass. */
         void CreateRenderPass(VulkanHelper* vulkanHelper);
         /* Create the pipeline for the shadow pass. */

@@ -441,7 +441,7 @@ private:
     void CopyBufferToImageCube(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height,uint32_t nChannel);
 
     /* Transit the image's layout with a new layout using a pipeline barrier. */
-    void TransitionImageLayout(VkImage image,uint32_t layerCount, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t newMipLevels);
+    void TransitionImageLayout(VkImage image,uint32_t layerCount, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t newMipLevels, VkImageAspectFlags aspectFlags);
 
     /* Convert a RGBE Image to a float RGB Image. */
     static void ProcessRGBEImage(const unsigned char* src, float*& dst, int texWidth, int texHeight);
