@@ -1562,6 +1562,10 @@ void VulkanHelper::UpdateUniformLightBuffers(uint32_t currentImage){
         uboLight.limit = light->limit;
         uboLight.fov = light->fov;
         uboLight.blend = light->blend;
+
+        uboLight.nearZ = light->nearZ;
+        uboLight.farZ = light->farZ;
+
         uboLight.view = light->view;
         uboLight.proj = light->proj;
 

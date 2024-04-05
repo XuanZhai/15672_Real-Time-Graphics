@@ -18,6 +18,8 @@ struct UniformLightObject {
     float limit;
     float fov;
     float blend;
+    float nearZ;
+    float farZ;
     vec3 pos;
     vec3 dir;
     vec3 tint;

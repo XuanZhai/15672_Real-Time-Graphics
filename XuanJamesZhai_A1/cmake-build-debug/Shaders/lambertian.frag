@@ -29,6 +29,8 @@ struct UniformLightObject {
     float limit;
     float fov;
     float blend;
+    float nearZ;
+    float farZ;
     vec3 pos;
     vec3 dir;
     vec3 tint;
@@ -171,8 +173,9 @@ vec3 DiffuseLightCalculation(UniformLightObject light, vec3 normal, vec3 albedo)
 }
 
 
-/* Check shadow effect for a given light. */
-float ShadowCalculation(uint lightIndex, vec3 normal) {
+/* Check shadow effect for a given light using PCF. */
+float ShadowCalculationPCF(uint lightIndex, vec3 normal) {
+
     if(lightObjects.lights[lightIndex].type != 2){
         return 1.0;
     }
@@ -191,12 +194,78 @@ float ShadowCalculation(uint lightIndex, vec3 normal) {
 
     /* check whether current frag pos is in shadow using PCF with bias. */
     /* Inspired by: https://learnopengl.com/Advanced-Lighting/Shadows/Shadow-Mapping */
-    //float bias = max(0.05 * (1.0 - dot(normal, normalize(-lightObjects.lights[lightIndex].dir))), 0.05);
+    float bias = max(0.05 * (1.0 - dot(normal, normalize(-lightObjects.lights[lightIndex].dir))), 0.005);
     float shadow = 0.0;
     vec2 texelSize = 1.0 / textureSize(depthMap[lightIndex], 0);
     for(int x = -1; x <= 1; ++x) {
         for(int y = -1; y <= 1; ++y) {
             float pcfDepth = texture(depthMap[lightIndex], fragPositionLightNDC.xy + vec2(x, y) * texelSize).r;
+            shadow += (currentDepth) > pcfDepth ? 0.0 : 1.0;
+        }
+    }
+    shadow /= 9.0;
+    return shadow;
+}
+
+
+/* The overall PCSS implementation is inspired by https://developer.download.nvidia.com/whitepapers/2008/PCSS_Integration.pdf */
+/* Find the average distance to the blocker. */
+vec2 FindBlocker(uint lightIndex, vec3 fragPositionLightNDC, vec2 texelSize, float lightSize){
+    float zReceiver = fragPositionLightNDC.z;
+    float searchWidth =  lightSize * (zReceiver - lightObjects.lights[lightIndex].nearZ) / zReceiver;
+
+    float sum = 0.0;
+    float count = 0.0;
+    for(int x = -1; x <= 1; ++x) {
+        for(int y = -1; y <= 1; ++y) {
+            float depth = texture(depthMap[lightIndex], fragPositionLightNDC.xy + vec2(x, y) * texelSize * searchWidth).r;
+
+            if(depth < zReceiver){
+                sum += depth;
+                count++;
+            }
+        }
+    }
+    /* Return the average depth and the number of samples. */
+    return vec2(sum/count,count);
+}
+
+
+/* Check shadow using PCSS. */
+float ShadowCalculationPCSS(uint lightIndex, vec3 normal){
+    if(lightObjects.lights[lightIndex].type != 2){
+        return 1.0;
+    }
+
+    /* Convert light to NDC space. */
+    vec3 fragPositionLightNDC = fragPositionLightSpace[lightIndex].xyz / fragPositionLightSpace[lightIndex].w;
+
+    if (abs(fragPositionLightNDC.x) > 1.0 || abs(fragPositionLightNDC.y) > 1.0 || abs(fragPositionLightNDC.z) > 1.0)
+    return 1.0;
+
+    /* NDC to [0,1] range. */
+    fragPositionLightNDC.x = fragPositionLightNDC.x * 0.5 + 0.5;
+    fragPositionLightNDC.y = fragPositionLightNDC.y * 0.5 + 0.5;
+    /* Current fragment from light's perspective. */
+    float currentDepth = fragPositionLightNDC.z;
+
+    vec2 texelSize = 1.0 / textureSize(depthMap[lightIndex], 0);
+    float lightSize = lightObjects.lights[lightIndex].radius / (2 * lightObjects.lights[lightIndex].nearZ * tan(lightObjects.lights[lightIndex].fov * 0.5f));
+    vec2 depthInfo = FindBlocker(lightIndex,fragPositionLightNDC, texelSize, lightSize);
+
+    /* No block found, so fully lit. */
+    if(depthInfo.y < 1){
+        return 1.0;
+    }
+
+    float penumbraRatio = (fragPositionLightNDC.z - depthInfo.x) / depthInfo.x;
+    float filterRadius = penumbraRatio * lightSize * lightObjects.lights[lightIndex].nearZ / fragPositionLightNDC.z;
+
+    /* Apply the PCF. */
+    float shadow = 0.0;
+    for(int x = -1; x <= 1; ++x) {
+        for(int y = -1; y <= 1; ++y) {
+            float pcfDepth = texture(depthMap[lightIndex], fragPositionLightNDC.xy + vec2(x, y) * texelSize * filterRadius).r;
             shadow += (currentDepth) > pcfDepth ? 0.0 : 1.0;
         }
     }
@@ -220,12 +289,12 @@ void main() {
     vec3 albedo = texture(albedoSampler, texCoord).xyz * fragColor.xyz;
 
     vec3 color = vec3(0);
-    color += GetEnvironmentLight(viewDir, normal, albedo);
+    //color += GetEnvironmentLight(viewDir, normal, albedo);
 
     for(uint i = 0; i < lightObjects.lightSize; i++){
-        color += ShadowCalculation(i,normal) * DiffuseLightCalculation(lightObjects.lights[i], normal,albedo);
+        color += ShadowCalculationPCSS(i,normal) * DiffuseLightCalculation(lightObjects.lights[i], normal,albedo);
         // For debug.
-        //color = vec3(ShadowCalculation(i,normal));
+        //color = vec3(ShadowCalculationPCSS(i,normal));
     }
 
     outColor = vec4(color,1.0);

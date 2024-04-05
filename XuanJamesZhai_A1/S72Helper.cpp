@@ -605,6 +605,9 @@ void S72Object::Light::Initialization(const std::shared_ptr<ParserNode> &node){
         limit = std::get<float>(spotMap["limit"]->data);
         fov = std::get<float>(spotMap["fov"]->data);
         blend = std::get<float>(spotMap["blend"]->data);
+        /* NOTE: Maybe changed later. */
+        nearZ = radius;
+        farZ = limit;
     }
     else{
         throw std::runtime_error("Unknown light type in s72");
@@ -622,7 +625,7 @@ void S72Object::Light::SetModelMatrix(const XZM::mat4& newModel){
 
     if(type == 2) {
         view = XZM::LookAt(pos, pos + dir, XZM::vec3(0, 0, 1));
-        proj = XZM::Perspective(fov, 1, radius, limit);
+        proj = XZM::Perspective(fov, 1, nearZ, farZ);
         proj.data[1][1] *= -1;
     }
     else{

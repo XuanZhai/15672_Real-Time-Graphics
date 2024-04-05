@@ -218,6 +218,8 @@ namespace S72Object {
             float limit = 0;
             float fov = 0;
             float blend = 0;
+            float nearZ = 0;
+            float farZ = 0;
             XZM::vec3 tint = XZM::vec3(1.0f,1.0f,1.0f);
             /* View matrix */
             XZM::mat4 view;

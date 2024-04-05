@@ -95,6 +95,8 @@ struct UniformLight {
     alignas(4) float limit = 0;
     alignas(4) float fov = 0;
     alignas(4) float blend = 0;
+    alignas(4) float nearZ = 0;
+    alignas(4) float farZ = 0;
     alignas(16) XZM::vec3 pos = XZM::vec3();
     alignas(16) XZM::vec3 dir = XZM::vec3();
     alignas(16) XZM::vec3 tint = XZM::vec3(1.0f,1.0f,1.0f);
