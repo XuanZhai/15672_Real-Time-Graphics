@@ -289,10 +289,10 @@ void main() {
     vec3 albedo = texture(albedoSampler, texCoord).xyz * fragColor.xyz;
 
     vec3 color = vec3(0);
-    //color += GetEnvironmentLight(viewDir, normal, albedo);
+    color += GetEnvironmentLight(viewDir, normal, albedo);
 
     for(uint i = 0; i < lightObjects.lightSize; i++){
-        color += ShadowCalculationPCSS(i,normal) * DiffuseLightCalculation(lightObjects.lights[i], normal,albedo);
+        color += ShadowCalculationPCF(i,normal) * DiffuseLightCalculation(lightObjects.lights[i], normal,albedo);
         // For debug.
         //color = vec3(ShadowCalculationPCSS(i,normal));
     }

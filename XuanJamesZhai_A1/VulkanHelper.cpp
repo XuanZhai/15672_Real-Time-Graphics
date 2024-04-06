@@ -963,7 +963,7 @@ void VulkanHelper::CreateGraphicsPipeline(const VkRenderPass& newRenderPass, con
         pipelineLayoutInfo.pSetLayouts = nullptr;
     }
     else{
-        pipelineLayoutInfo.setLayoutCount = descriptorSetLayouts.size();
+        pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(descriptorSetLayouts.size());
         pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.data();
     }
 
@@ -972,7 +972,7 @@ void VulkanHelper::CreateGraphicsPipeline(const VkRenderPass& newRenderPass, con
         pipelineLayoutInfo.pPushConstantRanges = nullptr;
     }
     else{
-        pipelineLayoutInfo.pushConstantRangeCount = pushConstants.size();
+        pipelineLayoutInfo.pushConstantRangeCount = static_cast<uint32_t>(pushConstants.size());
         pipelineLayoutInfo.pPushConstantRanges = pushConstants.data();
     }
 

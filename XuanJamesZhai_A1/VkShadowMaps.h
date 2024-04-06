@@ -50,7 +50,7 @@ class VkShadowMaps {
         std::vector<VkImage> shadowMapImage;
         std::vector<VkDeviceMemory> shadowMapImageMemory;
         std::vector<VkImageView> shadowMapImageView;
-
+        /* A placeholder for creating the descriptor sets. */
         VkImage defaultShadowMapImage;
         VkDeviceMemory defaultShadowMapImageMemory;
         VkImageView defaultShadowMapImageView;

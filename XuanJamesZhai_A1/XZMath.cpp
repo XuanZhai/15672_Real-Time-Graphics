@@ -656,11 +656,7 @@ XZM::vec3 XZM::ExtractTranslationFromMat(const mat4& nm){
  * @return
  */
 XZM::vec3 XZM::RotateVec3(const vec3& vector, const vec3& axis, float radians){
-    float cosTheta = cos(radians);
-    float sinTheta = sin(radians);
-
     vec3 result;
-
     quat q;
     q.data[0] = (axis * sin(radians / 2.0f)).data[0];
     q.data[1] = (axis * sin(radians / 2.0f)).data[1];

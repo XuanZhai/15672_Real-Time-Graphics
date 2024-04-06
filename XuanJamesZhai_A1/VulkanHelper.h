@@ -270,8 +270,8 @@ private:
 
     /* The current rendered image into headless list. */
     uint32_t headlessImageIndex = 0;
-    /* Refers to the instance of VkShadowMaps */
 
+    /* Refers to the instance of VkShadowMaps */
     std::shared_ptr<VkShadowMaps> shadowMaps = nullptr;
 
 
@@ -528,6 +528,7 @@ public:
     /* Make the render helper can access the vulkan helper's private properties. */
     friend class RenderHelper;
 
+    /* Make the VkShadowMaps can access the vulkan helper's private properties. */
     friend class VkShadowMaps;
 
     /* Set the s72helper with a new instance. */

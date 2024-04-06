@@ -93,7 +93,7 @@ void VkShadowMaps::CreateRenderPass(VulkanHelper* vulkanHelper){
     VkRenderPassCreateInfo renderPassInfo;
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
     renderPassInfo.pNext = VK_NULL_HANDLE;
-    renderPassInfo.attachmentCount = attachments.size();
+    renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
     renderPassInfo.pAttachments = attachments.data();
     renderPassInfo.subpassCount = 1;
     renderPassInfo.pSubpasses = &subPass;
@@ -188,7 +188,7 @@ void VkShadowMaps::CreatePipeline(VulkanHelper* vulkanHelper, const std::vector<
         pipelineLayoutInfo.pSetLayouts = nullptr;
     }
     else{
-        pipelineLayoutInfo.setLayoutCount = descriptorSetLayouts.size();
+        pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(descriptorSetLayouts.size());
         pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.data();
     }
 
@@ -197,7 +197,7 @@ void VkShadowMaps::CreatePipeline(VulkanHelper* vulkanHelper, const std::vector<
         pipelineLayoutInfo.pPushConstantRanges = nullptr;
     }
     else{
-        pipelineLayoutInfo.pushConstantRangeCount = pushConstants.size();
+        pipelineLayoutInfo.pushConstantRangeCount = static_cast<uint32_t>(pushConstants.size());
         pipelineLayoutInfo.pPushConstantRanges = pushConstants.data();
     }
 
