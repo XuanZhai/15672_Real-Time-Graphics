@@ -1,4 +1,5 @@
-#version 450
+#version 460
+#extension GL_EXT_nonuniform_qualifier : require
 
 layout(location = 0) in vec4 fragColor;
 layout(location = 1) in vec3 fragNormal;
@@ -14,9 +15,9 @@ layout(set = 0, binding = 0) uniform UniformBufferObject{
     vec3 viewPos;
 } ubo;
 
-layout(set = 0, binding = 1) uniform sampler2D normalSampler;
-layout(set = 0, binding = 2) uniform sampler2D heightSampler;
-layout (set = 1, binding = 0) uniform samplerCube cubeMapTexture;
+layout(set = 1, binding = 0) uniform sampler2D normalSampler;
+layout(set = 1, binding = 1) uniform sampler2D heightSampler;
+layout (set = 2, binding = 0) uniform samplerCube cubeMapTexture;
 
 
 vec3 toneMapReinhard(vec3 color, float exposure) {
@@ -44,20 +45,20 @@ vec2 ParallaxOcclusionMapping(vec2 texCoords, vec3 viewDir){
     float numLayers = mix(maxLayers, minLayers, max(dot(vec3(0.0, 0.0, 1.0), viewDir), 0.0));
     float layerDepth = 1.0 / numLayers;
     float currentLayerDepth = 0.0;
-/* the amount to shift the texture coordinates per layer. */
+    /* the amount to shift the texture coordinates per layer. */
     vec2 P = viewDir.xy * 0.1;
     vec2 deltaTexCoords = P / numLayers;
     vec2  currentTexCoords     = texCoords;
     float currentDepthMapValue = texture(heightSampler, currentTexCoords).r;
 
-/* Keep iterating the layers. */
+    /* Keep iterating the layers. */
     while(currentLayerDepth < currentDepthMapValue) {
         currentTexCoords -= deltaTexCoords;
         currentDepthMapValue = texture(heightSampler, currentTexCoords).r;
         currentLayerDepth += layerDepth;
     }
 
-/* Interpolate with the previous layer. */
+    /* Interpolate with the previous layer. */
     vec2 prevTexCoords = currentTexCoords + deltaTexCoords;
     float afterDepth  = currentDepthMapValue - currentLayerDepth;
     float beforeDepth = texture(heightSampler, prevTexCoords).r - currentLayerDepth + layerDepth;
@@ -81,6 +82,5 @@ void main() {
     normal = normalize(TBN * normal);
 
     vec3 color = toneMapACES(texture(cubeMapTexture,normal).xyz,1);
-
     outColor = vec4(color,1.0);
 }

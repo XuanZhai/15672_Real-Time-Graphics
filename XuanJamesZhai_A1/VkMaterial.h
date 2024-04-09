@@ -89,7 +89,7 @@ class VkMaterial_PBR : public VkMaterial {
 public:
     void CreateDescriptorSetLayout(const VkDevice& device) override;
     void CreateDescriptorPool(const VkDevice& device) override;
-    void CreateDescriptorSets(const VkDevice& device, VkSampler const &textureSampler, const std::vector<VkImageView>& cubeMaps, const VkImageView& brdfLUT);
+    void CreateDescriptorSets(const VkDevice& device, VkSampler const &textureSampler, VkImageView const &LamCubeMap, const std::vector<VkImageView>& cubeMaps, const VkImageView& brdfLUT);
 };
 
 

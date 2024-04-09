@@ -11,7 +11,7 @@ std::string mode = "Lambertian";
 /* The number of sample we take when doing the Monte Carlo. */
 uint32_t numSample = 7000;
 /* The output images' pixel size for each face. */
-uint32_t outputSize = 16;
+uint32_t outputSize = 64;
 
 /**
  * @brief Read the arguments from the command line.

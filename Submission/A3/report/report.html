@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<!-- saved from url=(0069)http://graphics.cs.cmu.edu/courses/15-472-s24/A3/report-template.html -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<title>15-472-s24: A3 - Lights</title>
+<style>
+/* feel free to style your report in a fancier way! */
+
+@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;700&Anonymous+Pro&display=swap');
+
+html {
+	background:#505055;
+}
+
+body {
+	font-family: 'Quicksand', sans-serif;
+	color:#000;
+	background:#eeeee8;
+	font-size:15px;
+	margin: 1em auto 50vh auto;
+	padding: 1em 2em 1em 2em;
+	max-width:45em;
+	border-radius:4px;
+	box-shadow:0 0 10px #0008;
+}
+
+h1 { font-size: 20px; font-weight: 700; }
+h2 { font-size: 16px; font-weight: 700; }
+h3 { font-size: 16px; font-weight: 400; }
+h4 { font-size: 14px; font-weight: 400; }
+
+h1, h2, h3, h4 {
+	margin: 15px 0 0 -10px;
+}
+
+p {
+	margin: 5px 0 0 0;
+}
+
+.subtitle {
+	display:block;
+	font-size:16px;
+	font-weight:400;
+}
+
+.placeholder {
+	color:#800;
+	font-style:italic;
+}
+
+kbd {
+	display:inline-block;
+	background:#ccc;
+	color:#444;
+	font-style:normal;
+	font-weight:700;
+	border-radius:8px;
+	padding:1px 6px;
+	margin:1px;
+	border:1.5px solid #aaa;
+}
+
+code {
+	font-family: 'Anonymous Pro', monospace;
+	background: #222;
+	color:#fff;
+	border-radius:4px;
+	padding:2px 4px;
+	margin:1px;
+}
+
+code var {
+	color:#ef5;
+	font-style:italic;
+}
+
+.atag {
+	font-family: 'Calistoga', serif;
+	font-size:90%;
+	color:#000;
+	background:#b00;
+
+	display:inline-block;
+	padding:1px 4px;
+	border-radius: 4px;
+	line-height:120%;
+}
+.atag:before {
+	content:'»';
+}
+.atag.extra {
+	background:#b08;
+}
+.atag.creative {
+	/* thanks, shout.horse! */
+	background:linear-gradient(0.4turn, #ffe680, #916f6f);
+}
+
+</style>
+</head>
+<body>
+<h1>A3: Lights
+<span class="subtitle">by <span class="placeholder">Xuan(James) Zhai (andrew ID: xuanzhai)</span></span>
+</h1>
+
+<p class="placeholder">
+	For this assignment, I've added three types of lights from S72 to the renderer: the Sun Light, the Sphere Light, and the Spot Light.
+	Those lights can apply effects on Lambertians and PBR materials. (Does not support Simple material because the material is just pure color).
+	Moreover, for the Spot Light, I've implemented the shadow maps so that the light can have shadows. (The shadow map is also only for Lambertian and PBR) 
+	Other than that, I've also implemented the PCSS to try to make the shadow more realistic. 
+
+<h2>My Lit Scene <span class="atag creative">A3-create</span></h2>
+
+<video width="640" height="360">
+	<source src="report_create_video.mp4" type="video/mp4">
+</video>
+
+<p class="placeholder">
+	Most of the parts in the scene are from A2, but I added more animations about lights in the beginning.
+	Now you can see how lights and shadow maps work in the renderer. Besides, I've added two spot lights into the scene to show that my renderer supports multiple lights.
+</p>
+
+<h2>My Code</h2>
+
+<h3>Loading light objects <span class="atag">A3-load</span></h3> 
+
+<p class="placeholder">
+	Loading the light component from S72 is similar to loading other types. Each light will be stored as an individual light class instance.
+	The loader does not compute any light data like power or color, they will be processed in the shaders. <br><br>
+
+	I use one light class for all light types because we are only limit to 3 types and there're some common variables for them.
+	In the light class, it uses a variable called <code>type</code> to identify which type it is: <code> 0 = Sun Light</code>, <code> 1 = Sphere Light</code>, <code> 2 = Spot Light</code>. <br><br>
+
+	The class has all the light data collected from S72, but it also has: <code>pos</code> indicates the light position, <code>dir</code> refers to the light node's facing direction, <code>view</code> refers to the view matrix of the light, and <code>proj</code> which is the projection matrix. <br><br>
+</p>
+
+<h3>Adding Direct Lighting to Materials <span class="atag">A3-materials</span></h3>
+
+<p class="placeholder">
+	To pass the data into the shader, the renderer will transfer the data into the global uniform buffer. 
+	Since the renderer needs to support multiple lights. It will pass an array of light data into the shader. 
+	However the renderer does not know how many lights will be passed to the shader, so it uses an array with <code>MAX_NUM_LIGHTS = 10</code>. 
+	Note that this number matches with the one in the shader. <br><br>
+	
+	Because the light applies to Lambertian and PBR, we only need to modify those two shaders. <br><br>
+	
+	The general calculation depends on the light types, so it will first identify which type it is, and compute the Lo separately. 
+	The PBR light implementation is inspired by <a href="https://learnopengl.com/PBR/Lighting">PBR Lighting</a> with a few modifications. <br><br>
+</p>
+
+
+<p class="placeholder">
+	Screenshots : (Left is Lambertian and right is PBR) <br> <br>
+</p>
+
+<p class="placeholder">
+	Sun Light: <br>
+	<img src="report_sun_light.PNG" width="360" height="480" alt="Sun Light to Lambertian and PBR"> <br><br>
+</p>
+
+
+<p class="placeholder">
+	Sphere Light: <br>
+	<img src="report_sphere_light.PNG" width="480" height="360" alt="Sphere Light to Lambertian and PBR"> <br><br>
+</p>
+
+<p class="placeholder">
+	Spot Light: <br>
+	<img src="report_spot_light.PNG" width="640" height="360" alt="Spot Light to Lambertian and PBR"> <br><br>
+</p>
+
+<p class="placeholder">
+	NOTE: Performance analysis is on the section below.
+</p>
+
+<h3>Adding Shadows for Spot Lights <span class="atag">A3-shadows</span></h3>
+
+<p class="placeholder">
+
+	As mentioned in the previous section, each light has a view matrix and a projection matrix. Those matrices will be used to generate the shadow map. 
+	(Also our shadow map implementation only supports spot lights). Before rendering the scene, the renderer will render the shadow maps through the shadow passes.
+	Each light will have a shadow pass, and in each pass, it will generate the depth map from the light's view. <br><br>
+
+	Shadow pass on RenderDoc <br>
+	<img src="report_shadow_pass.PNG" width="640" height="360" alt="Shadow pass on RenderDoc"> <br><br>
+	The result will be stored on the image views linked by the framebuffers, they will later be forwarded to the render pass.
+	In the render pass, the vertex shader will transform the position to the light space, and the fragment shader will compare its depth with the one sampled on the depth map.
+	Since again we don't know the number of lights in the scene, it will pass an array of depth map textures with size equals the <code>MAX_NUM_LIGHTS</code>. <br><br>
+
+	To avoid artifacts, I initially tried to use bias but found the result was not optimal as expected. So I switched to changing the culling mode.
+	In the shadow pass, it will cull all the front faces. This approach does help solve some artifact issues like Peter Panning. <br><br>
+
+	Furthermore, I've also applied PCF to my shadow map implementation as inspired by <a href="https://learnopengl.com/Advanced-Lighting/Shadows/Shadow-Mapping">Shadow Mapping</a>. 
+	It chooses the all samples around the current fragment, so there are 9 samples in total. <br><br>
+</p>
+
+<p class="placeholder">
+	Shadow on a Lambertian surface (map size = 32)
+	<img src="report_shadow_lambertian_32.PNG" width="640" height="360" alt="Shadow on Lambertian 32"> <br><br>
+</p>
+
+<p class="placeholder">
+	Shadow on a Lambertian surface (map size = 256)
+	<img src="report_shadow_lambertian_256.PNG" width="640" height="360" alt="Shadow on Lambertian 256"> <br><br>
+</p>
+
+<p class="placeholder">
+	Shadow on a PBR surface (map size = 32)
+	<img src="report_shadow_pbr_32.PNG" width="640" height="360" alt="Shadow on PBR 32"> <br><br>
+</p>
+
+<p class="placeholder">
+	Shadow on a PBR surface (map size = 256)
+	<img src="report_shadow_pbr_256.PNG" width="640" height="360" alt="Shadow on Lambertian 256"> <br><br>
+</p>
+
+<p class="placeholder">
+	NOTE: Performance analysis is on the section below. <br><br>
+</p>
+
+
+<h3> Percentage-Closer Soft Shadows <span class="atag extra">A3x-soft</span></h3>
+
+<p class="placeholder">
+	I've added the PCSS to make the shadow soft for higher objects. 
+	The implementation is inspired by <a href="https://developer.download.nvidia.com/whitepapers/2008/PCSS_Integration.pdf">Integrating Realistic Soft Shadows into Your Game Engine</a>.
+	In Lambertian and PBR's fragment shaders, I firstly find the average distance to the blocker, then I apply the formula to find the penumbra width.
+	Finally, I add the new filter radius to PCF to find the final result. <br><br>
+</p>
+
+<p class="placeholder">
+	PCF shadow on a Lambertian surface (grayscale)
+	<img src="report_shadow_PCF1.PNG" width="640" height="360" alt="PCF Shadow (grayscale)"> <br><br>
+</p>
+
+<p class="placeholder">
+	PCF shadow on a Lambertian surface (color)
+	<img src="report_shadow_PCF2.PNG" width="640" height="360" alt="PCF Shadow (color)"> <br><br>
+</p>
+
+<p class="placeholder">
+	PCSS shadow on a Lambertian surface (grayscale)
+	<img src="report_shadow_PCSS1.PNG" width="640" height="360" alt="PCSS Shadow (grayscale)"> <br><br>
+</p>
+
+<p class="placeholder">
+	PCSS shadow on a Lambertian surface (color)
+	<img src="report_shadow_PCSS2.PNG" width="640" height="360" alt="PCSS Shadow (color)"> <br><br>
+</p>
+
+<p class="placeholder">
+	Analysis <br>
+	The shadow images above are from a sphere object on the air. 
+	With PCF, the shadow around the edge is uniformly "blurred". 
+	In contrast, with PCSS, the shadow for the bottom of the sphere is harder, while the shadow for the top is softer. <br><br>
+	Note: I'm using a large light radius and near plane which is 2.0 to highlight the contrast; in real curcumstance the parameter will not be that large.
+</p>
+
+
+<h2>Performance Tests</h2>
+
+<p class="placeholder">
+	Testing platform: <br><br>
+	CPU: AMD Ryzen 1700X <br>
+	GPU: Nvidia RTX 2080 <br>
+	Memory: 16GB <br>
+	OS: Windows 10 <br>
+	Vulkan version: 1.3.268.0 <br>
+	Testing tools: RenderDoc <br>
+</p>
+
+
+<h3>Light Performance</h3>
+<p class="placeholder">
+	In this section, I want to find out how adding lights could affect the perforamce of rendering the scene. My main focus is on the FPS(Frame per Second) captured by RenderDoc. <br><br>
+
+	I've used a scene with 8 cubes, 8 spheres, and 8 planes. Half of them are in Lambertian material, and the others are in PBR materials.
+
+	I put 10 lights into the scene. For each round of test, I turn on each light and see how does the FPS change. 
+	
+	To capture the FPS, I use RenderDoc to capture the frame between 10000 to 100000 and see its FPS at each target point. <br><br>
+
+	Note: The light does not include the ambient environment light. <br><br>
+</p>
+
+<p class="placeholder">
+	Scene with all lights off.
+	<img src="report_no_lights.PNG" width="640" height="360" alt="Scene with all lights off"> <br><br>
+</p>
+
+<p class="placeholder">
+	Scene with all lights on.
+	<img src="report_all_lights.PNG" width="640" height="360" alt="Scene with all lights on"> <br><br>
+</p>
+
+<p class="placeholder">
+	Average of FPS for different number of lights. (Table)
+	<img src="report_light_fps_table.PNG" width="640" height="240" alt="Light Table"> <br><br>
+</p>
+
+<p class="placeholder">
+	Average of FPS for different number of lights. (Chart)
+	<img src="report_light_fps_chart.PNG" width="640" height="360" alt="Light Chart"> <br><br>
+</p>
+
+<p class="placeholder">
+	Analysis: <br>
+	From the chart above we can found out that although the gap increases when the number of lights is greater than 6,
+	the overall trend is linear. I think the change maybe due to locality or other optimization issues. <br><br>
+</p>
+
+<h3>Light Performance</h3>
+
+
+<p class="placeholder">
+	In this section, I try to find out how adding shadow passes and sampling shadow maps could affect the perforamce.
+
+	I use the same scene as above, with all 10 lights turned on. <br><br>
+
+	I've splited the test into three groups: <br>
+	1: Render the scene without any shadow mapping technique. <br>
+	2: Render the shadow maps through shadow passes but not use them in the render pass. <br>
+	3: Render the shadow maps and do the shadow calculation in the render pass. <br><br>
+
+	Like the test above, I use RenderDoc to capture FPS at some target time points. <br><br>
+</p>
+
+<p class="placeholder">
+	Scene with all lights on and full shadow computations.
+	<img src="report_shadow_screenshot.PNG" width="640" height="360" alt="Scene with Shadows"> <br><br>
+</p>
+
+<p class="placeholder">
+	Average of FPS for different testing groups. (Table)
+	<img src="report_shadow_table.PNG" width="640" height="240" alt="Shadow Table"> <br><br>
+</p>
+
+<p class="placeholder">
+	Average of FPS for different testing groups. (Chart)
+	<img src="report_shadow_chart.PNG" width="640" height="360" alt="Shadow Chart"> <br><br>
+</p>
+
+<p class="placeholder">
+	Analysis: <br>
+	The data above clearly shows that rendering the shadow maps takes a huge amount of time. 
+	Since there are ten lights in the scene, it will have ten shadow passes and render ten shadow maps which is a lot of work.
+	Thus, when doing a real-time rendering, we should avoid having many passes to create shadow maps but instead just precompute for the static lights. <br><br>
+	
+	Moreover, although sampling and calculating the shadow in the render pass also affect the overall performance, 
+	its impact is acceptable compared with rendering the shadow maps.
+</p>
+
+
+<h2>Feedback</h2>
+<p class="placeholder">
+</p>
+
+
+
+</body></html>

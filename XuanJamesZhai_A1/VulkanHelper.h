@@ -32,6 +32,7 @@
 #include "EventHelper.h"
 #include "VkMaterial.h"
 #include "VkMesh.h"
+#include "VkShadowMaps.h"
 
 
 
@@ -72,12 +73,41 @@ const bool enableValidationLayers = true;
 #endif // NDEBUG
 
 
+const size_t MAX_NUM_LIGHTS = 10;
 
-/* MVP data for the vertices */
+
+/* Camera ubo data */
 struct UniformBufferObject {
     alignas(64) XZM::mat4 view;
     alignas(64) XZM::mat4 proj;
     alignas(64) XZM::vec3 viewPos;
+};
+
+
+/* Light ubo data. */
+struct UniformLight {
+    /* 0 = sun, 1 = sphere, 2 = spot */
+    alignas(4) uint32_t type = 0;
+    alignas(4) float angle = 0;
+    alignas(4) float strength = 0;
+    alignas(4) float radius = 0;
+    alignas(4) float power = 0;
+    alignas(4) float limit = 0;
+    alignas(4) float fov = 0;
+    alignas(4) float blend = 0;
+    alignas(4) float nearZ = 0;
+    alignas(4) float farZ = 0;
+    alignas(16) XZM::vec3 pos = XZM::vec3();
+    alignas(16) XZM::vec3 dir = XZM::vec3();
+    alignas(16) XZM::vec3 tint = XZM::vec3(1.0f,1.0f,1.0f);
+    alignas(16) XZM::mat4 view;
+    alignas(16) XZM::mat4 proj;
+};
+
+/* A container of light data. */
+struct UniformLights {
+    alignas(4) uint32_t lightSize = 0;
+    alignas(16) std::array<UniformLight,MAX_NUM_LIGHTS> lights;
 };
 
 
@@ -167,14 +197,20 @@ private:
     /* A map of VkMeshes hold all the vertex info in the GPU. */
     std::unordered_map<std::string,std::shared_ptr<VkMesh>> VkMeshes;
 
-    /* Buffer that contains UBO data */
+    /* Global descriptor set to store all the ubo data. */
+    VkDescriptorSetLayout globalDescriptorSetLayout = VK_NULL_HANDLE;
+    VkDescriptorPool globalDescriptorPool = VK_NULL_HANDLE;
+    std::vector<VkDescriptorSet> globalDescriptorSets;
+
+    /* Buffer that contains camera UBO data */
     std::vector<VkBuffer> uniformBuffers;
-
-    /* Memory that is allocated for the uniform buffer */
     std::vector<VkDeviceMemory> uniformBuffersMemory;
-
-    /* A reference map to the uniform buffer which can put data into them */
     std::vector<void*> uniformBuffersMapped;
+
+    /* Buffer that contains light UBO data */
+    std::vector<VkBuffer> uniformLightBuffers;
+    std::vector<VkDeviceMemory> uniformLightBuffersMemory;
+    std::vector<void*> uniformLightBuffersMapped;
 
     /* A map of VkMaterials hold all the material info in the GPU. */
     std::map<std::shared_ptr<VkMaterial>,std::vector<std::shared_ptr<S72Object::Material>>> VkMaterials;
@@ -234,6 +270,9 @@ private:
 
     /* The current rendered image into headless list. */
     uint32_t headlessImageIndex = 0;
+
+    /* Refers to the instance of VkShadowMaps */
+    std::shared_ptr<VkShadowMaps> shadowMaps = nullptr;
 
 
     /* A struct of queue that will be submitted to Vulkan */
@@ -311,6 +350,9 @@ private:
     /* Create the swap chain as a list of images for the headless mode. */
     void CreateHeadlessSwapChain();
 
+    /* Create the image instance. */
+    void CreateImage(uint32_t width, uint32_t height, uint32_t newMipLevels, uint32_t newArrayLayers, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkImageCreateFlags flags, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
+
     /* Create an image view instance based on the image and its format. */
     VkImageView CreateImageView(VkImage image, VkFormat format, VkImageViewType viewType, VkImageAspectFlags aspectFlags, uint32_t newMipLevels, uint32_t layerCount);
 
@@ -321,7 +363,9 @@ private:
     VkShaderModule CreateShaderModule(const std::vector<char>& code);
 
     /* Read the shaders and create the graphics pipeline. */
-    void CreateGraphicsPipeline(const std::string& vertexFileName, const std::string& fragmentFileName, const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts, VkPipeline& graphicsPipeline, VkPipelineLayout& pipelineLayout);
+    void CreateGraphicsPipeline(const VkRenderPass& newRenderPass, const std::string& vertexFileName,
+                                const std::string& fragmentFileName, const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts,
+                                const std::vector<VkPushConstantRange>& pushConstants, VkPipeline& graphicsPipeline, VkPipelineLayout& pipelineLayout);
 
     /* Create the render pass to attach the framebuffer. */
     void CreateRenderPass();
@@ -365,23 +409,32 @@ private:
     /* Update an instance buffer with the new instance data. */
     void UpdateInstanceBuffer(const S72Object::Mesh& newMesh);
 
-    /* Create the uniform buffer to store the uniform data. */
+    /* Create the uniform buffer to store the general uniform data. */
     void CreateUniformBuffers();
 
-    /* Update the uniform buffer on the current image with given ubo data. */
+    /* Update the uniform buffer on the current image. */
     void UpdateUniformBuffer(uint32_t currentImage);
 
+    /* Create the uniform buffer to store the light uniform data. */
+    void CreateUniformLightBuffers();
+
+    /* Update the light uniform buffer on the current image. */
+    void UpdateUniformLightBuffers(uint32_t currentImage);
+
+    /* Create the descriptor set layout, pool, and sets for the global descriptor set. */
+    void CreateGlobalDescriptorSets();
+
     /* Create the command pool which will be used to allocate the memory for the command buffer. */
-    void CreateCommandPool();
+    void CreateCommandPool(VkCommandPool& newCommandPool);
 
     /* Create the command buffer which can submit the drawing command. */
-    void CreateCommandBuffers();
+    void CreateCommandBuffers(VkCommandPool& newCommandPool, std::vector<VkCommandBuffer>& newCommandBuffers);
+
+    /* Render the shadow passes. */
+    void RenderShadowPass(VkCommandBuffer commandBuffer);
 
     /* Writes the commands we want to execute into a command buffer. */
     void RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
-
-    /* Create the image instance. */
-    void CreateImage(uint32_t width, uint32_t height, uint32_t newMipLevels, uint32_t newArrayLayers, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkImageCreateFlags flags, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
 
     /* Copy a VkBuffer to a VkImage. */
     void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
@@ -390,7 +443,7 @@ private:
     void CopyBufferToImageCube(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height,uint32_t nChannel);
 
     /* Transit the image's layout with a new layout using a pipeline barrier. */
-    void TransitionImageLayout(VkImage image,uint32_t layerCount, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t newMipLevels);
+    void TransitionImageLayout(VkImage image,uint32_t layerCount, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t newMipLevels, VkImageAspectFlags aspectFlags);
 
     /* Convert a RGBE Image to a float RGB Image. */
     static void ProcessRGBEImage(const unsigned char* src, float*& dst, int texWidth, int texHeight);
@@ -435,10 +488,10 @@ private:
     void CreateDepthResources();
 
     /* Copy a VkImage to a mapped array through a staging buffer. */
-    void CopyImageToData(const VkImage& image, const VkDeviceMemory& imageMemory, void*& data);
+    void CopyImageToData(const VkImage& image, const VkDeviceMemory& imageMemory, void*& data, uint32_t imageWidth, uint32_t imageHeight);
 
     /* Same a VKImage to a PPM file with a given name. */
-    void SaveImageToPPM(const VkImage& image, const VkDeviceMemory& imageMemory, const std::string&);
+    void SaveImageToPPM(const VkImage& image, const VkDeviceMemory& imageMemory, const std::string&, uint32_t imageWidth, uint32_t imageHeight);
 
     /* Clean up the swap chain and all the related resources. */
     void CleanUpSwapChain();
@@ -458,6 +511,12 @@ private:
     /* Initialize the Vulkan application and setup. */
     void InitVulkan();
 
+    /* Initialize the shadow map data. */
+    void InitShadowMaps();
+
+    /* Update the VP matrices to produce new shadow maps. */
+    void UpdateShadowMaps();
+
     /* Draw the frame and submit the command buffer. */
     void DrawFrame();
 
@@ -468,6 +527,9 @@ public:
 
     /* Make the render helper can access the vulkan helper's private properties. */
     friend class RenderHelper;
+
+    /* Make the VkShadowMaps can access the vulkan helper's private properties. */
+    friend class VkShadowMaps;
 
     /* Set the s72helper with a new instance. */
     void SetS72Instance(const std::shared_ptr<S72Helper>& s72Instance);

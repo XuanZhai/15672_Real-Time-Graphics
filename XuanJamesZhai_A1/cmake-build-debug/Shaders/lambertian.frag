@@ -1,13 +1,16 @@
-#version 450
+#version 460
+#extension GL_EXT_nonuniform_qualifier : require
+
+const uint MAX_LIGHT_COUNT = 10;
 
 layout(location = 0) in vec4 fragColor;
 layout(location = 1) in vec3 fragNormal;
 layout(location = 2) in vec2 fragTexCoord;
 layout(location = 3) in vec3 fragPosition;
 layout(location = 4) in mat3 TBN;
+layout(location = 7) in vec4 fragPositionLightSpace[MAX_LIGHT_COUNT];
 
 layout(location = 0) out vec4 outColor;
-
 
 layout(set = 0, binding = 0) uniform UniformBufferObject{
     mat4 view;
@@ -15,17 +18,45 @@ layout(set = 0, binding = 0) uniform UniformBufferObject{
     vec3 viewPos;
 } ubo;
 
-layout(set = 0, binding = 1) uniform sampler2D normalSampler;
-layout(set = 0, binding = 2) uniform sampler2D heightSampler;
-layout(set = 0, binding = 3) uniform sampler2D albedoSampler;
-layout(set = 1, binding = 0) uniform samplerCube cubeSampler;
+/* Struct of a single light source. */
+struct UniformLightObject {
+    /* 0 = sun, 1 = sphere, 2 = spot */
+    uint type;
+    float angle;
+    float strength;
+    float radius;
+    float power;
+    float limit;
+    float fov;
+    float blend;
+    float nearZ;
+    float farZ;
+    vec3 pos;
+    vec3 dir;
+    vec3 tint;
+    mat4 view;
+    mat4 proj;
+};
+
+/* The number of lights and a list of lights. */
+layout(std140, set = 0, binding = 1) uniform UniformLightsObject {
+    uint lightSize;
+    UniformLightObject lights[MAX_LIGHT_COUNT];
+} lightObjects;
+/* A list of shadow maps, one for each light source. */
+layout(set = 0, binding = 2) uniform sampler2D depthMap[];
+
+layout(set = 1, binding = 0) uniform sampler2D normalSampler;
+layout(set = 1, binding = 1) uniform sampler2D heightSampler;
+layout(set = 1, binding = 2) uniform sampler2D albedoSampler;
+layout(set = 2, binding = 0) uniform samplerCube cubeSampler;
 
 
 vec3 toneMapReinhard(vec3 color, float exposure) {
     return color / (color + vec3(1.0)) * exposure;
 }
 
-
+/* Reference: https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/ */
 vec3 toneMapACES(vec3 color, float exposure){
     const float A = 2.51f;
     const float B = 0.03f;
@@ -46,20 +77,20 @@ vec2 ParallaxOcclusionMapping(vec2 texCoords, vec3 viewDir){
     float numLayers = mix(maxLayers, minLayers, max(dot(vec3(0.0, 0.0, 1.0), viewDir), 0.0));
     float layerDepth = 1.0 / numLayers;
     float currentLayerDepth = 0.0;
-/* the amount to shift the texture coordinates per layer. */
+    /* the amount to shift the texture coordinates per layer. */
     vec2 P = viewDir.xy * 0.1;
     vec2 deltaTexCoords = P / numLayers;
     vec2  currentTexCoords     = texCoords;
     float currentDepthMapValue = texture(heightSampler, currentTexCoords).r;
 
-/* Keep iterating the layers. */
+    /* Keep iterating the layers. */
     while(currentLayerDepth < currentDepthMapValue) {
         currentTexCoords -= deltaTexCoords;
         currentDepthMapValue = texture(heightSampler, currentTexCoords).r;
         currentLayerDepth += layerDepth;
     }
 
-/* Interpolate with the previous layer. */
+    /* Interpolate with the previous layer. */
     vec2 prevTexCoords = currentTexCoords + deltaTexCoords;
     float afterDepth  = currentDepthMapValue - currentLayerDepth;
     float beforeDepth = texture(heightSampler, prevTexCoords).r - currentLayerDepth + layerDepth;
@@ -68,6 +99,179 @@ vec2 ParallaxOcclusionMapping(vec2 texCoords, vec3 viewDir){
     vec2 finalTexCoords = prevTexCoords * weight + currentTexCoords * (1.0 - weight);
 
     return clamp(finalTexCoords,0,1);
+}
+
+
+/* Approximate the Fresnel term using Schlick approximation. */
+vec3 SchlickFresnel(float WoH, vec3 F0) {
+    return F0 + (1 - F0) * pow(clamp(1.0 - WoH, 0.0, 1.0), 5.0);
+}
+
+
+/* Reference: https://learnopengl.com/PBR/IBL/Diffuse-irradiance. */
+vec3 GetEnvironmentLight(vec3 viewDir, vec3 normal, vec3 albedo){
+    vec3 F0 = vec3(0.04);
+    vec3 kS = SchlickFresnel(max(dot(normal, normalize(-viewDir)), 0.0),F0);
+    vec3 kD = 1.0 - kS;
+
+    vec3 irradiance = texture(cubeSampler, normal).xyz;
+
+    return toneMapACES(irradiance * albedo * kD,1.0);
+}
+
+
+/* Add light effect for a signle light. */
+vec3 DiffuseLightCalculation(UniformLightObject light, vec3 normal, vec3 albedo){
+
+    vec3 Lo = vec3(0);
+    vec3 L = light.pos - fragPosition;
+    float NoL = max(dot(normal, normalize(L)), 0.0);
+
+    /* If sun light, use the light direction and also no falloff. */
+    if(light.type == 0){
+        NoL = max(dot(normalize(-light.dir), normal), 0.0);
+        Lo = (albedo/3.14159) * light.strength * light.tint * NoL;
+        Lo = Lo / (Lo + vec3(1.0));
+        Lo = pow(Lo, vec3(1.0/2.2));
+        return Lo;
+    }
+
+    /* Calculate the falloff */
+    float d = length(L);
+    float falloff = 1 - pow(d/light.limit,4.0);
+    falloff = clamp(falloff,0.0,1.0);
+    falloff = falloff / (d*d+1);
+    vec3 irradiance = light.power * light.tint / (4*3.14159);
+
+    /* If it is a sphere light. */
+    if(light.type == 1){
+        Lo = (albedo/3.14159) * falloff * irradiance * NoL;
+    }
+    /* If it is a spot light. */
+    else if(light.type == 2){
+        float LoDir = max(dot(normalize(-light.dir), normalize(L)), 0.0);
+        float angle = abs(acos(LoDir));
+        float minAngle = abs((light.fov * (1 - light.blend)) / 2);
+        float maxAngle = abs(light.fov / 2);
+        vec3 maxLo = (albedo/3.14159) * falloff * irradiance * NoL;
+        /* If out of the max angle, no light effect adds to the fragment. */
+        if(angle > maxAngle){}
+        /* If in the inner bound, use the full light. */
+        else if(angle <= minAngle){
+            Lo = maxLo;
+        }
+        /* Lerp based on the randians. */
+        else{
+            float alpha = (angle - minAngle) / (maxAngle - minAngle);
+            Lo = mix(maxLo,vec3(0),alpha);
+        }
+    }
+    /* Gamma Correction. */
+    Lo = Lo / (Lo + vec3(1.0));
+    Lo = pow(Lo, vec3(1.0/2.2));
+    return Lo;
+}
+
+
+/* Check shadow effect for a given light using PCF. */
+float ShadowCalculationPCF(uint lightIndex, vec3 normal) {
+
+    if(lightObjects.lights[lightIndex].type != 2){
+        return 1.0;
+    }
+
+    /* Convert light to NDC space. */
+    vec3 fragPositionLightNDC = fragPositionLightSpace[lightIndex].xyz / fragPositionLightSpace[lightIndex].w;
+
+    if (abs(fragPositionLightNDC.x) > 1.0 || abs(fragPositionLightNDC.y) > 1.0 || abs(fragPositionLightNDC.z) > 1.0)
+    return 1.0;
+
+    /* NDC to [0,1] range. */
+    fragPositionLightNDC.x = fragPositionLightNDC.x * 0.5 + 0.5;
+    fragPositionLightNDC.y = fragPositionLightNDC.y * 0.5 + 0.5;
+    /* Current fragment from light's perspective. */
+    float currentDepth = fragPositionLightNDC.z;
+
+    /* check whether current frag pos is in shadow using PCF with bias. */
+    /* Inspired by: https://learnopengl.com/Advanced-Lighting/Shadows/Shadow-Mapping */
+    float bias = max(0.05 * (1.0 - dot(normal, normalize(-lightObjects.lights[lightIndex].dir))), 0.005);
+    float shadow = 0.0;
+    vec2 texelSize = 1.0 / textureSize(depthMap[lightIndex], 0);
+    for(int x = -1; x <= 1; ++x) {
+        for(int y = -1; y <= 1; ++y) {
+            float pcfDepth = texture(depthMap[lightIndex], fragPositionLightNDC.xy + vec2(x, y) * texelSize).r;
+            shadow += (currentDepth) > pcfDepth ? 0.0 : 1.0;
+        }
+    }
+    shadow /= 9.0;
+    return shadow;
+}
+
+
+/* The overall PCSS implementation is inspired by https://developer.download.nvidia.com/whitepapers/2008/PCSS_Integration.pdf */
+/* Find the average distance to the blocker. */
+vec2 FindBlocker(uint lightIndex, vec3 fragPositionLightNDC, vec2 texelSize, float lightSize){
+    float zReceiver = fragPositionLightNDC.z;
+    float searchWidth =  lightSize * (zReceiver - lightObjects.lights[lightIndex].nearZ) / zReceiver;
+
+    float sum = 0.0;
+    float count = 0.0;
+    for(int x = -1; x <= 1; ++x) {
+        for(int y = -1; y <= 1; ++y) {
+            float depth = texture(depthMap[lightIndex], fragPositionLightNDC.xy + vec2(x, y) * texelSize * searchWidth).r;
+
+            if(depth < zReceiver){
+                sum += depth;
+                count++;
+            }
+        }
+    }
+    /* Return the average depth and the number of samples. */
+    return vec2(sum/count,count);
+}
+
+
+/* Check shadow using PCSS. */
+float ShadowCalculationPCSS(uint lightIndex, vec3 normal){
+    if(lightObjects.lights[lightIndex].type != 2){
+        return 1.0;
+    }
+
+    /* Convert light to NDC space. */
+    vec3 fragPositionLightNDC = fragPositionLightSpace[lightIndex].xyz / fragPositionLightSpace[lightIndex].w;
+
+    if (abs(fragPositionLightNDC.x) > 1.0 || abs(fragPositionLightNDC.y) > 1.0 || abs(fragPositionLightNDC.z) > 1.0)
+    return 1.0;
+
+    /* NDC to [0,1] range. */
+    fragPositionLightNDC.x = fragPositionLightNDC.x * 0.5 + 0.5;
+    fragPositionLightNDC.y = fragPositionLightNDC.y * 0.5 + 0.5;
+    /* Current fragment from light's perspective. */
+    float currentDepth = fragPositionLightNDC.z;
+
+    vec2 texelSize = 1.0 / textureSize(depthMap[lightIndex], 0);
+    float lightSize = lightObjects.lights[lightIndex].radius / (2 * lightObjects.lights[lightIndex].nearZ * tan(lightObjects.lights[lightIndex].fov * 0.5f));
+    vec2 depthInfo = FindBlocker(lightIndex,fragPositionLightNDC, texelSize, lightSize);
+
+    /* No block found, so fully lit. */
+    if(depthInfo.y < 1){
+        return 1.0;
+    }
+
+    float penumbraRatio = (fragPositionLightNDC.z - depthInfo.x) / depthInfo.x;
+    float filterRadius = penumbraRatio * lightSize * lightObjects.lights[lightIndex].nearZ / fragPositionLightNDC.z;
+
+    /* Apply the PCF. */
+    float shadow = 0.0;
+    for(int x = -1; x <= 1; ++x) {
+        for(int y = -1; y <= 1; ++y) {
+            float pcfDepth = texture(depthMap[lightIndex], fragPositionLightNDC.xy + vec2(x, y) * texelSize * filterRadius).r;
+            shadow += (currentDepth) > pcfDepth ? 0.0 : 1.0;
+        }
+    }
+    shadow /= 9.0;
+
+    return shadow;
 }
 
 
@@ -82,12 +286,16 @@ void main() {
     normal = normal * 2.0 - 1.0;
     normal = normalize(TBN * normal);
 
-    vec3 reflectedDir = reflect(normalize(viewDir), normal);
+    vec3 albedo = texture(albedoSampler, texCoord).xyz * fragColor.xyz;
 
-    vec3 baseColor = texture(albedoSampler, texCoord).xyz;
+    vec3 color = vec3(0);
+    color += GetEnvironmentLight(viewDir, normal, albedo);
 
-    vec3 lambert = toneMapACES(texture(cubeSampler, reflectedDir).xyz,1.0);
-    //vec3 lambert = texture(cubeSampler, reflectedDir).xyz;
+    for(uint i = 0; i < lightObjects.lightSize; i++){
+        color += ShadowCalculationPCF(i,normal) * DiffuseLightCalculation(lightObjects.lights[i], normal,albedo);
+        // For debug.
+        //color = vec3(ShadowCalculationPCSS(i,normal));
+    }
 
-    outColor = vec4(lambert * baseColor,1.0);
+    outColor = vec4(color,1.0);
 }

@@ -92,7 +92,7 @@ void S72Object::Camera::SetCameraData(float newAspect, float new_V_fov, float ne
  * @brief Compute and set the camera's view matrix based on its position and direction.
  */
 void S72Object::Camera::ComputeViewMatrix(){
-    viewMatrix = XZM::LookAt(cameraPos,cameraPos + cameraDir, XZM::vec3(0,0,1));
+    viewMatrix = XZM::LookAt(cameraPos, cameraPos + cameraDir, XZM::vec3(0,0,1));
 }
 
 
@@ -145,11 +145,14 @@ void S72Object::Camera::MoveCameraUpDown(bool isUp) {
 
     if(cameraDir.IsEmpty() || !isMovable) return;
 
+    XZM::vec3 up = XZM::vec3(0.0f, 0.0f, 1.0f);
+    XZM::vec3 right = XZM::Normalize(XZM::CrossProduct(up,cameraDir));
+
     if(isUp){
-        cameraDir = XZM::RotateVec3(cameraDir, XZM::vec3(0,1,0), 0.02f);
+        cameraDir = XZM::RotateVec3(cameraDir, right, -0.02f);
     }
     else{
-        cameraDir = XZM::RotateVec3(cameraDir, XZM::vec3(0,1,0), -0.02f);
+        cameraDir = XZM::RotateVec3(cameraDir, right, 0.02f);
     }
 
     ComputeViewMatrix();
@@ -562,6 +565,76 @@ std::string S72Object::Driver::HasMatchNodeAndChannel(const std::shared_ptr<Pars
 }
 
 
+/**
+ * @brief Initialize the light object from the parser node.
+ * @param node The input parser node.
+ */
+void S72Object::Light::Initialization(const std::shared_ptr<ParserNode> &node){
+    if(node == nullptr) return;
+
+    name = std::get<std::string>(node->GetObjectValue("name")->data);
+
+    ParserNode::PNVector tintVector = std::get<ParserNode::PNVector>(node->GetObjectValue("tint")->data);
+    tint.data[0] = std::get<float>(tintVector[0]->data);
+    tint.data[1] = std::get<float>(tintVector[1]->data);
+    tint.data[2] = std::get<float>(tintVector[2]->data);
+
+    auto shadowPtr = node->GetObjectValue("shadow");
+    if(shadowPtr != nullptr){
+        shadowMapSize = static_cast<uint32_t>(std::get<float>(shadowPtr->data));
+    }
+
+    if(node->GetObjectValue("sun") != nullptr){
+        type = 0;
+        auto sunMap = std::get<ParserNode::PNMap>(node->GetObjectValue("sun")->data);
+        angle = std::get<float>(sunMap["angle"]->data);
+        strength = std::get<float>(sunMap["strength"]->data);
+    }
+    else if(node->GetObjectValue("sphere") != nullptr){
+        type = 1;
+        auto sphereMap = std::get<ParserNode::PNMap>(node->GetObjectValue("sphere")->data);
+        radius = std::max(0.01f,std::get<float>(sphereMap["radius"]->data));
+        power = std::get<float>(sphereMap["power"]->data);
+        limit = std::get<float>(sphereMap["limit"]->data);
+    }
+    else if(node->GetObjectValue("spot") != nullptr){
+        type = 2;
+        auto spotMap = std::get<ParserNode::PNMap>(node->GetObjectValue("spot")->data);
+        radius = std::max(0.01f,std::get<float>(spotMap["radius"]->data));
+        power = std::get<float>(spotMap["power"]->data);
+        limit = std::get<float>(spotMap["limit"]->data);
+        fov = std::get<float>(spotMap["fov"]->data);
+        blend = std::get<float>(spotMap["blend"]->data);
+        /* NOTE: Maybe changed later. */
+        nearZ = radius;
+        farZ = limit;
+    }
+    else{
+        throw std::runtime_error("Unknown light type in s72");
+    }
+}
+
+
+/**
+ * @brief Set the light's position and direction. Also calculate the VP matrices.
+ * @param newModel Input transform matrix.
+ */
+void S72Object::Light::SetModelMatrix(const XZM::mat4& newModel){
+    pos = XZM::ExtractTranslationFromMat(newModel);
+    dir = XZM::Normalize(XZM::GetLookAtDir(newModel));
+
+    if(type == 2) {
+        view = XZM::LookAt(pos, pos + dir, XZM::vec3(0, 0, 1));
+        proj = XZM::Perspective(fov, 1, nearZ, farZ);
+        proj.data[1][1] *= -1;
+    }
+    else{
+        view = XZM::mat4();
+        proj = XZM::mat4();
+    }
+}
+
+
 
 /* =============================================== S72Helper ======================================================== */
 
@@ -776,6 +849,12 @@ void S72Helper::ReconstructNode(std::shared_ptr<ParserNode> newNode, XZM::mat4 n
             newCamera->ProcessCamera(newMat);
             cameras.insert(std::make_pair(cameraName,newCamera));
     }
+    else if(type == "LIGHT"){
+            std::shared_ptr<S72Object::Light> newLight = std::make_shared<S72Object::Light>();
+            newLight->Initialization(newNode);
+            newLight->SetModelMatrix(newMat);
+            lights.emplace_back(newLight);
+    }
 
     /* If it has a mesh key. Recursively visit its children. */
     if(newMap.count("mesh")){
@@ -794,6 +873,12 @@ void S72Helper::ReconstructNode(std::shared_ptr<ParserNode> newNode, XZM::mat4 n
         size_t idx = (size_t)std::get<float>(newMap["camera"]->data);
         newMap["camera"] = std::get<ParserNode::PNVector>(root->data)[idx];
         ReconstructNode(newMap["camera"],newMat);
+    }
+    /* If it has a light key. Recursively visit its node. */
+    if(newMap.count("light")){
+        size_t idx = (size_t)std::get<float>(newMap["light"]->data);
+        newMap["light"] = std::get<ParserNode::PNVector>(root->data)[idx];
+        ReconstructNode(newMap["light"],newMat);
     }
     /* If it has a roots key. Recursively visit its children. */
     if(newMap.count("roots")){
@@ -838,6 +923,8 @@ void S72Helper::UpdateObjects(){
         float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTimePoint - animStartTimePoint).count();
         currDuration = std::fmodf(time, 120);
     }
+
+    lightIndex = 0;
 
     UpdateObject(root,XZM::mat4());
 }
@@ -890,6 +977,10 @@ void S72Helper::UpdateObject(const std::shared_ptr<ParserNode>& newNode, XZM::ma
         std::string cameraName = std::get<std::string>(newNode->GetObjectValue("name")->data);
         cameras[cameraName]->ProcessCamera(newMat);
     }
+    else if(type == "LIGHT"){
+        lights.at(lightIndex)->SetModelMatrix(newMat);
+        lightIndex++;
+    }
 
     /* If it has a mesh key. Recursively visit its children. */
     if(newMap.count("mesh")){
@@ -898,6 +989,10 @@ void S72Helper::UpdateObject(const std::shared_ptr<ParserNode>& newNode, XZM::ma
     /* If it has a camera key. Recursively visit its children. */
     if(newMap.count("camera")){
         UpdateObject(newMap["camera"],newMat);
+    }
+    /* If it has a light key. Recursively visit its node. */
+    if(newMap.count("light")){
+        UpdateObject(newMap["light"],newMat);
     }
     /* If it has a roots key. Recursively visit its children. */
     if(newMap.count("roots")){

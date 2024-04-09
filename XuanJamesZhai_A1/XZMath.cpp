@@ -579,8 +579,7 @@ XZM::vec3 XZM::GetLookAtDir(const mat4& rotationMatrix){
             rotationMatrix.data[0][2] * forward.data[0] + rotationMatrix.data[1][2] * forward.data[1] + rotationMatrix.data[2][2] * forward.data[2]
     };
 
-    Normalize(result);
-    return result;
+    return Normalize(result);
 }
 
 
@@ -657,28 +656,72 @@ XZM::vec3 XZM::ExtractTranslationFromMat(const mat4& nm){
  * @return
  */
 XZM::vec3 XZM::RotateVec3(const vec3& vector, const vec3& axis, float radians){
-    float cosTheta = cos(radians);
-    float sinTheta = sin(radians);
-
     vec3 result;
+    quat q;
+    q.data[0] = (axis * sin(radians / 2.0f)).data[0];
+    q.data[1] = (axis * sin(radians / 2.0f)).data[1];
+    q.data[2] = (axis * sin(radians / 2.0f)).data[2];
+    q.data[3] = cos(radians / 2.0f);
 
     XZM::mat4 rotationMatrix;
-    rotationMatrix.data[0][0] = cosTheta + (1 - cosTheta) * axis.data[0] * axis.data[0];
-    rotationMatrix.data[0][1] = (1 - cosTheta) * axis.data[0] * axis.data[1] - sinTheta * axis.data[2];
-    rotationMatrix.data[0][2] = (1 - cosTheta) * axis.data[0] * axis.data[2] + sinTheta * axis.data[1];
+    rotationMatrix.data[0][0] = 1.0f - 2.0f * (q.data[1] * q.data[1] + q.data[2] * q.data[2]);
+    rotationMatrix.data[0][1] = 2.0f * (q.data[0] * q.data[1] - q.data[3] * q.data[2]);
+    rotationMatrix.data[0][2] = 2.0f * (q.data[0] * q.data[2] + q.data[3] * q.data[1]);
 
-    rotationMatrix.data[1][0] = (1 - cosTheta) * axis.data[0] * axis.data[1] + sinTheta * axis.data[2];
-    rotationMatrix.data[1][1] = cosTheta + (1 - cosTheta) * axis.data[1] * axis.data[1];
-    rotationMatrix.data[1][2] = (1 - cosTheta) * axis.data[1] * axis.data[2] - sinTheta * axis.data[0];
+    rotationMatrix.data[1][0] = 2.0f * (q.data[0] * q.data[1] + q.data[3] * q.data[2]);
+    rotationMatrix.data[1][1] = 1.0f - 2.0f * (q.data[0] * q.data[0] + q.data[2] * q.data[2]);
+    rotationMatrix.data[1][2] = 2.0f * (q.data[1] * q.data[2] - q.data[3] * q.data[0]);
 
-    rotationMatrix.data[2][0] = (1 - cosTheta) * axis.data[0] * axis.data[2] - sinTheta * axis.data[1];
-    rotationMatrix.data[2][1] = (1 - cosTheta) * axis.data[1] * axis.data[2] + sinTheta * axis.data[0];
-    rotationMatrix.data[2][2] = cosTheta + (1 - cosTheta) * axis.data[2] * axis.data[2];
+    rotationMatrix.data[2][0] = 2.0f * (q.data[0] * q.data[2] - q.data[3] * q.data[1]);
+    rotationMatrix.data[2][1] = 2.0f * (q.data[1] * q.data[2] + q.data[3] * q.data[0]);
+    rotationMatrix.data[2][2] = 1.0f - 2.0f * (q.data[0] * q.data[0] + q.data[1] * q.data[1]);
 
     result.data[0] = vector.data[0] * rotationMatrix.data[0][0] + vector.data[1] * rotationMatrix.data[0][1] + vector.data[2] * rotationMatrix.data[0][2];
     result.data[1] = vector.data[0] * rotationMatrix.data[1][0] + vector.data[1] * rotationMatrix.data[1][1] + vector.data[2] * rotationMatrix.data[1][2];
     result.data[2] = vector.data[0] * rotationMatrix.data[2][0] + vector.data[1] * rotationMatrix.data[2][1] + vector.data[2] * rotationMatrix.data[2][2];
 
+    return result;
+}
+
+
+XZM::mat4 XZM::RotateMat4(const mat4& mat, const vec3& axis, float radians){
+
+    mat4 result;
+
+    const float cosAngle = std::cos(radians);
+    const float sinAngle = std::sin(radians);
+    const float oneMinusCos = 1.0f - cosAngle;
+
+    const float x2 = axis.data[0] * axis.data[0];
+    const float y2 = axis.data[1] * axis.data[1];
+    const float z2 = axis.data[2] * axis.data[2];
+    const float xy = axis.data[0] * axis.data[1];
+    const float xz = axis.data[0] * axis.data[2];
+    const float yz = axis.data[1] * axis.data[2];
+
+    // Set up the rotation matrix
+    result.data[0][0] = cosAngle + x2 * oneMinusCos;
+    result.data[0][1] = xy * oneMinusCos - axis.data[2] * sinAngle;
+    result.data[0][2] = xz * oneMinusCos + axis.data[1] * sinAngle;
+    result.data[1][0] = xy * oneMinusCos + axis.data[2] * sinAngle;
+    result.data[1][1] = cosAngle + y2 * oneMinusCos;
+    result.data[1][2] = yz * oneMinusCos - axis.data[0] * sinAngle;
+    result.data[2][0] = xz * oneMinusCos - axis.data[1] * sinAngle;
+    result.data[2][1] = yz * oneMinusCos + axis.data[0] * sinAngle;
+    result.data[2][2] = cosAngle + z2 * oneMinusCos;
+
+    return result*mat;
+}
+
+
+XZM::mat4 XZM::Ortho(float left, float right, float bottom, float top, float near, float far){
+    mat4 result;
+    result.data[0][0] = 2.0f / (right - left);
+    result.data[1][1] = 2.0f / (top - bottom);
+    result.data[2][2] = -2.0f / (far - near);
+    result.data[3][0] = -(right + left) / (right - left);
+    result.data[3][1] = -(top + bottom) / (top - bottom);
+    result.data[3][2] = -(far + near) / (far - near);
     return result;
 }
 

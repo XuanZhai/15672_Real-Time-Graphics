@@ -1,10 +1,38 @@
-#version 450
+#version 460
 
-layout(binding = 0) uniform UniformBufferObject{
+const uint MAX_LIGHT_COUNT = 10;
+
+layout(set = 0, binding = 0) uniform UniformBufferObject{
     mat4 view;
     mat4 proj;
     vec3 viewPos;
 } ubo;
+
+/* Struct of a single light source. */
+struct UniformLightObject {
+    /* 0 = sun, 1 = sphere, 2 = spot */
+    uint type;
+    float angle;
+    float strength;
+    float radius;
+    float power;
+    float limit;
+    float fov;
+    float blend;
+    float nearZ;
+    float farZ;
+    vec3 pos;
+    vec3 dir;
+    vec3 tint;
+    mat4 view;
+    mat4 proj;
+};
+
+/* The number of lights and a list of lights. */
+layout(std140, set = 0, binding = 1) uniform UniformLightsObject {
+    uint lightSize;
+    UniformLightObject lights[MAX_LIGHT_COUNT];
+} lightObjects;
 
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec3 inNormal;
@@ -18,6 +46,7 @@ layout(location = 1) out vec3 fragNormal;
 layout(location = 2) out vec2 fragTexCoord;
 layout(location = 3) out vec3 fragPosition;
 layout(location = 4) out mat3 TBN;
+layout(location = 7) out vec4 fragPositionLightSpace[MAX_LIGHT_COUNT];
 
 void main() {
 
@@ -35,4 +64,12 @@ void main() {
     TBN = mat3(T, B, fragNormal);;
 
     fragPosition = (inModel * vec4(inPosition,1.0)).xyz;
+
+    /* Compute the vertex position in light space. */
+    for(int i = 0; i < lightObjects.lightSize; i++){
+        fragPositionLightSpace[i] =  lightObjects.lights[i].proj * lightObjects.lights[i].view * vec4(fragPosition, 1.0);
+    }
+    for(uint i = lightObjects.lightSize; i < MAX_LIGHT_COUNT; i++){
+        fragPositionLightSpace[i] = vec4(1,0,0,0);
+    }
 }
